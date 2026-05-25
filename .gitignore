@@ -1,0 +1,4 @@
+build/
+web/index.html
+web/index.js
+web/index.wasm
