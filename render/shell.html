@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>voxelforge</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0d1017; color: #cdd6f4;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow: hidden; }
+  #canvas { display: block; width: 100vw; height: 100vh; cursor: crosshair; }
+  #crosshair { position: fixed; left: 50%; top: 50%; width: 18px; height: 18px;
+    transform: translate(-50%, -50%); pointer-events: none; }
+  #crosshair::before, #crosshair::after { content: ""; position: absolute;
+    background: rgba(255,255,255,0.85); box-shadow: 0 0 2px rgba(0,0,0,0.7); }
+  #crosshair::before { left: 8px; top: 0; width: 2px; height: 18px; }
+  #crosshair::after { top: 8px; left: 0; height: 2px; width: 18px; }
+  #hud { position: fixed; left: 14px; bottom: 12px; font-size: 12px; line-height: 1.5;
+    background: rgba(13,16,23,0.62); padding: 10px 12px; border: 1px solid #26304a;
+    border-radius: 8px; max-width: 360px; }
+  #hud b { color: #89b4fa; }
+  #hud .title { color: #a6e3a1; font-weight: 700; margin-bottom: 4px; display: block; }
+  #hotbar { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
+    display: flex; gap: 4px; pointer-events: none; }
+  .slot { width: 56px; height: 56px; border: 2px solid #26304a; border-radius: 8px;
+    background: rgba(13,16,23,0.68); display: flex; flex-direction: column;
+    align-items: center; justify-content: center; }
+  .slot.active { border-color: #f9e2af; box-shadow: 0 0 10px rgba(249,226,175,0.4); }
+  .slot .name { font-size: 11px; color: #cdd6f4; }
+  .slot .count { font-size: 10px; color: #7f8aa3; margin-top: 2px; }
+  .slot .key { font-size: 9px; color: #45506b; }
+</style>
+</head>
+<body>
+<canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
+<div id="crosshair"></div>
+<div id="hotbar"></div>
+<div id="hud">
+  <span class="title">voxelforge - streamed infinite world</span>
+  Click canvas to lock the mouse. <b>WASD</b> move, mouse look,
+  <b>Space</b> jump, <b>F</b> toggle fly (<b>Space/Shift</b> up/down).<br>
+  <b>Left click</b> break, <b>Right click</b> place. <b>1-9</b> or <b>wheel</b> pick block.
+  <b>K</b> save, <b>L</b> load.
+</div>
+<script>
+  window.renderHotbar = function(selected, payload) {
+    var bar = document.getElementById('hotbar');
+    if (!bar) return;
+    var slots = payload.split(';');
+    var html = '';
+    for (var i = 0; i < slots.length; i++) {
+      var parts = slots[i].split(',');
+      var active = (i === selected) ? ' active' : '';
+      html += '<div class="slot' + active + '">'
+        + '<span class="name">' + parts[0] + '</span>'
+        + '<span class="count">' + parts[1] + '</span>'
+        + '<span class="key">' + (i + 1) + '</span></div>';
+    }
+    bar.innerHTML = html;
+  };
+</script>
+{{{ SCRIPT }}}
+</body>
+</html>
