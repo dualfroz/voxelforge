@@ -3,7 +3,7 @@ TEST_SRC := $(wildcard tests/*.cpp)
 RENDER_SRC := $(wildcard render/*.cpp)
 
 CORE_INCLUDE := -Icore/include
-CXXFLAGS := -std=c++17 -O2 -Wall -Wextra $(CORE_INCLUDE)
+CXXFLAGS := -std=c++17 -O2 -Wall -Wextra -pthread $(CORE_INCLUDE)
 
 BUILD := build
 TEST_BIN := $(BUILD)/voxelforgeTests
