@@ -154,3 +154,162 @@ struct BehaviorContext {
 using BehaviorPredicate = std::function<bool(BehaviorContext&)>;
 using BehaviorAction = std::function<BehaviorStatus(BehaviorContext&)>;
 
+// Base node. `tick` and `reset` are the non-virtual entry points: they keep the
+// trace and the cached verdict honest, then hand over to the subclass hooks.
+class BehaviorNode {
+public:
+    explicit BehaviorNode(std::string nodeName);
+    virtual ~BehaviorNode();
+
+    BehaviorNode(const BehaviorNode&) = delete;
+    BehaviorNode& operator=(const BehaviorNode&) = delete;
+
+    BehaviorStatus tick(BehaviorContext& ctx);
+    void reset();
+
+    const std::string& name() const { return nodeName; }
+    BehaviorStatus lastStatus() const { return cachedStatus; }
+    long long visitCount() const { return visits; }
+
+    virtual int childCount() const { return 0; }
+    virtual BehaviorNode* childAt(int index) const;
+
+protected:
+    virtual BehaviorStatus onTick(BehaviorContext& ctx) = 0;
+    virtual void onReset() {}
+
+private:
+    std::string nodeName;
+    BehaviorStatus cachedStatus = BehaviorStatus::Failure;
+    long long visits = 0;
+};
+
+class ConditionNode : public BehaviorNode {
+public:
+    ConditionNode(std::string nodeName, BehaviorPredicate predicate);
+
+protected:
+    BehaviorStatus onTick(BehaviorContext& ctx) override;
+
+private:
+    BehaviorPredicate predicate;
+};
+
+class ActionNode : public BehaviorNode {
+public:
+    ActionNode(std::string nodeName, BehaviorAction action);
+
+protected:
+    BehaviorStatus onTick(BehaviorContext& ctx) override;
+
+private:
+    BehaviorAction action;
+};
+
+class BehaviorComposite : public BehaviorNode {
+public:
+    explicit BehaviorComposite(std::string nodeName);
+
+    BehaviorComposite& add(std::unique_ptr<BehaviorNode> child);
+    int childCount() const override { return static_cast<int>(children.size()); }
+    BehaviorNode* childAt(int index) const override;
+
+protected:
+    std::vector<std::unique_ptr<BehaviorNode>> children;
+};
+
+// Runs children in order until one succeeds. A child left Running is resumed
+// on the next tick; earlier children are not re-evaluated until the selector
+// settles on Success or Failure. Settling clears only the composite's own
+// cursor - a child's latched state (a cooldown, a repeat counter) survives, so
+// only BehaviorTree::reset wipes a whole tree back to its starting state.
+class SelectorNode : public BehaviorComposite {
+public:
+    explicit SelectorNode(std::string nodeName);
+    int resumeIndex() const { return runningChild; }
+
+protected:
+    BehaviorStatus onTick(BehaviorContext& ctx) override;
+    void onReset() override;
+
+private:
+    int runningChild = 0;
+};
+
+// Runs children in order until one fails. Same resumption rule as the selector.
+class SequenceNode : public BehaviorComposite {
+public:
+    explicit SequenceNode(std::string nodeName);
+    int resumeIndex() const { return runningChild; }
+
+protected:
+    BehaviorStatus onTick(BehaviorContext& ctx) override;
+    void onReset() override;
+
+private:
+    int runningChild = 0;
+};
+
+// Ticks every unfinished child each tick and latches the ones that settled.
+// Succeeds once `successThreshold` children have succeeded, fails once
+// `failureThreshold` have failed.
+class ParallelNode : public BehaviorComposite {
+public:
+    ParallelNode(std::string nodeName, int successThreshold, int failureThreshold);
+
+    int successesSoFar() const;
+    int failuresSoFar() const;
+
+protected:
+    BehaviorStatus onTick(BehaviorContext& ctx) override;
+    void onReset() override;
+
+private:
+    int successThreshold;
+    int failureThreshold;
+    std::vector<BehaviorStatus> latched;
+    std::vector<bool> settled;
+};
+
+class DecoratorNode : public BehaviorNode {
+public:
+    DecoratorNode(std::string nodeName, std::unique_ptr<BehaviorNode> child);
+
+    int childCount() const override { return wrapped ? 1 : 0; }
+    BehaviorNode* childAt(int index) const override;
+
+protected:
+    BehaviorNode& child() const { return *wrapped; }
+
+private:
+    std::unique_ptr<BehaviorNode> wrapped;
+};
+
+class InverterNode : public DecoratorNode {
+public:
+    InverterNode(std::string nodeName, std::unique_ptr<BehaviorNode> child);
+
+protected:
+    BehaviorStatus onTick(BehaviorContext& ctx) override;
+};
+
+// Ticks the child once per tick and counts completions. Succeeds after
+// `repeatLimit` completions; with `stopOnFailure` a failing child ends the
+// repeat immediately.
+class RepeaterNode : public DecoratorNode {
+public:
+    RepeaterNode(std::string nodeName, std::unique_ptr<BehaviorNode> child, int repeatLimit,
+                 bool stopOnFailure = false);
+
+    int completions() const { return completed; }
+
+protected:
+    BehaviorStatus onTick(BehaviorContext& ctx) override;
+    void onReset() override;
+
+private:
+    int repeatLimit;
+    bool stopOnFailure;
+    int completed = 0;
+};
+
