@@ -313,3 +313,130 @@ private:
     int completed = 0;
 };
 
+// Reports Running while the child keeps failing, up to `maxAttempts` tries.
+class RetryUntilSuccessNode : public DecoratorNode {
+public:
+    RetryUntilSuccessNode(std::string nodeName, std::unique_ptr<BehaviorNode> child,
+                          int maxAttempts);
+
+    int attemptsSpent() const { return attempts; }
+
+protected:
+    BehaviorStatus onTick(BehaviorContext& ctx) override;
+    void onReset() override;
+
+private:
+    int maxAttempts;
+    int attempts = 0;
+};
+
+// After the child settles, the next `cooldownTicks` ticks report Failure
+// without touching the child at all.
+class CooldownNode : public DecoratorNode {
+public:
+    CooldownNode(std::string nodeName, std::unique_ptr<BehaviorNode> child, int cooldownTicks);
+
+    int remainingTicks() const { return remaining; }
+
+protected:
+    BehaviorStatus onTick(BehaviorContext& ctx) override;
+    void onReset() override;
+
+private:
+    int cooldownTicks;
+    int remaining = 0;
+};
+
+// Gives the child `limitTicks` consecutive ticks to settle. On the tick that
+// exceeds the budget the child is reset and the decorator fails.
+class TimeLimitNode : public DecoratorNode {
+public:
+    TimeLimitNode(std::string nodeName, std::unique_ptr<BehaviorNode> child, int limitTicks);
+
+    int elapsedTicks() const { return elapsed; }
+
+protected:
+    BehaviorStatus onTick(BehaviorContext& ctx) override;
+    void onReset() override;
+
+private:
+    int limitTicks;
+    int elapsed = 0;
+};
+
+struct BehaviorTreeStats {
+    int nodeCount = 0;
+    int depth = 0;
+    bool withinDepthLimit = true;
+};
+
+// Owns a root and the structural measurement taken when it was installed.
+// Ticking an over-deep tree is refused rather than attempted.
+class BehaviorTree {
+public:
+    BehaviorTree() = default;
+    explicit BehaviorTree(std::unique_ptr<BehaviorNode> newRoot);
+
+    BehaviorTree(BehaviorTree&&) = default;
+    BehaviorTree& operator=(BehaviorTree&&) = default;
+
+    void setRoot(std::unique_ptr<BehaviorNode> newRoot);
+    BehaviorNode* root() const { return rootNode.get(); }
+
+    const BehaviorTreeStats& stats() const { return treeStats; }
+    bool structureValid() const { return rootNode != nullptr && treeStats.withinDepthLimit; }
+
+    // Advances ctx.tick, then traverses. Returns Failure without traversing
+    // when the structure was rejected.
+    BehaviorStatus tick(BehaviorContext& ctx);
+    void reset();
+
+    long long tickCount() const { return ticks; }
+
+private:
+    std::unique_ptr<BehaviorNode> rootNode;
+    BehaviorTreeStats treeStats;
+    long long ticks = 0;
+};
+
+// Measures a subtree without recursing, so a pathological tree is diagnosed
+// instead of crashing the measurement.
+BehaviorTreeStats measureBehaviorTree(const BehaviorNode* root);
+
+enum class BehaviorRole : uint8_t {
+    HostileHunter = 0,
+    GrazingAnimal = 1,
+    SunAvoider = 2,
+    Count,
+};
+
+const char* behaviorRoleName(BehaviorRole role);
+
+// The role a freshly spawned species walks with. Spawning.h hands its results
+// straight to this so spawned mobs are driven by a tree, not by a state enum.
+BehaviorRole roleForSpecies(Species species);
+
+// Wheat-equivalent lure and breeding item per species.
+ItemId breedingFoodFor(Species species);
+bool isBreedingFood(Species species, ItemId held);
+
+// Search -> path in -> strike -> walk home when the target is lost.
+BehaviorTree makeHostileHunterTree(const BehaviorTuning& tuning = {});
+// Flee -> breed on a cooldown -> follow held food -> graze -> wander.
+BehaviorTree makeGrazingAnimalTree(const BehaviorTuning& tuning = {});
+// Run for shade in daylight, hold there, patrol at night.
+BehaviorTree makeSunAvoiderTree(const BehaviorTuning& tuning = {});
+BehaviorTree makeTreeForRole(BehaviorRole role, const BehaviorTuning& tuning = {});
+
+// Movement primitives the stock actions are built from; exported because the
+// boss fights steer their own bodies with the same rules.
+bool stepTowardPoint(BehaviorAgent& agent, const Vec3& goal, float arriveEpsilon);
+BehaviorStatus followRouteStep(BehaviorContext& ctx);
+bool planRouteTo(BehaviorContext& ctx, const Vec3i& goal, bool force);
+
+// Nearest standable cell with something solid overhead, scanned in a fixed
+// order so the answer never depends on iteration luck.
+bool findShadedCell(const World& world, const Vec3i& from, int radius, const PathConfig& config,
+                    Vec3i& outCell);
+
+} // namespace vf
