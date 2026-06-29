@@ -78,6 +78,74 @@ enum class Block : uint8_t {
     Vine = 66,
     SnowLayer = 67,
     PackedIce = 68,
+    // --- extended palette (wave 5, additive; values above are frozen) ---
+    // Combat, brewing, enchanting.
+    BrewingStand = 69,
+    EnchantingTable = 70,
+    Cauldron = 71,
+    AnvilBlock = 72,
+    Bookshelf = 73,
+    Cobweb = 74,
+    // --- extended palette (wave 6, additive) ---
+    // Nether and End dimensions.
+    Netherrack = 75,
+    SoulSand = 76,
+    SoulSoil = 77,
+    NetherQuartzOre = 78,
+    NetherBrick = 79,
+    NetherPortal = 80,
+    Magma = 81,
+    Basalt = 82,
+    Blackstone = 83,
+    EndStone = 84,
+    EndPortal = 85,
+    EndPortalFrame = 86,
+    Purpur = 87,
+    ChorusPlant = 88,
+    ChorusFlower = 89,
+    // Village and construction blocks.
+    Glass = 90,
+    Bricks = 91,
+    StoneBricks = 92,
+    MossyCobblestone = 93,
+    Door = 94,
+    Slab = 95,
+    Stairs = 96,
+    Fence = 97,
+    Bed = 98,
+    Bell = 99,
+    Lantern = 100,
+    Composter = 101,
+    Barrel = 102,
+    SmithingTable = 103,
+    Loom = 104,
+    CartographyTable = 105,
+    Grindstone = 106,
+    Stonecutter = 107,
+    Lectern = 108,
+    HayBale = 109,
+    // --- extended palette (waves 7-8, additive) ---
+    // Geology, loot and decoration.
+    Clay = 110,
+    Terracotta = 111,
+    Wool = 112,
+    Mycelium = 113,
+    Andesite = 114,
+    Diorite = 115,
+    Granite = 116,
+    Deepslate = 117,
+    CopperOre = 118,
+    Tuff = 119,
+    Dripstone = 120,
+    AmethystBlock = 121,
+    Sculk = 122,
+    CryingObsidian = 123,
+    Prismarine = 124,
+    SeaLantern = 125,
+    Kelp = 126,
+    Coral = 127,
+    Mud = 128,
+    Moss = 129,
     Count
 };
 
@@ -119,6 +187,15 @@ inline bool isSolid(Block b) {
         case Block::Sapling:
         case Block::Vine:
         case Block::SnowLayer:
+        case Block::BrewingStand:
+        case Block::Cobweb:
+        case Block::NetherPortal:
+        case Block::EndPortal:
+        case Block::Door:
+        case Block::Lantern:
+        case Block::Bell:
+        case Block::Kelp:
+        case Block::ChorusFlower:
             return false;
         default:
             return true;
@@ -156,6 +233,28 @@ inline bool isOpaque(Block b) {
         case Block::Sapling:
         case Block::Vine:
         case Block::SnowLayer:
+        case Block::Glass:
+        case Block::NetherPortal:
+        case Block::EndPortal:
+        case Block::Cobweb:
+        case Block::BrewingStand:
+        case Block::EnchantingTable:
+        case Block::Cauldron:
+        case Block::AnvilBlock:
+        case Block::Door:
+        case Block::Slab:
+        case Block::Stairs:
+        case Block::Fence:
+        case Block::Bed:
+        case Block::Bell:
+        case Block::Lantern:
+        case Block::Kelp:
+        case Block::ChorusPlant:
+        case Block::ChorusFlower:
+        case Block::Composter:
+        case Block::Grindstone:
+        case Block::Lectern:
+        case Block::Stonecutter:
             return false;
         default:
             return true;
@@ -276,11 +375,110 @@ inline int faceTile(Block block, Face face) {
         case Block::Vine: return 77;
         case Block::SnowLayer: return 78;
         case Block::PackedIce: return 79;
+        case Block::BrewingStand: return 80;
+        case Block::EnchantingTable:
+            if (face == Face::PosY) return 81;  // arcane book cover
+            if (face == Face::NegY) return 21;  // obsidian base
+            return 82;                          // side
+        case Block::Cauldron:
+            if (face == Face::PosY) return 83;  // rim with water
+            return 84;                          // iron side
+        case Block::AnvilBlock:
+            if (face == Face::PosY) return 85;  // worn face
+            return 86;                          // side
+        case Block::Bookshelf:
+            if (face == Face::PosY || face == Face::NegY) return 16;  // planks
+            return 87;                                                // spines
+        case Block::Cobweb: return 88;
+        case Block::Netherrack: return 89;
+        case Block::SoulSand: return 90;
+        case Block::SoulSoil: return 91;
+        case Block::NetherQuartzOre: return 92;
+        case Block::NetherBrick: return 93;
+        case Block::NetherPortal: return 94;
+        case Block::Magma: return 95;
+        case Block::Basalt:
+            if (face == Face::PosY || face == Face::NegY) return 96;  // cracked cap
+            return 97;                                                // column side
+        case Block::Blackstone: return 98;
+        case Block::EndStone: return 99;
+        case Block::EndPortal: return 100;
+        case Block::EndPortalFrame:
+            if (face == Face::PosY) return 101;  // eye socket
+            return 102;                          // side
+        case Block::Purpur: return 103;
+        case Block::ChorusPlant: return 104;
+        case Block::ChorusFlower: return 105;
+        case Block::Glass: return 106;
+        case Block::Bricks: return 107;
+        case Block::StoneBricks: return 108;
+        case Block::MossyCobblestone: return 109;
+        case Block::Door: return 110;
+        case Block::Slab:
+            if (face == Face::PosY || face == Face::NegY) return 111;  // cut face
+            return 112;                                                // profile
+        case Block::Stairs: return 112;
+        case Block::Fence: return 113;
+        case Block::Bed:
+            if (face == Face::PosY) return 114;  // quilt
+            return 115;                          // frame
+        case Block::Bell: return 116;
+        case Block::Lantern: return 117;
+        case Block::Composter:
+            if (face == Face::PosY) return 118;  // open compost
+            return 119;                          // slats
+        case Block::Barrel:
+            if (face == Face::PosY || face == Face::NegY) return 120;  // lid
+            return 121;                                                // staves
+        case Block::SmithingTable:
+            if (face == Face::PosY) return 122;
+            return 123;
+        case Block::Loom:
+            if (face == Face::PosY) return 124;
+            return 125;
+        case Block::CartographyTable:
+            if (face == Face::PosY) return 126;
+            return 127;
+        case Block::Grindstone: return 128;
+        case Block::Stonecutter:
+            if (face == Face::PosY) return 129;
+            return 130;
+        case Block::Lectern:
+            if (face == Face::PosY) return 131;
+            return 132;
+        case Block::HayBale:
+            if (face == Face::PosY || face == Face::NegY) return 133;  // cut ends
+            return 134;                                                // bound side
+        case Block::Clay: return 135;
+        case Block::Terracotta: return 136;
+        case Block::Wool: return 137;
+        case Block::Mycelium:
+            if (face == Face::PosY) return 138;
+            if (face == Face::NegY) return 2;  // dirt bottom
+            return 139;
+        case Block::Andesite: return 140;
+        case Block::Diorite: return 141;
+        case Block::Granite: return 142;
+        case Block::Deepslate:
+            if (face == Face::PosY || face == Face::NegY) return 143;  // cut face
+            return 144;                                                // striated side
+        case Block::CopperOre: return 145;
+        case Block::Tuff: return 146;
+        case Block::Dripstone: return 147;
+        case Block::AmethystBlock: return 148;
+        case Block::Sculk: return 149;
+        case Block::CryingObsidian: return 150;
+        case Block::Prismarine: return 151;
+        case Block::SeaLantern: return 152;
+        case Block::Kelp: return 153;
+        case Block::Coral: return 154;
+        case Block::Mud: return 155;
+        case Block::Moss: return 156;
         default: return 3;
     }
 }
 
-constexpr int tileCount = 80;
+constexpr int tileCount = 157;
 
 // Block light emitted by a block itself, 0..15.
 inline int blockLightEmission(Block b) {
@@ -292,6 +490,13 @@ inline int blockLightEmission(Block b) {
         case Block::FurnaceLit:      return 13;
         case Block::RedstoneTorch:   return 7;
         case Block::RedstoneOre:     return 0;  // lit only on touch, handled by gameplay
+        case Block::EndPortal:       return 15;
+        case Block::SeaLantern:      return 15;
+        case Block::Lantern:         return 15;
+        case Block::NetherPortal:    return 11;
+        case Block::CryingObsidian:  return 10;
+        case Block::EnchantingTable: return 7;
+        case Block::Magma:           return 3;
         default:                     return 0;
     }
 }
@@ -301,7 +506,8 @@ inline bool occludesLight(Block b) { return isOpaque(b); }
 
 // Meshed in the transparent pass (depth write off, back-to-front): fluids + ice.
 inline bool isTransparent(Block b) {
-    return b == Block::Water || b == Block::Ice;
+    return b == Block::Water || b == Block::Ice || b == Block::Glass ||
+           b == Block::NetherPortal || b == Block::EndPortal;
 }
 
 } // namespace vf
