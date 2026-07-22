@@ -158,3 +158,101 @@ struct Villager {
     bool alive = true;
     uint32_t rng = 0x9e3779b9u;
 
+    Vec3i cell() const;
+    bool employed() const { return profession != VillagerProfession::Unemployed &&
+                                   profession != VillagerProfession::Nitwit; }
+};
+
+// Nitwits are drawn deterministically from the seed at a fixed rate.
+Villager makeVillager(int id, const Vec3& position, uint32_t seed);
+
+constexpr float villagerWalkSpeed = 2.4f;
+constexpr int villagerExperiencePerTrade = 2;
+
+bool assignVillagerWorkstation(Villager& villager, PoiRegistry& pois);
+bool assignVillagerBed(Villager& villager, PoiRegistry& pois);
+void releaseVillagerPois(Villager& villager, PoiRegistry& pois);
+
+// Drops ownership of entries the world no longer backs. A villager still at
+// level one falls back to Unemployed when its workstation goes; a seasoned one
+// keeps the trade and looks for a replacement block. Returns true when the
+// profession changed.
+bool syncVillagerPois(Villager& villager, PoiRegistry& pois);
+
+// Adds experience and promotes across level thresholds. Returns true when the
+// level rose.
+bool grantVillagerExperience(Villager& villager, int amount);
+
+// Returns true when the hit killed the villager.
+bool damageVillager(Villager& villager, PoiRegistry& pois, float amount);
+void killVillager(Villager& villager, PoiRegistry& pois);
+
+// Day plan boundaries as fractions of a day, matching TimeOfDay::dayFraction.
+struct VillagerSchedule {
+    double wakeFraction = 0.24;
+    double workStart = 0.30;
+    double meetStart = 0.46;
+    double meetEnd = 0.54;
+    double workEnd = 0.68;
+    double sleepStart = 0.75;
+
+    // The activity the clock alone asks for, before profession and threat.
+    VillagerActivity activityAt(double dayFraction) const;
+};
+
+VillagerActivity chooseVillagerActivity(const Villager& villager, const VillagerSchedule& schedule,
+                                        const TimeOfDay& clock, bool villageThreatened);
+
+// Resolves the cell the activity wants the villager to stand on. Returns false
+// for activities with nowhere to go.
+bool villagerGoalFor(const Villager& villager, const PoiRegistry& pois, const Vec3i& villageCenter,
+                     VillagerActivity activity, Vec3i& outGoal, int& outPoiIndex);
+
+// Routes through the shared A* in Pathfind.h. Returns false when no route
+// exists, leaving the villager where it is.
+bool repathVillager(const World& world, Villager& villager, const Vec3i& goal,
+                    const PathConfig& config = {});
+
+// Advances the body along the current path. Returns true on the tick the final
+// cell is reached.
+bool stepVillagerAlongPath(Villager& villager, float speed, float dt);
+
+// One full villager tick: point of interest upkeep, schedule decision, routing
+// and movement.
+void tickVillager(const World& world, Villager& villager, PoiRegistry& pois, const TimeOfDay& clock,
+                  const VillagerSchedule& schedule, const Vec3i& villageCenter,
+                  bool villageThreatened, float dt, const PathConfig& config = {});
+
+// Two villagers standing close enough trade gossip both ways.
+constexpr float villagerGossipRange = 3.0f;
+bool exchangeVillagerGossip(Villager& first, Villager& second);
+int spreadVillageGossip(std::vector<Villager>& villagers);
+
+constexpr int villagerBreedingFoodCost = 3;
+
+// A snapshot of what the village can currently support.
+struct VillageCensus {
+    int villagers = 0;
+    int living = 0;
+    int employed = 0;
+    int beds = 0;
+    int freeBeds = 0;
+    int workstations = 0;
+    int freeWorkstations = 0;
+    int foodStock = 0;
+    int willingBreeders = 0;
+
+    bool canGrow() const {
+        return living >= 2 && freeBeds > 0 && willingBreeders >= 2;
+    }
+    int capacity() const { return beds; }
+};
+
+VillageCensus takeVillageCensus(const std::vector<Villager>& villagers, const PoiRegistry& pois,
+                                const Vec3i& center, int radius);
+
+// Spends food from willing pairs to fill free beds. Returns the number born.
+int breedVillagers(std::vector<Villager>& villagers, PoiRegistry& pois, const Vec3i& center,
+                   int radius, uint32_t& rng);
+
+} // namespace vf
