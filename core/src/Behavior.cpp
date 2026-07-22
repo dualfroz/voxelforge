@@ -617,3 +617,142 @@ BehaviorTree makeGrazingAnimalTree(const BehaviorTuning& tuning) {
         return BehaviorStatus::Running;
     }));
 
+    auto lured = std::unique_ptr<SequenceNode>(new SequenceNode("followHeldFood"));
+    lured->add(condition("playerOffersFood", [](BehaviorContext& ctx) {
+        if (!ctx.playerPresent) return false;
+        if (!isBreedingFood(ctx.agent->species, ctx.playerHeldItem)) return false;
+        return behaviorHorizontalDistance(ctx.agent->position, ctx.playerPosition) <=
+               ctx.tuning.followFoodRadius;
+    }));
+    lured->add(action("stepTowardPlayer", [](BehaviorContext& ctx) {
+        BehaviorAgent& agent = *ctx.agent;
+        float distance = behaviorHorizontalDistance(agent.position, ctx.playerPosition);
+        if (distance <= ctx.tuning.breedRadius) {
+            ctx.blackboard.setFlag("inLove", true);
+            return BehaviorStatus::Success;
+        }
+        stepTowardPoint(agent, ctx.playerPosition, ctx.tuning.arriveEpsilon);
+        return BehaviorStatus::Running;
+    }));
+
+    auto breed = std::unique_ptr<SequenceNode>(new SequenceNode("breed"));
+    breed->add(condition("mateReady", [](BehaviorContext& ctx) {
+        if (!ctx.matePresent) return false;
+        if (!ctx.blackboard.flag("inLove")) return false;
+        return behaviorHorizontalDistance(ctx.agent->position, ctx.matePosition) <=
+               ctx.tuning.breedRadius;
+    }));
+    breed->add(std::unique_ptr<BehaviorNode>(new CooldownNode(
+        "breedCooldown",
+        action("breed",
+               [](BehaviorContext& ctx) {
+                   ++ctx.agent->breedCount;
+                   ctx.blackboard.setFlag("inLove", false);
+                   ctx.blackboard.setCount("lastBreedTick", static_cast<int>(ctx.tick));
+                   return BehaviorStatus::Success;
+               }),
+        tuning.breedCooldownTicks)));
+
+    auto graze = std::unique_ptr<SequenceNode>(new SequenceNode("graze"));
+    graze->add(condition("standingOnGrass", [](BehaviorContext& ctx) {
+        Vec3i below = ctx.agent->cell();
+        return ctx.world->blockAt(below.x, below.y - 1, below.z) == Block::Grass;
+    }));
+    graze->add(std::unique_ptr<BehaviorNode>(new TimeLimitNode(
+        "grazeWindow",
+        action("chew",
+               [](BehaviorContext& ctx) {
+                   BehaviorAgent& agent = *ctx.agent;
+                   ++agent.grazeTicks;
+                   if (agent.grazeTicks < ctx.tuning.grazeDurationTicks)
+                       return BehaviorStatus::Running;
+                   agent.grazeTicks = 0;
+                   ctx.blackboard.setCount("meals", ctx.blackboard.count("meals") + 1);
+                   return BehaviorStatus::Success;
+               }),
+        tuning.grazeDurationTicks * 5)));
+
+    auto root = std::unique_ptr<SelectorNode>(new SelectorNode("animalRoot"));
+    root->add(std::move(flee));
+    root->add(std::move(breed));
+    root->add(std::move(lured));
+    root->add(std::move(graze));
+    root->add(action("wander", [](BehaviorContext& ctx) {
+        BehaviorAgent& agent = *ctx.agent;
+        if (length(agent.heading) < 1e-3f || behaviorNextRandom(agent.rng) % 32u == 0u)
+            agent.heading = horizontalHeading(agent.rng);
+        stepTowardPoint(agent, agent.position + agent.heading * 2.0f, ctx.tuning.arriveEpsilon);
+        return BehaviorStatus::Success;
+    }));
+
+    return BehaviorTree(std::move(root));
+}
+
+BehaviorTree makeSunAvoiderTree(const BehaviorTuning& tuning) {
+    auto seekShade = std::unique_ptr<SequenceNode>(new SequenceNode("seekShade"));
+    seekShade->add(condition("exposedToSun", [](BehaviorContext& ctx) {
+        BehaviorAgent& agent = *ctx.agent;
+        agent.sheltered = cellIsShaded(*ctx.world, agent.cell());
+        if (!ctx.daylight) return false;
+        if (ctx.skyLight < ctx.tuning.sunLightThreshold) return false;
+        return !agent.sheltered;
+    }));
+    seekShade->add(action("findShade", [](BehaviorContext& ctx) {
+        Vec3i shade;
+        if (!findShadedCell(*ctx.world, ctx.agent->cell(), ctx.tuning.shadeSearchRadius, ctx.path,
+                            shade)) {
+            return BehaviorStatus::Failure;
+        }
+        ctx.blackboard.setCell("shadeCell", shade);
+        return BehaviorStatus::Success;
+    }));
+    seekShade->add(std::unique_ptr<BehaviorNode>(new TimeLimitNode(
+        "shadeRun",
+        action("walkToShade",
+               [](BehaviorContext& ctx) {
+                   Vec3i shade = ctx.blackboard.cell("shadeCell");
+                   if (!planRouteTo(ctx, shade, false)) {
+                       ctx.agent->sheltered = cellIsShaded(*ctx.world, ctx.agent->cell());
+                       return ctx.agent->sheltered ? BehaviorStatus::Success
+                                                   : BehaviorStatus::Failure;
+                   }
+                   BehaviorStatus status = followRouteStep(ctx);
+                   if (status == BehaviorStatus::Success) {
+                       ctx.agent->sheltered = cellIsShaded(*ctx.world, ctx.agent->cell());
+                   }
+                   return status;
+               }),
+        tuning.shadeRunTicks)));
+
+    auto hold = std::unique_ptr<SequenceNode>(new SequenceNode("holdShelter"));
+    hold->add(condition("daylightNow", [](BehaviorContext& ctx) { return ctx.daylight; }));
+    hold->add(action("waitOutDay", [](BehaviorContext& ctx) {
+        ++ctx.agent->shelterTicks;
+        if (ctx.agent->shelterTicks >= ctx.tuning.shelterHoldTicks) return BehaviorStatus::Success;
+        return BehaviorStatus::Running;
+    }));
+
+    auto root = std::unique_ptr<SelectorNode>(new SelectorNode("sunAvoiderRoot"));
+    root->add(std::move(seekShade));
+    root->add(std::move(hold));
+    root->add(action("nightPatrol", [](BehaviorContext& ctx) {
+        BehaviorAgent& agent = *ctx.agent;
+        agent.shelterTicks = 0;
+        if (length(agent.heading) < 1e-3f || behaviorNextRandom(agent.rng) % 24u == 0u)
+            agent.heading = horizontalHeading(agent.rng);
+        stepTowardPoint(agent, agent.position + agent.heading * 2.0f, ctx.tuning.arriveEpsilon);
+        return BehaviorStatus::Success;
+    }));
+
+    return BehaviorTree(std::move(root));
+}
+
+BehaviorTree makeTreeForRole(BehaviorRole role, const BehaviorTuning& tuning) {
+    switch (role) {
+        case BehaviorRole::HostileHunter: return makeHostileHunterTree(tuning);
+        case BehaviorRole::SunAvoider: return makeSunAvoiderTree(tuning);
+        default: return makeGrazingAnimalTree(tuning);
+    }
+}
+
+} // namespace vf
