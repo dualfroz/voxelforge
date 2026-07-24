@@ -472,3 +472,209 @@ void WitherFight::buildTree() {
         return BehaviorStatus::Success;
     }));
 
+    auto summon = seq("summonCharge");
+    summon->add(cond("stillSummoning",
+                     [this](BehaviorContext&) { return boss.phase == BossPhase::Summoning; }));
+    summon->add(act("chargeUp", [this](BehaviorContext&) {
+        if (boss.phaseTicks < cfg.summonTicks) return BehaviorStatus::Running;
+        boss.enterPhase(BossPhase::Explosive);
+        for (WitherTarget& target : *activeTargets) {
+            if (!target.alive) continue;
+            if (distanceBetween(boss.position, target.position) > cfg.summonBlastRadius) continue;
+            float dealt = std::min(cfg.summonBlastDamage, target.health);
+            target.health -= dealt;
+            if (target.health <= 0.0f) target.alive = false;
+            damageThisTick += dealt;
+        }
+        ++boss.attacksLaunched;
+        return BehaviorStatus::Success;
+    }));
+
+    auto settle = seq("afterBlast");
+    settle->add(cond("justExploded",
+                     [this](BehaviorContext&) { return boss.phase == BossPhase::Explosive; }));
+    settle->add(act("settleIntoCombat", [this](BehaviorContext&) {
+        boss.enterPhase(BossPhase::Ranged);
+        return BehaviorStatus::Success;
+    }));
+
+    auto armorUp = seq("armorUp");
+    armorUp->add(cond("halfHealthReached", [this](BehaviorContext&) {
+        if (boss.phase != BossPhase::Ranged) return false;
+        return boss.health <= boss.maxHealth * cfg.armorThreshold;
+    }));
+    armorUp->add(act("raiseArmor", [this](BehaviorContext&) {
+        boss.enterPhase(BossPhase::Armored);
+        return BehaviorStatus::Success;
+    }));
+
+    BehaviorAction aim = [this](BehaviorContext&) {
+        boss.targetIndex = nearestAliveTarget();
+        return boss.targetIndex >= 0 ? BehaviorStatus::Success : BehaviorStatus::Failure;
+    };
+    BehaviorAction advance = [this](BehaviorContext&) {
+        WitherTarget& target = (*activeTargets)[static_cast<std::size_t>(boss.targetIndex)];
+        Vec3 delta = target.position - boss.position;
+        float span = length(delta);
+        if (span > cfg.minTargetDistance) boss.position += delta * (cfg.moveStep / span);
+        boss.heading = span > 1e-4f ? normalize(delta) : boss.heading;
+        return BehaviorStatus::Success;
+    };
+    BehaviorAction skull = [this](BehaviorContext&) {
+        WitherTarget& target = (*activeTargets)[static_cast<std::size_t>(boss.targetIndex)];
+        if (distanceBetween(boss.position, target.position) > cfg.projectileRange)
+            return BehaviorStatus::Failure;
+        float dealt = std::min(cfg.projectileDamage, target.health);
+        target.health -= dealt;
+        if (target.health <= 0.0f) target.alive = false;
+        damageThisTick += dealt;
+        ++boss.attacksLaunched;
+        return BehaviorStatus::Success;
+    };
+
+    auto armoredVolley = std::unique_ptr<ParallelNode>(new ParallelNode("armoredVolley", 1, 4));
+    armoredVolley->add(gated("armoredSkullCooldown",
+                             act("skullVolley",
+                                 [this, skull](BehaviorContext& context) {
+                                     BehaviorStatus last = BehaviorStatus::Failure;
+                                     for (int shot = 0; shot < 3; ++shot) last = skull(context);
+                                     return last;
+                                 }),
+                             cfg.projectileCooldownTicks));
+    armoredVolley->add(gated("minionCooldown",
+                             act("summonMinion",
+                                 [this](BehaviorContext&) {
+                                     if (aliveMinionCount() >= cfg.maxMinions)
+                                         return BehaviorStatus::Failure;
+                                     float angle = behaviorUnitFloat(boss.rng) * fullTurn;
+                                     BossMinion minion;
+                                     minion.position =
+                                         boss.position +
+                                         Vec3{std::cos(angle) * cfg.minionSpawnRange, 0.0f,
+                                              std::sin(angle) * cfg.minionSpawnRange};
+                                     minion.spawnedTick = boss.tick;
+                                     summoned.push_back(minion);
+                                     ++boss.minionsSummoned;
+                                     ++minionsThisTick;
+                                     return BehaviorStatus::Success;
+                                 }),
+                             cfg.minionCooldownTicks));
+    armoredVolley->add(act("regenerate", [this](BehaviorContext&) {
+        float room = boss.maxHealth - boss.health;
+        float healed = std::min(cfg.armoredRegenPerTick, std::max(0.0f, room));
+        boss.health += healed;
+        boss.healingReceived += healed;
+        healedThisTick += healed;
+        return BehaviorStatus::Success;
+    }));
+
+    auto armored = seq("armoredAssault");
+    armored->add(
+        cond("phaseIsArmored", [this](BehaviorContext&) { return boss.phase == BossPhase::Armored; }));
+    armored->add(act("aimAtNearest", aim));
+    armored->add(act("advanceOnTarget", advance));
+    armored->add(std::move(armoredVolley));
+
+    auto ranged = seq("rangedAssault");
+    ranged->add(
+        cond("phaseIsRanged", [this](BehaviorContext&) { return boss.phase == BossPhase::Ranged; }));
+    ranged->add(act("aimAtNearest", aim));
+    ranged->add(act("advanceOnTarget", advance));
+    ranged->add(gated("skullCooldown", act("fireSkull", skull), cfg.projectileCooldownTicks));
+
+    auto root = sel("witherRoot");
+    root->add(std::move(defeat));
+    root->add(std::move(summon));
+    root->add(std::move(settle));
+    root->add(std::move(armorUp));
+    root->add(std::move(armored));
+    root->add(std::move(ranged));
+    root->add(act("hover", [this](BehaviorContext&) {
+        boss.position.y += std::sin(static_cast<float>(boss.tick) * 0.1f) * 0.02f;
+        return BehaviorStatus::Success;
+    }));
+
+    tree.setRoot(std::move(root));
+}
+
+void WitherFight::begin(const Vec3& spawnPosition) {
+    boss.position = spawnPosition;
+    boss.maxHealth = cfg.maxHealth;
+    boss.health = cfg.maxHealth;
+    boss.alive = true;
+    boss.targetIndex = -1;
+    boss.attacksLaunched = 0;
+    boss.minionsSummoned = 0;
+    boss.phase = BossPhase::Dormant;
+    boss.enterPhase(BossPhase::Summoning);
+    boss.bar.visible = true;
+    boss.bar.setFromHealth(boss.health, boss.maxHealth);
+    summoned.clear();
+    tree.reset();
+}
+
+bool WitherFight::summonFromWorld(World& world, const Vec3i& baseCell) {
+    bool alongX = true;
+    if (!findWitherPattern(world, baseCell, alongX)) return false;
+    consumeWitherPattern(world, baseCell, alongX);
+    begin(behaviorCellCenter({baseCell.x, baseCell.y + 1, baseCell.z}));
+    return true;
+}
+
+float WitherFight::applyIncoming(const std::vector<WitherHit>& incoming) {
+    if (boss.phase == BossPhase::Summoning || boss.phase == BossPhase::Defeated) return 0.0f;
+
+    float taken = 0.0f;
+    for (const WitherHit& hit : incoming) {
+        if (hit.amount <= 0.0f) continue;
+        if (armored() && hit.projectile) continue;
+        float dealt = std::min(hit.amount, boss.health);
+        boss.health -= dealt;
+        taken += dealt;
+    }
+    boss.damageTaken += taken;
+    return taken;
+}
+
+BossTickReport WitherFight::tick(const std::vector<WitherHit>& incoming,
+                                 std::vector<WitherTarget>& targets) {
+    BossTickReport report;
+    report.previousPhase = boss.phase;
+    report.phase = boss.phase;
+    report.bossHealth = boss.health;
+
+    if (boss.phase == BossPhase::Dormant || boss.phase == BossPhase::Defeated) {
+        report.defeated = boss.phase == BossPhase::Defeated;
+        return report;
+    }
+
+    activeTargets = &targets;
+    damageThisTick = 0.0f;
+    healedThisTick = 0.0f;
+    minionsThisTick = 0;
+
+    applyIncoming(incoming);
+
+    int nearest = nearestAliveTarget();
+    ctx.playerPresent = nearest >= 0;
+    ctx.playerPosition = nearest >= 0 ? targets[static_cast<std::size_t>(nearest)].position
+                                      : boss.position;
+
+    ++boss.phaseTicks;
+    int changesBefore = boss.phaseChanges;
+    tree.tick(ctx);
+    boss.tick = ctx.tick;
+    if (boss.phase != BossPhase::Defeated) boss.bar.setFromHealth(boss.health, boss.maxHealth);
+    activeTargets = nullptr;
+
+    report.phase = boss.phase;
+    report.phaseChanged = boss.phaseChanges != changesBefore;
+    report.bossHealth = boss.health;
+    report.healedThisTick = healedThisTick;
+    report.damageToTargets = damageThisTick;
+    report.minionsSpawned = minionsThisTick;
+    report.defeated = boss.phase == BossPhase::Defeated;
+    return report;
+}
+
+} // namespace vf
