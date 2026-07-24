@@ -157,3 +157,184 @@ bool ChunkCache::fetchChunk(const Vec3i& coord, Chunk& out) {
     return true;
 }
 
+bool ChunkCache::fetchMesh(const Vec3i& coord, ChunkMesh& out) {
+    std::unique_lock<std::shared_mutex> lock(mutex);
+    auto slot = entries.find(coord);
+    if (slot == entries.end() || !slot->second.hasMesh) {
+        ++counters.misses;
+        return false;
+    }
+    ++counters.hits;
+    touchLocked(slot->second);
+    out = slot->second.mesh;
+    return true;
+}
+
+bool ChunkCache::peekChunk(const Vec3i& coord, Chunk& out) const {
+    std::shared_lock<std::shared_mutex> lock(mutex);
+    auto slot = entries.find(coord);
+    if (slot == entries.end()) return false;
+    out = slot->second.chunk;
+    return true;
+}
+
+bool ChunkCache::peekMesh(const Vec3i& coord, ChunkMesh& out) const {
+    std::shared_lock<std::shared_mutex> lock(mutex);
+    auto slot = entries.find(coord);
+    if (slot == entries.end() || !slot->second.hasMesh) return false;
+    out = slot->second.mesh;
+    return true;
+}
+
+bool ChunkCache::contains(const Vec3i& coord) const {
+    std::shared_lock<std::shared_mutex> lock(mutex);
+    return entries.find(coord) != entries.end();
+}
+
+bool ChunkCache::hasMesh(const Vec3i& coord) const {
+    std::shared_lock<std::shared_mutex> lock(mutex);
+    auto slot = entries.find(coord);
+    return slot != entries.end() && slot->second.hasMesh;
+}
+
+bool ChunkCache::entryFor(const Vec3i& coord, CacheEntry& out) const {
+    std::shared_lock<std::shared_mutex> lock(mutex);
+    auto slot = entries.find(coord);
+    if (slot == entries.end()) return false;
+    out = slot->second;
+    return true;
+}
+
+void ChunkCache::pin(const Vec3i& coord) {
+    std::unique_lock<std::shared_mutex> lock(mutex);
+    auto slot = entries.find(coord);
+    if (slot != entries.end()) slot->second.pinned = true;
+}
+
+void ChunkCache::unpin(const Vec3i& coord) {
+    std::unique_lock<std::shared_mutex> lock(mutex);
+    auto slot = entries.find(coord);
+    if (slot == entries.end()) return;
+    slot->second.pinned = false;
+    enforceBudgetLocked();
+}
+
+bool ChunkCache::isPinned(const Vec3i& coord) const {
+    std::shared_lock<std::shared_mutex> lock(mutex);
+    auto slot = entries.find(coord);
+    return slot != entries.end() && slot->second.pinned;
+}
+
+std::size_t ChunkCache::invalidateBlock(int gx, int gy, int gz) {
+    Vec3i owner{floorDiv(gx, chunkSize), floorDiv(gy, chunkSize), floorDiv(gz, chunkSize)};
+    int lx = floorMod(gx, chunkSize);
+    int ly = floorMod(gy, chunkSize);
+    int lz = floorMod(gz, chunkSize);
+    const int local[3] = {lx, ly, lz};
+
+    std::unique_lock<std::shared_mutex> lock(mutex);
+    if (entries.find(owner) != entries.end()) {
+        eraseLocked(owner);
+        ++counters.invalidations;
+    }
+
+    std::size_t neighbourMeshes = 0;
+    for (int dx = -1; dx <= 1; ++dx) {
+        for (int dy = -1; dy <= 1; ++dy) {
+            for (int dz = -1; dz <= 1; ++dz) {
+                if (dx == 0 && dy == 0 && dz == 0) continue;
+                const int step[3] = {dx, dy, dz};
+                bool reaches = true;
+                for (int axis = 0; axis < 3; ++axis) {
+                    if (step[axis] == 0) continue;
+                    int edge = step[axis] < 0 ? 0 : chunkSize - 1;
+                    if (local[axis] != edge) reaches = false;
+                }
+                if (!reaches) continue;
+
+                Vec3i neighbour{owner.x + dx, owner.y + dy, owner.z + dz};
+                auto slot = entries.find(neighbour);
+                if (slot == entries.end() || !slot->second.hasMesh) continue;
+                dropMeshLocked(slot->second);
+                ++counters.meshInvalidations;
+                ++neighbourMeshes;
+            }
+        }
+    }
+    return neighbourMeshes;
+}
+
+void ChunkCache::invalidateChunk(const Vec3i& coord) {
+    std::unique_lock<std::shared_mutex> lock(mutex);
+    if (entries.find(coord) == entries.end()) return;
+    eraseLocked(coord);
+    ++counters.invalidations;
+}
+
+void ChunkCache::invalidateMesh(const Vec3i& coord) {
+    std::unique_lock<std::shared_mutex> lock(mutex);
+    auto slot = entries.find(coord);
+    if (slot == entries.end() || !slot->second.hasMesh) return;
+    dropMeshLocked(slot->second);
+    ++counters.meshInvalidations;
+}
+
+void ChunkCache::clear() {
+    std::unique_lock<std::shared_mutex> lock(mutex);
+    entries.clear();
+    used = 0;
+}
+
+std::size_t ChunkCache::size() const {
+    std::shared_lock<std::shared_mutex> lock(mutex);
+    return entries.size();
+}
+
+std::uint64_t ChunkCache::bytesUsed() const {
+    std::shared_lock<std::shared_mutex> lock(mutex);
+    return used;
+}
+
+CacheStats ChunkCache::stats() const {
+    std::shared_lock<std::shared_mutex> lock(mutex);
+    CacheStats snapshot = counters;
+    snapshot.bytesUsed = used;
+    snapshot.entries = entries.size();
+    return snapshot;
+}
+
+void ChunkCache::resetStats() {
+    std::unique_lock<std::shared_mutex> lock(mutex);
+    counters = CacheStats{};
+}
+
+std::vector<Vec3i> ChunkCache::evictionOrder() const {
+    std::shared_lock<std::shared_mutex> lock(mutex);
+    std::vector<std::pair<std::uint64_t, Vec3i>> scored;
+    scored.reserve(entries.size());
+    for (const auto& slot : entries) {
+        if (slot.second.pinned) continue;
+        scored.emplace_back(evictionScoreLocked(slot.second), slot.first);
+    }
+    std::sort(scored.begin(), scored.end(),
+              [](const std::pair<std::uint64_t, Vec3i>& a,
+                 const std::pair<std::uint64_t, Vec3i>& b) {
+                  if (a.first != b.first) return a.first > b.first;
+                  return coordLess(a.second, b.second);
+              });
+    std::vector<Vec3i> order;
+    order.reserve(scored.size());
+    for (const auto& pair : scored) order.push_back(pair.second);
+    return order;
+}
+
+std::vector<Vec3i> ChunkCache::residentCoords() const {
+    std::shared_lock<std::shared_mutex> lock(mutex);
+    std::vector<Vec3i> coords;
+    coords.reserve(entries.size());
+    for (const auto& slot : entries) coords.push_back(slot.first);
+    std::sort(coords.begin(), coords.end(), coordLess);
+    return coords;
+}
+
+} // namespace vf
