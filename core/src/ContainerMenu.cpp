@@ -309,3 +309,235 @@ const MetaStack& CraftingView::result() const {
 
 bool CraftingView::hasResult() const { return !result().empty(); }
 
+int CraftingView::maxCrafts() const {
+    if (!hasResult()) return 0;
+    int rounds = -1;
+    for (int cell = 0; cell < cellCount(); ++cell) {
+        const MetaStack& stack = inputAt(cell);
+        if (stack.empty()) continue;
+        int available = stack.meta.durability.damageable()
+                            ? stack.meta.durability.remaining()
+                            : stack.count;
+        if (rounds < 0 || available < rounds) rounds = available;
+    }
+    return rounds < 0 ? 0 : rounds;
+}
+
+void CraftingView::consumeOneRound() {
+    for (int cell = 0; cell < cellCount(); ++cell) {
+        MetaStack& stack = inputAt(cell);
+        if (stack.empty()) continue;
+        MetaStack leftover = craftingRemainder(stack);
+        if (!leftover.empty()) {
+            stack = leftover;
+            continue;
+        }
+        stack.count -= 1;
+        if (stack.count <= 0) stack.clear();
+    }
+}
+
+MetaStack CraftingView::takeResult() {
+    if (!hasResult()) return MetaStack{};
+    MetaStack crafted = menu->stackAt(menu->layout().resultSlot);
+    consumeOneRound();
+    refresh();
+    return crafted;
+}
+
+int CraftingView::craftAll(int limit) {
+    int crafted = 0;
+    std::vector<int> targets = menu->playerSectionSlots();
+    while (crafted < limit && hasResult()) {
+        MetaStack batch = takeResult();
+        if (batch.empty()) break;
+        ++crafted;
+        menu->distributeInto(targets, batch);
+        if (!batch.empty()) {
+            // No room left: the unplaced remainder goes back to the result slot
+            // and crafting stops, exactly as a full inventory does in game.
+            menu->stackAt(menu->layout().resultSlot) = batch;
+            break;
+        }
+    }
+    return crafted;
+}
+
+ContainerMenu::ContainerMenu(MenuKind kind, const CraftingRegistry* registry)
+    : menuKind(kind), craftingRegistry(registry) {
+    buildSlots();
+}
+
+void ContainerMenu::buildSlots() { slots = buildLayout(menuKind, menuLayout); }
+
+bool ContainerMenu::canPlace(int index, const MetaStack& incoming) const {
+    if (!validIndex(index) || incoming.empty()) return false;
+    const MenuSlot& target = slot(index);
+    if (target.takeOnly) return false;
+    return target.filter.accepts(incoming, craftingRegistry);
+}
+
+bool ContainerMenu::canTake(int index) const {
+    return validIndex(index) && !stackAt(index).empty();
+}
+
+int ContainerMenu::insertAt(int index, MetaStack& incoming) {
+    if (!canPlace(index, incoming)) return 0;
+    return slot(index).cell.insert(incoming);
+}
+
+MetaStack ContainerMenu::takeFrom(int index, int amount) {
+    if (!validIndex(index)) return MetaStack{};
+    return slot(index).cell.take(amount);
+}
+
+std::vector<int> ContainerMenu::slotsWithRole(MenuSlot::Role role) const {
+    std::vector<int> found;
+    for (int i = 0; i < slotCount(); ++i) {
+        if (slot(i).role == role) found.push_back(i);
+    }
+    return found;
+}
+
+bool ContainerMenu::isPlayerSection(int index) const {
+    MenuSlot::Role role = slot(index).role;
+    return role == MenuSlot::Role::Inventory || role == MenuSlot::Role::Hotbar ||
+           role == MenuSlot::Role::OffHand;
+}
+
+std::vector<int> ContainerMenu::playerSectionSlots() const {
+    std::vector<int> found;
+    for (int i = 0; i < slotCount(); ++i) {
+        if (isPlayerSection(i)) found.push_back(i);
+    }
+    return found;
+}
+
+std::vector<int> ContainerMenu::containerSectionSlots() const {
+    std::vector<int> found;
+    for (int i = 0; i < slotCount(); ++i) {
+        if (!isPlayerSection(i)) found.push_back(i);
+    }
+    return found;
+}
+
+int ContainerMenu::distributeInto(const std::vector<int>& targets, MetaStack& incoming) {
+    int moved = 0;
+    for (int index : targets) {
+        if (incoming.empty()) break;
+        if (stackAt(index).empty()) continue;
+        moved += insertAt(index, incoming);
+    }
+    for (int index : targets) {
+        if (incoming.empty()) break;
+        if (!stackAt(index).empty()) continue;
+        moved += insertAt(index, incoming);
+    }
+    return moved;
+}
+
+int ContainerMenu::totalOf(ItemId item) const {
+    int total = 0;
+    for (const MenuSlot& menuSlot : slots) {
+        if (!menuSlot.cell.stack.empty() && menuSlot.cell.stack.item == item) {
+            total += menuSlot.cell.stack.count;
+        }
+    }
+    return total;
+}
+
+int ContainerMenu::totalItems() const {
+    int total = 0;
+    for (const MenuSlot& menuSlot : slots) total += menuSlot.cell.stack.count;
+    return total;
+}
+
+int ContainerMenu::usedSlots() const {
+    int used = 0;
+    for (const MenuSlot& menuSlot : slots) {
+        if (!menuSlot.cell.stack.empty()) ++used;
+    }
+    return used;
+}
+
+void ContainerMenu::bindContainer(Container& container) {
+    bound = &container;
+    std::vector<int> section = containerSectionSlots();
+    int limit = std::min(static_cast<int>(section.size()), container.size());
+    for (int i = 0; i < limit; ++i) slot(section[static_cast<std::size_t>(i)]).backingIndex = i;
+    syncFromContainer();
+}
+
+void ContainerMenu::syncFromContainer() {
+    if (bound == nullptr) return;
+    for (MenuSlot& menuSlot : slots) {
+        if (menuSlot.backingIndex < 0) continue;
+        menuSlot.cell.stack = fromItemSlot(bound->slot(menuSlot.backingIndex));
+    }
+    refreshResult();
+}
+
+void ContainerMenu::syncToContainer() {
+    if (bound == nullptr) return;
+    for (const MenuSlot& menuSlot : slots) {
+        if (menuSlot.backingIndex < 0) continue;
+        bound->setSlot(menuSlot.backingIndex, toItemSlot(menuSlot.cell.stack));
+    }
+}
+
+void ContainerMenu::unbind() {
+    syncToContainer();
+    for (MenuSlot& menuSlot : slots) menuSlot.backingIndex = -1;
+    bound = nullptr;
+}
+
+CraftingView ContainerMenu::crafting() { return CraftingView(*this); }
+
+const MetaStack& ContainerMenu::resultStack() const {
+    if (menuLayout.resultSlot < 0) return emptyStack();
+    return stackAt(menuLayout.resultSlot);
+}
+
+void ContainerMenu::refreshResult() {
+    if (menuLayout.resultSlot < 0) return;
+    CraftingView view(*this);
+    view.refresh();
+}
+
+NbtTag ContainerMenu::toNbt() const {
+    NbtTag tag = NbtTag::makeCompound();
+    tag.put("Kind", NbtTag::makeShort(static_cast<int16_t>(menuKind)));
+    tag.put("Creative", NbtTag::makeByte(creative ? 1 : 0));
+    NbtTag list = NbtTag::makeList(NbtType::Compound);
+    for (const MenuSlot& menuSlot : slots) list.listAppend(stackToNbt(menuSlot.cell.stack));
+    tag.put("Slots", list);
+    return tag;
+}
+
+bool ContainerMenu::fromNbt(const NbtTag& tag) {
+    if (tag.kind() != NbtType::Compound) return false;
+    const NbtTag* kindTag = tag.find("Kind");
+    if (kindTag == nullptr || kindTag->kind() != NbtType::Short) return false;
+    int32_t rawKind = kindTag->asInt();
+    if (rawKind < 0 || rawKind >= static_cast<int32_t>(MenuKind::Count)) return false;
+
+    const NbtTag* list = tag.find("Slots");
+    if (list == nullptr || list->kind() != NbtType::List) return false;
+
+    menuKind = static_cast<MenuKind>(rawKind);
+    buildSlots();
+    bound = nullptr;
+
+    const NbtTag* creativeTag = tag.find("Creative");
+    creative = creativeTag != nullptr && creativeTag->kind() == NbtType::Byte &&
+               creativeTag->asByte() != 0;
+
+    const NbtList& rows = list->asList();
+    if (static_cast<int>(rows.size()) != slotCount()) return false;
+    for (int i = 0; i < slotCount(); ++i) {
+        if (!stackFromNbt(rows[static_cast<std::size_t>(i)], slot(i).cell.stack)) return false;
+    }
+    return true;
+}
+
+} // namespace vf
