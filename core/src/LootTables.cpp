@@ -314,3 +314,160 @@ MobDropRule mobRule(MobDropRule::Species species, const char* name, ItemId drop,
     return rule;
 }
 
+MobDropRule withRare(MobDropRule rule, ItemId rare, float chance, float perLooting) {
+    rule.rareDrop = rare;
+    rule.rareChance = chance;
+    rule.rareChancePerLooting = perLooting;
+    return rule;
+}
+
+MobDropRule livestock(MobDropRule::Species species, const char* name, ItemId raw, ItemId cooked,
+                      int minCount, int maxCount) {
+    MobDropRule rule = mobRule(species, name, raw, minCount, maxCount, 2);
+    rule.firedDrop = cooked;
+    rule.hostile = false;
+    return rule;
+}
+
+MobDropRule undeadRule(MobDropRule rule) {
+    rule.undead = true;
+    return rule;
+}
+
+std::vector<MobDropRule> buildMobRules() {
+    using Species = MobDropRule::Species;
+    std::vector<MobDropRule> rules;
+    auto add = [&rules](const MobDropRule& rule) { rules.push_back(rule); };
+
+    add(undeadRule(withRare(mobRule(Species::Zombie, "zombie", ItemId::RottenFlesh, 0, 2, 5),
+                            ItemId::IronIngot, 0.025f, 0.01f)));
+    add(undeadRule(withRare(mobRule(Species::Husk, "husk", ItemId::RottenFlesh, 0, 2, 5),
+                            ItemId::IronIngot, 0.025f, 0.01f)));
+    add(undeadRule(withRare(mobRule(Species::Drowned, "drowned", ItemId::RottenFlesh, 0, 2, 5),
+                            ItemId::GoldIngot, 0.05f, 0.01f)));
+    add(undeadRule(withRare(mobRule(Species::ZombiePigman, "zombiePigman", ItemId::RottenFlesh, 0, 1,
+                                    5),
+                            ItemId::GoldIngot, 0.025f, 0.01f)));
+
+    // No bone or arrow item in the palette, so a skeleton leaves shafts behind,
+    // the same substitution the salvaged mob table already makes.
+    add(undeadRule(withRare(mobRule(Species::Skeleton, "skeleton", ItemId::Stick, 0, 2, 5),
+                            ItemId::CoalLump, 0.05f, 0.01f)));
+    add(undeadRule(withRare(mobRule(Species::Stray, "stray", ItemId::Stick, 0, 2, 5),
+                            ItemId::CoalLump, 0.05f, 0.01f)));
+
+    add(mobRule(Species::Creeper, "creeper", ItemId::Gunpowder, 0, 2, 5));
+
+    MobDropRule witch = withRare(mobRule(Species::Witch, "witch", ItemId::RedstoneDust, 0, 2, 5),
+                                 ItemId::Glowstone, 0.25f, 0.05f);
+    witch.rareNeedsPlayerKill = false;
+    add(witch);
+
+    MobDropRule spider = mobRule(Species::Spider, "spider", ItemId::Stick, 0, 2, 5);
+    spider.arthropod = true;
+    add(spider);
+
+    MobDropRule caveSpider = mobRule(Species::CaveSpider, "caveSpider", ItemId::Stick, 0, 2, 5);
+    caveSpider.arthropod = true;
+    add(caveSpider);
+
+    // Blaze rods only ever come off a player kill, and coal stands in for the
+    // rod the palette does not carry.
+    MobDropRule blaze = mobRule(Species::Blaze, "blaze", ItemId::CoalLump, 0, 1, 10);
+    blaze.dropNeedsPlayerKill = true;
+    add(blaze);
+
+    add(mobRule(Species::Ghast, "ghast", ItemId::Gunpowder, 0, 2, 5));
+
+    MobDropRule golem = mobRule(Species::IronGolem, "ironGolem", ItemId::IronIngot, 3, 5, 0);
+    golem.lootingRaisesCount = false;
+    golem.hostile = false;
+    add(golem);
+
+    MobDropRule villager = mobRule(Species::Villager, "villager", ItemId::None, 0, 0, 0);
+    villager.hostile = false;
+    add(villager);
+
+    add(livestock(Species::Sheep, "sheep", ItemId::RawMutton, ItemId::CookedMutton, 1, 2));
+    add(livestock(Species::Cow, "cow", ItemId::RawBeef, ItemId::CookedBeef, 1, 3));
+    add(livestock(Species::Pig, "pig", ItemId::RawPorkchop, ItemId::CookedPorkchop, 1, 3));
+    return rules;
+}
+
+LootEntry chestEntry(ItemId item, int weight, int minCount, int maxCount) {
+    LootEntry entry;
+    entry.item = item;
+    entry.weight = weight;
+    entry.minCount = minCount;
+    entry.maxCount = maxCount;
+    if (minCount != maxCount) entry.functions = LootEntry::CountRange;
+    return entry;
+}
+
+ChestFill chestFillOf(ChestFill::Structure structure, const char* name, int minRolls, int maxRolls,
+                      int chestsMin, int chestsMax, const std::vector<LootEntry>& entries) {
+    ChestFill fill;
+    fill.structure = structure;
+    fill.name = name;
+    fill.pool.minRolls = minRolls;
+    fill.pool.maxRolls = maxRolls;
+    fill.pool.entries = entries;
+    fill.chestsMin = chestsMin;
+    fill.chestsMax = chestsMax;
+    return fill;
+}
+
+std::vector<ChestFill> buildChestFills() {
+    using Structure = ChestFill::Structure;
+    std::vector<ChestFill> fills;
+
+    fills.push_back(chestFillOf(Structure::Village, "village", 3, 5, 2, 4,
+                                {chestEntry(ItemId::Bread, 10, 1, 3),
+                                 chestEntry(ItemId::Apple, 8, 1, 3),
+                                 chestEntry(ItemId::Wood, 6, 1, 3),
+                                 chestEntry(ItemId::Stick, 6, 1, 4),
+                                 chestEntry(ItemId::IronIngot, 5, 1, 2),
+                                 chestEntry(ItemId::WoodHoe, 3, 1, 1),
+                                 chestEntry(ItemId::EmeraldGem, 2, 1, 2)}));
+
+    fills.push_back(chestFillOf(Structure::Dungeon, "dungeon", 2, 4, 1, 2,
+                                {chestEntry(ItemId::IronIngot, 10, 1, 4),
+                                 chestEntry(ItemId::Bread, 10, 1, 1),
+                                 chestEntry(ItemId::CoalLump, 10, 1, 4),
+                                 chestEntry(ItemId::Apple, 8, 1, 3),
+                                 chestEntry(ItemId::RedstoneDust, 5, 1, 4),
+                                 chestEntry(ItemId::GoldIngot, 5, 1, 4),
+                                 chestEntry(ItemId::LapisLazuli, 5, 1, 3),
+                                 chestEntry(ItemId::DiamondGem, 1, 1, 2)}));
+
+    fills.push_back(chestFillOf(Structure::Mineshaft, "mineshaft", 3, 5, 1, 3,
+                                {chestEntry(ItemId::CoalLump, 10, 1, 8),
+                                 chestEntry(ItemId::IronIngot, 10, 1, 5),
+                                 chestEntry(ItemId::Bread, 8, 1, 3),
+                                 chestEntry(ItemId::Gravel, 8, 1, 6),
+                                 chestEntry(ItemId::Stick, 6, 1, 8),
+                                 chestEntry(ItemId::GoldIngot, 4, 1, 3),
+                                 chestEntry(ItemId::RedstoneDust, 4, 1, 4),
+                                 chestEntry(ItemId::LapisLazuli, 3, 1, 4),
+                                 chestEntry(ItemId::IronPickaxe, 2, 1, 1),
+                                 chestEntry(ItemId::DiamondGem, 1, 1, 2)}));
+
+    fills.push_back(chestFillOf(Structure::Temple, "temple", 2, 4, 2, 4,
+                                {chestEntry(ItemId::Gunpowder, 5, 1, 8),
+                                 chestEntry(ItemId::RottenFlesh, 5, 3, 7),
+                                 chestEntry(ItemId::GoldIngot, 5, 1, 3),
+                                 chestEntry(ItemId::Bread, 5, 1, 1),
+                                 chestEntry(ItemId::LapisLazuli, 2, 1, 3),
+                                 chestEntry(ItemId::DiamondGem, 1, 1, 3),
+                                 chestEntry(ItemId::EmeraldGem, 1, 1, 3)}));
+
+    fills.push_back(chestFillOf(Structure::NetherFortress, "netherFortress", 2, 4, 1, 4,
+                                {chestEntry(ItemId::GoldIngot, 10, 1, 3),
+                                 chestEntry(ItemId::Obsidian, 5, 2, 4),
+                                 chestEntry(ItemId::RedstoneDust, 5, 1, 4),
+                                 chestEntry(ItemId::Gunpowder, 5, 1, 4),
+                                 chestEntry(ItemId::IronIngot, 5, 1, 5),
+                                 chestEntry(ItemId::Bread, 5, 1, 1),
+                                 chestEntry(ItemId::GoldSword, 5, 1, 1),
+                                 chestEntry(ItemId::DiamondGem, 2, 1, 3)}));
+
