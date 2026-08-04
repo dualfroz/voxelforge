@@ -165,3 +165,404 @@ bool Datagram::decode(const uint8_t* data, std::size_t size) {
     return reader.ok();
 }
 
+uint64_t ReliableChannel::fragmentKey(uint32_t messageId, uint32_t fragmentIndex) {
+    return (static_cast<uint64_t>(messageId) << 32) | static_cast<uint64_t>(fragmentIndex);
+}
+
+void ReliableChannel::queueMessage(const uint8_t* payload, std::size_t size,
+                                   std::size_t fragmentPayload) {
+    uint32_t messageId = nextOutgoingMessageId++;
+    std::size_t total = size == 0 ? 1 : (size + fragmentPayload - 1) / fragmentPayload;
+    for (std::size_t index = 0; index < total; ++index) {
+        OutgoingFragment piece;
+        piece.messageId = messageId;
+        piece.fragmentIndex = static_cast<uint32_t>(index);
+        piece.fragmentCount = static_cast<uint32_t>(total);
+        std::size_t begin = index * fragmentPayload;
+        std::size_t end = std::min(size, begin + fragmentPayload);
+        piece.bytes.assign(payload + begin, payload + end);
+        outgoing.emplace(fragmentKey(messageId, piece.fragmentIndex), std::move(piece));
+    }
+}
+
+void ReliableChannel::collectReady(std::vector<uint64_t>& keys) const {
+    keys.clear();
+    for (const auto& entry : outgoing)
+        if (!entry.second.inFlight) keys.push_back(entry.first);
+}
+
+std::size_t ReliableChannel::readyFragmentCount() const {
+    std::size_t count = 0;
+    for (const auto& entry : outgoing)
+        if (!entry.second.inFlight) ++count;
+    return count;
+}
+
+const ReliableChannel::OutgoingFragment* ReliableChannel::fragment(uint64_t key) const {
+    auto it = outgoing.find(key);
+    return it == outgoing.end() ? nullptr : &it->second;
+}
+
+void ReliableChannel::markInFlight(uint64_t key) {
+    auto it = outgoing.find(key);
+    if (it != outgoing.end()) it->second.inFlight = true;
+}
+
+void ReliableChannel::markAcked(uint64_t key) { outgoing.erase(key); }
+
+void ReliableChannel::markLost(uint64_t key) {
+    auto it = outgoing.find(key);
+    if (it != outgoing.end()) it->second.inFlight = false;
+}
+
+bool ReliableChannel::accept(const Datagram::Fragment& piece) {
+    if (piece.messageId < nextDeliverMessageId) return false;
+    if (completed.count(piece.messageId) != 0) return false;
+
+    auto it = incoming.find(piece.messageId);
+    if (it == incoming.end()) {
+        Assembly assembly;
+        assembly.fragmentCount = piece.fragmentCount;
+        assembly.parts.resize(piece.fragmentCount);
+        assembly.have.assign(piece.fragmentCount, 0);
+        it = incoming.emplace(piece.messageId, std::move(assembly)).first;
+    }
+    Assembly& assembly = it->second;
+    if (piece.fragmentIndex >= assembly.fragmentCount) return false;
+    if (assembly.have[piece.fragmentIndex]) return false;
+
+    assembly.parts[piece.fragmentIndex] = piece.bytes;
+    assembly.have[piece.fragmentIndex] = 1;
+    ++assembly.received;
+
+    if (assembly.received == assembly.fragmentCount) {
+        ByteBuffer whole;
+        std::size_t total = 0;
+        for (const ByteBuffer& part : assembly.parts) total += part.size();
+        whole.reserve(total);
+        for (const ByteBuffer& part : assembly.parts)
+            whole.insert(whole.end(), part.begin(), part.end());
+        completed.emplace(piece.messageId, std::move(whole));
+        incoming.erase(it);
+        drainCompleted();
+    }
+    return true;
+}
+
+void ReliableChannel::drainCompleted() {
+    for (;;) {
+        auto it = completed.find(nextDeliverMessageId);
+        if (it == completed.end()) return;
+        delivered.push_back(std::move(it->second));
+        completed.erase(it);
+        ++nextDeliverMessageId;
+    }
+}
+
+bool ReliableChannel::popDelivered(ByteBuffer& out) {
+    if (delivered.empty()) return false;
+    out = std::move(delivered.front());
+    delivered.pop_front();
+    return true;
+}
+
+void UnreliableChannel::queueMessage(const uint8_t* payload, std::size_t size,
+                                     std::size_t fragmentPayload) {
+    uint32_t messageId = nextOutgoingMessageId++;
+    std::size_t total = size == 0 ? 1 : (size + fragmentPayload - 1) / fragmentPayload;
+    for (std::size_t index = 0; index < total; ++index) {
+        Datagram::Fragment piece;
+        piece.reliable = false;
+        piece.messageId = messageId;
+        piece.fragmentIndex = static_cast<uint32_t>(index);
+        piece.fragmentCount = static_cast<uint32_t>(total);
+        std::size_t begin = index * fragmentPayload;
+        std::size_t end = std::min(size, begin + fragmentPayload);
+        piece.bytes.assign(payload + begin, payload + end);
+        outgoing.push_back(std::move(piece));
+    }
+}
+
+const Datagram::Fragment* UnreliableChannel::peekOutgoing() const {
+    return outgoing.empty() ? nullptr : &outgoing.front();
+}
+
+void UnreliableChannel::dropOutgoing() { outgoing.pop_front(); }
+
+bool UnreliableChannel::accept(const Datagram::Fragment& piece) {
+    if (anyDelivered && piece.messageId <= highestDelivered) {
+        ++stale;
+        return false;
+    }
+
+    auto it = incoming.find(piece.messageId);
+    if (it == incoming.end()) {
+        Assembly assembly;
+        assembly.fragmentCount = piece.fragmentCount;
+        assembly.parts.resize(piece.fragmentCount);
+        assembly.have.assign(piece.fragmentCount, 0);
+        it = incoming.emplace(piece.messageId, std::move(assembly)).first;
+    }
+    Assembly& assembly = it->second;
+    if (piece.fragmentIndex >= assembly.fragmentCount) return false;
+    if (assembly.have[piece.fragmentIndex]) return false;
+
+    assembly.parts[piece.fragmentIndex] = piece.bytes;
+    assembly.have[piece.fragmentIndex] = 1;
+    ++assembly.received;
+    if (assembly.received != assembly.fragmentCount) return true;
+
+    ByteBuffer whole;
+    std::size_t total = 0;
+    for (const ByteBuffer& part : assembly.parts) total += part.size();
+    whole.reserve(total);
+    for (const ByteBuffer& part : assembly.parts)
+        whole.insert(whole.end(), part.begin(), part.end());
+    delivered.push_back(std::move(whole));
+    highestDelivered = piece.messageId;
+    anyDelivered = true;
+    incoming.erase(it);
+
+    // Anything still half-assembled below the newest complete message can only
+    // ever produce a stale update, so it is abandoned right away.
+    for (auto stalePart = incoming.begin(); stalePart != incoming.end();) {
+        if (stalePart->first < highestDelivered) {
+            ++stale;
+            stalePart = incoming.erase(stalePart);
+        } else {
+            ++stalePart;
+        }
+    }
+    return true;
+}
+
+bool UnreliableChannel::popDelivered(ByteBuffer& out) {
+    if (delivered.empty()) return false;
+    out = std::move(delivered.front());
+    delivered.pop_front();
+    return true;
+}
+
+Transport::Transport(LoopbackLink& link, int endpoint, TransportConfig config)
+    : link(&link), endpoint(endpoint), config(config) {
+    std::size_t floorMtu = Datagram::headerSize() + Datagram::maxFragmentOverhead() + 16;
+    if (this->config.mtu < floorMtu) this->config.mtu = floorMtu;
+    if (this->config.sendWindow == 0) this->config.sendWindow = 1;
+    if (this->config.retransmitTimeoutTicks == 0) this->config.retransmitTimeoutTicks = 1;
+}
+
+std::size_t Transport::maxFragmentPayload() const {
+    return config.mtu - Datagram::headerSize() - Datagram::maxFragmentOverhead();
+}
+
+void Transport::sendReliable(const uint8_t* payload, std::size_t size) {
+    reliable.queueMessage(payload, size, maxFragmentPayload());
+    ++statistics.messagesQueued;
+}
+
+void Transport::sendReliable(const ByteBuffer& payload) {
+    sendReliable(payload.data(), payload.size());
+}
+
+void Transport::sendUnreliable(const uint8_t* payload, std::size_t size) {
+    unreliable.queueMessage(payload, size, maxFragmentPayload());
+    ++statistics.messagesQueued;
+}
+
+void Transport::sendUnreliable(const ByteBuffer& payload) {
+    sendUnreliable(payload.data(), payload.size());
+}
+
+bool Transport::registerIncoming(SequenceNumber sequence) {
+    if (!anyReceived) {
+        anyReceived = true;
+        remoteLatest = sequence;
+        remoteHistory = 0;
+        return true;
+    }
+    if (sequence == remoteLatest) return false;
+
+    if (sequenceGreater(sequence, remoteLatest)) {
+        uint16_t shift = sequenceDistance(sequence, remoteLatest);
+        if (shift >= 32) {
+            remoteHistory = 0;
+        } else {
+            remoteHistory = (remoteHistory << shift) | (1u << (shift - 1));
+        }
+        remoteLatest = sequence;
+        return true;
+    }
+
+    uint16_t behind = sequenceDistance(remoteLatest, sequence);
+    if (behind > 32) return false;
+    uint32_t bit = 1u << (behind - 1);
+    if ((remoteHistory & bit) != 0) return false;
+    remoteHistory |= bit;
+    return true;
+}
+
+void Transport::acknowledge(SequenceNumber sequence, uint64_t tick) {
+    for (std::size_t i = 0; i < inFlight.size(); ++i) {
+        if (inFlight[i].sequence != sequence) continue;
+        sampleRtt(tick - inFlight[i].sentTick);
+        for (uint64_t key : inFlight[i].reliableKeys) reliable.markAcked(key);
+        inFlight.erase(inFlight.begin() + static_cast<std::ptrdiff_t>(i));
+        return;
+    }
+}
+
+void Transport::applyAcks(SequenceNumber ackLatest, AckBitfield ackHistory, uint64_t tick) {
+    acknowledge(ackLatest, tick);
+    for (int bit = 0; bit < 32; ++bit) {
+        if ((ackHistory & (1u << bit)) == 0) continue;
+        acknowledge(static_cast<SequenceNumber>(ackLatest - 1 - bit), tick);
+    }
+}
+
+void Transport::sampleRtt(uint64_t sample) {
+    double value = static_cast<double>(sample);
+    if (statistics.smoothedRttTicks <= 0.0) {
+        statistics.smoothedRttTicks = value;
+        return;
+    }
+    double weight = static_cast<double>(config.rttSmoothingPercent) / 100.0;
+    statistics.smoothedRttTicks += (value - statistics.smoothedRttTicks) * weight;
+}
+
+void Transport::pump(uint64_t tick) {
+    link->receive(endpoint, tick, arrivals);
+    for (const ByteBuffer& raw : arrivals) {
+        ++statistics.datagramsReceived;
+        statistics.bytesReceived += raw.size();
+
+        Datagram datagram;
+        if (!datagram.decode(raw.data(), raw.size())) continue;
+        if (!registerIncoming(datagram.sequence)) {
+            ++statistics.duplicatesDropped;
+            continue;
+        }
+        if (datagram.ackValid) applyAcks(datagram.ackLatest, datagram.ackHistory, tick);
+        if (!datagram.fragments.empty()) ackPending = true;
+
+        for (const Datagram::Fragment& piece : datagram.fragments) {
+            bool accepted = piece.reliable ? reliable.accept(piece) : unreliable.accept(piece);
+            if (!accepted) ++statistics.staleDropped;
+        }
+    }
+}
+
+bool Transport::buildDatagram(Datagram& out) {
+    out.fragments.clear();
+    std::size_t used = Datagram::headerSize();
+
+    std::vector<uint64_t> ready;
+    reliable.collectReady(ready);
+    for (uint64_t key : ready) {
+        const ReliableChannel::OutgoingFragment* piece = reliable.fragment(key);
+        std::size_t cost = fragmentEncodedSize(piece->messageId, piece->fragmentIndex,
+                                               piece->fragmentCount, piece->bytes.size());
+        if (used + cost > config.mtu) break;
+        Datagram::Fragment wire;
+        wire.reliable = true;
+        wire.messageId = piece->messageId;
+        wire.fragmentIndex = piece->fragmentIndex;
+        wire.fragmentCount = piece->fragmentCount;
+        wire.bytes = piece->bytes;
+        out.fragments.push_back(std::move(wire));
+        used += cost;
+        reliable.markInFlight(key);
+    }
+
+    while (const Datagram::Fragment* piece = unreliable.peekOutgoing()) {
+        std::size_t cost = fragmentEncodedSize(piece->messageId, piece->fragmentIndex,
+                                               piece->fragmentCount, piece->bytes.size());
+        if (used + cost > config.mtu) break;
+        out.fragments.push_back(*piece);
+        used += cost;
+        unreliable.dropOutgoing();
+    }
+
+    return !out.fragments.empty();
+}
+
+void Transport::flush(uint64_t tick) {
+    for (std::size_t i = 0; i < inFlight.size();) {
+        if (tick - inFlight[i].sentTick < config.retransmitTimeoutTicks) {
+            ++i;
+            continue;
+        }
+        ++statistics.datagramsLost;
+        for (uint64_t key : inFlight[i].reliableKeys) {
+            if (reliable.fragment(key) == nullptr) continue;
+            reliable.markLost(key);
+            ++statistics.retransmitted;
+        }
+        inFlight.erase(inFlight.begin() + static_cast<std::ptrdiff_t>(i));
+    }
+
+    bool sentAnything = false;
+    while (inFlight.size() < config.sendWindow) {
+        Datagram datagram;
+        if (!buildDatagram(datagram)) break;
+
+        datagram.sequence = nextSequence++;
+        datagram.ackLatest = remoteLatest;
+        datagram.ackHistory = remoteHistory;
+        datagram.ackValid = anyReceived;
+
+        InFlightDatagram record;
+        record.sequence = datagram.sequence;
+        record.sentTick = tick;
+        for (const Datagram::Fragment& piece : datagram.fragments)
+            if (piece.reliable)
+                record.reliableKeys.push_back(
+                    ReliableChannel::fragmentKey(piece.messageId, piece.fragmentIndex));
+        inFlight.push_back(std::move(record));
+
+        ByteWriter writer;
+        datagram.encode(writer);
+        ++statistics.datagramsSent;
+        statistics.bytesSent += writer.size();
+        link->send(endpoint, writer.bytes(), tick);
+        sentAnything = true;
+    }
+
+    // A pure ack keeps the peer's window moving when traffic is one-directional.
+    // It carries no fragments, so it cannot itself provoke another ack.
+    if (!sentAnything && ackPending) {
+        Datagram datagram;
+        datagram.sequence = nextSequence++;
+        datagram.ackLatest = remoteLatest;
+        datagram.ackHistory = remoteHistory;
+        datagram.ackValid = anyReceived;
+        ByteWriter writer;
+        datagram.encode(writer);
+        ++statistics.datagramsSent;
+        statistics.bytesSent += writer.size();
+        link->send(endpoint, writer.bytes(), tick);
+    }
+    ackPending = false;
+}
+
+void Transport::update(uint64_t tick) {
+    pump(tick);
+    flush(tick);
+}
+
+bool Transport::popReliable(ByteBuffer& out) {
+    if (!reliable.popDelivered(out)) return false;
+    ++statistics.messagesDelivered;
+    return true;
+}
+
+bool Transport::popUnreliable(ByteBuffer& out) {
+    if (!unreliable.popDelivered(out)) return false;
+    ++statistics.messagesDelivered;
+    return true;
+}
+
+std::size_t Transport::pendingOutgoingCount() const {
+    return reliable.readyFragmentCount() + unreliable.outgoingFragmentCount();
+}
+
+} // namespace vf
