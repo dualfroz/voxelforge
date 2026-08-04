@@ -313,3 +313,334 @@ VF_TEST(timeLimitCutsOffAChildThatNeverSettles) {
     CHECK_EQ(runs, 4);
 }
 
+VF_TEST(parallelSettlesOnItsSuccessAndFailureThresholds) {
+    int slowRuns = 0;
+    int slowProgress = 0;
+
+    auto wide = std::unique_ptr<ParallelNode>(new ParallelNode("parallel", 2, 2));
+    wide->add(constantAction("ok", BehaviorStatus::Success, nullptr));
+    wide->add(slowAction("slow", 2, &slowRuns, &slowProgress));
+    wide->add(constantAction("nope", BehaviorStatus::Failure, nullptr));
+
+    BehaviorTree tree(std::move(wide));
+    BehaviorContext ctx;
+
+    // One success, one failure, one still running: neither threshold is met.
+    CHECK(tree.tick(ctx) == BehaviorStatus::Running);
+    CHECK(tree.tick(ctx) == BehaviorStatus::Running);
+    // The slow child succeeds on its third visit, which is the second success.
+    CHECK(tree.tick(ctx) == BehaviorStatus::Success);
+    CHECK_EQ(slowRuns, 3);
+
+    auto doomed = std::unique_ptr<ParallelNode>(new ParallelNode("parallel", 3, 2));
+    doomed->add(constantAction("no", BehaviorStatus::Failure, nullptr));
+    doomed->add(constantAction("alsoNo", BehaviorStatus::Failure, nullptr));
+    doomed->add(constantAction("yes", BehaviorStatus::Success, nullptr));
+    BehaviorTree unlucky(std::move(doomed));
+    CHECK(unlucky.tick(ctx) == BehaviorStatus::Failure);
+}
+
+VF_TEST(anOverDeepTreeIsRejectedInsteadOfOverflowingTheStack) {
+    std::unique_ptr<BehaviorNode> node = constantAction("leaf", BehaviorStatus::Success, nullptr);
+    for (int level = 0; level < maxBehaviorDepth + 12; ++level) {
+        node = std::unique_ptr<BehaviorNode>(new InverterNode("wrap", std::move(node)));
+    }
+
+    BehaviorTree tree(std::move(node));
+    CHECK(!tree.structureValid());
+    CHECK(tree.stats().depth > maxBehaviorDepth);
+    CHECK_EQ(tree.stats().nodeCount, maxBehaviorDepth + 13);
+
+    BehaviorContext ctx;
+    CHECK(tree.tick(ctx) == BehaviorStatus::Failure);
+    CHECK_EQ(ctx.tick, 0);
+    CHECK_EQ(tree.tickCount(), 0);
+}
+
+VF_TEST(aTreeExactlyAtTheDepthLimitStillRuns) {
+    std::unique_ptr<BehaviorNode> node = constantAction("leaf", BehaviorStatus::Success, nullptr);
+    for (int level = 0; level < maxBehaviorDepth - 1; ++level) {
+        node = std::unique_ptr<BehaviorNode>(new InverterNode("wrap", std::move(node)));
+    }
+
+    BehaviorTree tree(std::move(node));
+    CHECK_EQ(tree.stats().depth, maxBehaviorDepth);
+    CHECK(tree.structureValid());
+
+    BehaviorContext ctx;
+    tree.tick(ctx);
+    CHECK_EQ(ctx.tick, 1);
+}
+
+VF_TEST(theTraceRecordsEveryNodeVisitedInOrder) {
+    auto root = std::unique_ptr<SequenceNode>(new SequenceNode("root"));
+    root->add(constantAction("first", BehaviorStatus::Success, nullptr));
+    root->add(constantAction("second", BehaviorStatus::Failure, nullptr));
+    root->add(constantAction("third", BehaviorStatus::Success, nullptr));
+
+    BehaviorTree tree(std::move(root));
+    BehaviorContext ctx;
+    ctx.traceEnabled = true;
+    tree.tick(ctx);
+
+    std::vector<std::string> expected{"root", "first", "second"};
+    CHECK_EQ(ctx.trace.size(), expected.size());
+    for (std::size_t i = 0; i < expected.size() && i < ctx.trace.size(); ++i) {
+        CHECK_EQ(ctx.trace[i], expected[i]);
+    }
+}
+
+VF_TEST(theHostileTreePathsToThePlayerAndLandsRepeatedBlows) {
+    World world = flatWorld();
+    BehaviorAgent agent = makeAgent(Species::Zombie, {2.5f, 1.0f, 2.5f});
+
+    BehaviorContext ctx = freshContext(&world);
+    ctx.agent = &agent;
+    ctx.playerPresent = true;
+    ctx.playerPosition = {10.5f, 1.0f, 2.5f};
+
+    BehaviorTree tree = makeHostileHunterTree();
+    CHECK(tree.structureValid());
+
+    float startDistance = behaviorHorizontalDistance(agent.position, ctx.playerPosition);
+    for (int step = 0; step < 120; ++step) tree.tick(ctx);
+
+    CHECK(behaviorHorizontalDistance(agent.position, ctx.playerPosition) < startDistance);
+    CHECK(behaviorHorizontalDistance(agent.position, ctx.playerPosition) <=
+          speciesStats(Species::Zombie).attackRange);
+    CHECK(agent.attacksLanded >= 2);
+    CHECK(ctx.blackboard.flag("engaged"));
+    CHECK_NEAR(ctx.blackboard.number("lastAttackDamage"),
+               speciesStats(Species::Zombie).attackDamage, 1e-6f);
+    CHECK(agent.routeGoal == behaviorCellOf(ctx.playerPosition));
+    CHECK(agent.routePlannedTick > 0);
+}
+
+VF_TEST(theHostileTreeWalksHomeOnceTheTargetIsGone) {
+    World world = flatWorld();
+    BehaviorAgent agent = makeAgent(Species::Zombie, {9.5f, 1.0f, 2.5f});
+    agent.homePosition = {2.5f, 1.0f, 2.5f};
+
+    BehaviorContext ctx = freshContext(&world);
+    ctx.agent = &agent;
+    ctx.playerPresent = false;
+
+    BehaviorTree tree = makeHostileHunterTree();
+    for (int step = 0; step < 120; ++step) tree.tick(ctx);
+
+    CHECK(behaviorHorizontalDistance(agent.position, agent.homePosition) <=
+          ctx.tuning.homeReturnRadius);
+    CHECK_EQ(agent.attacksLanded, 0);
+}
+
+VF_TEST(theAnimalTreeRunsAwayFromAnEmptyHandedPlayer) {
+    World world = grassWorld();
+    BehaviorAgent agent = makeAgent(Species::Sheep, {0.5f, 1.0f, 0.5f});
+
+    BehaviorContext ctx = freshContext(&world);
+    ctx.agent = &agent;
+    ctx.playerPresent = true;
+    ctx.playerPosition = {2.5f, 1.0f, 0.5f};
+    ctx.playerHeldItem = ItemId::None;
+
+    BehaviorTree tree = makeGrazingAnimalTree();
+    float before = behaviorHorizontalDistance(agent.position, ctx.playerPosition);
+    for (int step = 0; step < 20; ++step) tree.tick(ctx);
+
+    CHECK(behaviorHorizontalDistance(agent.position, ctx.playerPosition) > before + 2.0f);
+    CHECK_EQ(agent.breedCount, 0);
+}
+
+VF_TEST(theAnimalTreeFollowsHeldFoodAndBreedsOnlyOncePerCooldown) {
+    World world = grassWorld();
+    BehaviorAgent agent = makeAgent(Species::Sheep, {0.5f, 1.0f, 0.5f});
+
+    BehaviorContext ctx = freshContext(&world);
+    ctx.agent = &agent;
+    ctx.playerPresent = true;
+    ctx.playerPosition = {6.5f, 1.0f, 0.5f};
+    ctx.playerHeldItem = breedingFoodFor(Species::Sheep);
+    ctx.matePresent = true;
+    ctx.matePosition = {5.0f, 1.0f, 0.5f};
+
+    BehaviorTree tree = makeGrazingAnimalTree();
+
+    std::vector<long long> breedTicks;
+    int lastCount = 0;
+    for (int step = 0; step < 400; ++step) {
+        tree.tick(ctx);
+        if (agent.breedCount != lastCount) {
+            lastCount = agent.breedCount;
+            breedTicks.push_back(ctx.tick);
+        }
+    }
+
+    CHECK(behaviorHorizontalDistance(agent.position, ctx.playerPosition) <= ctx.tuning.breedRadius);
+    CHECK(agent.breedCount >= 2);
+    for (std::size_t i = 1; i < breedTicks.size(); ++i) {
+        CHECK(breedTicks[i] - breedTicks[i - 1] > ctx.tuning.breedCooldownTicks);
+    }
+}
+
+VF_TEST(theAnimalTreeGrazesGrassForTheFullChewDuration) {
+    World world = grassWorld();
+    BehaviorAgent agent = makeAgent(Species::Cow, {0.5f, 1.0f, 0.5f});
+
+    BehaviorContext ctx = freshContext(&world);
+    ctx.agent = &agent;
+    ctx.playerPresent = false;
+    ctx.matePresent = false;
+
+    BehaviorTree tree = makeGrazingAnimalTree();
+    for (int step = 0; step < ctx.tuning.grazeDurationTicks - 1; ++step) tree.tick(ctx);
+    CHECK_EQ(ctx.blackboard.count("meals"), 0);
+    CHECK(agent.grazeTicks > 0);
+
+    tree.tick(ctx);
+    CHECK_EQ(ctx.blackboard.count("meals"), 1);
+    CHECK_EQ(agent.grazeTicks, 0);
+}
+
+VF_TEST(theSunAvoiderWalksIntoShadeAndWaitsOutTheDay) {
+    World world = flatWorld();
+    for (int x = 3; x <= 6; ++x) {
+        for (int z = -1; z <= 1; ++z) world.setBlock(x, 4, z, Block::Stone);
+    }
+
+    BehaviorAgent agent = makeAgent(Species::Skeleton, {0.5f, 1.0f, 0.5f});
+    BehaviorContext ctx = freshContext(&world);
+    ctx.agent = &agent;
+    ctx.daylight = true;
+    ctx.skyLight = 15;
+
+    BehaviorTree tree = makeSunAvoiderTree();
+    CHECK(!agent.sheltered);
+    for (int step = 0; step < 80; ++step) tree.tick(ctx);
+
+    CHECK(agent.sheltered);
+    CHECK(agent.position.x >= 3.0f);
+    CHECK(agent.shelterTicks > 0);
+    CHECK(ctx.blackboard.hasCell("shadeCell"));
+}
+
+VF_TEST(theSunAvoiderPatrolsInsteadOfHidingAtNight) {
+    World world = flatWorld();
+    BehaviorAgent agent = makeAgent(Species::Skeleton, {0.5f, 1.0f, 0.5f});
+    Vec3 start = agent.position;
+
+    BehaviorContext ctx = freshContext(&world);
+    ctx.agent = &agent;
+    ctx.daylight = false;
+    ctx.skyLight = 4;
+
+    BehaviorTree tree = makeSunAvoiderTree();
+    for (int step = 0; step < 30; ++step) tree.tick(ctx);
+
+    CHECK(behaviorHorizontalDistance(agent.position, start) > 1.0f);
+    CHECK_EQ(agent.shelterTicks, 0);
+    CHECK(!ctx.blackboard.hasCell("shadeCell"));
+}
+
+VF_TEST(twoRunsOfTheSameTreeOnTheSameSeedProduceTheSameNodeSequence) {
+    World world = grassWorld();
+
+    auto runOnce = [&world](std::vector<std::string>& trace, Vec3& endPosition) {
+        BehaviorAgent agent = makeAgent(Species::Pig, {0.5f, 1.0f, 0.5f});
+        agent.rng = 0x1234abcdu;
+        BehaviorContext ctx;
+        ctx.world = &world;
+        ctx.agent = &agent;
+        ctx.traceEnabled = true;
+        ctx.playerPresent = true;
+        ctx.playerPosition = {4.5f, 1.0f, 0.5f};
+        ctx.playerHeldItem = ItemId::None;
+
+        BehaviorTree tree = makeGrazingAnimalTree();
+        for (int step = 0; step < 60; ++step) tree.tick(ctx);
+        trace = ctx.trace;
+        endPosition = agent.position;
+    };
+
+    std::vector<std::string> firstTrace;
+    std::vector<std::string> secondTrace;
+    Vec3 firstEnd;
+    Vec3 secondEnd;
+    runOnce(firstTrace, firstEnd);
+    runOnce(secondTrace, secondEnd);
+
+    CHECK(firstTrace.size() > 100u);
+    CHECK_EQ(firstTrace.size(), secondTrace.size());
+    for (std::size_t i = 0; i < firstTrace.size() && i < secondTrace.size(); ++i) {
+        CHECK_EQ(firstTrace[i], secondTrace[i]);
+    }
+    CHECK_NEAR(firstEnd.x, secondEnd.x, 1e-6f);
+    CHECK_NEAR(firstEnd.z, secondEnd.z, 1e-6f);
+}
+
+VF_TEST(eachSpeciesMapsToTheTreeThatFitsIt) {
+    CHECK(roleForSpecies(Species::Zombie) == BehaviorRole::HostileHunter);
+    CHECK(roleForSpecies(Species::Creeper) == BehaviorRole::HostileHunter);
+    CHECK(roleForSpecies(Species::Skeleton) == BehaviorRole::SunAvoider);
+    CHECK(roleForSpecies(Species::Sheep) == BehaviorRole::GrazingAnimal);
+
+    CHECK(breedingFoodFor(Species::Cow) == ItemId::Bread);
+    CHECK(breedingFoodFor(Species::Pig) == ItemId::Apple);
+    CHECK(breedingFoodFor(Species::Zombie) == ItemId::None);
+    CHECK(isBreedingFood(Species::Cow, ItemId::Bread));
+    CHECK(!isBreedingFood(Species::Cow, ItemId::Apple));
+    CHECK(!isBreedingFood(Species::Zombie, ItemId::None));
+
+    for (int index = 0; index < static_cast<int>(BehaviorRole::Count); ++index) {
+        BehaviorRole role = static_cast<BehaviorRole>(index);
+        BehaviorTree tree = makeTreeForRole(role);
+        CHECK(tree.structureValid());
+        CHECK(tree.stats().nodeCount > 4);
+        CHECK(std::string(behaviorRoleName(role)) != std::string("unknown"));
+    }
+}
+
+VF_TEST(theSharedRandomStreamIsReproducibleAndStaysInRange) {
+    uint32_t first = 0x2545f491u;
+    uint32_t second = 0x2545f491u;
+    for (int draw = 0; draw < 64; ++draw) {
+        CHECK_EQ(behaviorNextRandom(first), behaviorNextRandom(second));
+    }
+
+    uint32_t stream = 7u;
+    for (int draw = 0; draw < 200; ++draw) {
+        float unit = behaviorUnitFloat(stream);
+        CHECK(unit >= 0.0f);
+        CHECK(unit < 1.0f);
+        int ranged = behaviorRandomRange(stream, -3, 3);
+        CHECK(ranged >= -3);
+        CHECK(ranged <= 3);
+    }
+    CHECK_EQ(behaviorRandomRange(stream, 5, 5), 5);
+
+    CHECK(behaviorCellOf(Vec3{-0.5f, 1.9f, 3.2f}) == Vec3i(-1, 1, 3));
+    CHECK_NEAR(behaviorCellCenter(Vec3i{2, 3, 4}).x, 2.5f, 1e-6f);
+    CHECK_NEAR(behaviorCellCenter(Vec3i{2, 3, 4}).y, 3.0f, 1e-6f);
+    CHECK(std::string(behaviorStatusName(BehaviorStatus::Running)) == std::string("running"));
+}
+
+VF_TEST(routeFollowingWalksCellByCellAndReportsSuccessAtTheEnd) {
+    World world = flatWorld();
+    BehaviorAgent agent = makeAgent(Species::Cow, {0.5f, 1.0f, 0.5f});
+    BehaviorContext ctx = freshContext(&world);
+    ctx.agent = &agent;
+
+    CHECK(planRouteTo(ctx, Vec3i{4, 1, 0}, true));
+    CHECK(agent.route.size() >= 5u);
+    CHECK_EQ(agent.routeCursor, 1);
+
+    BehaviorStatus status = BehaviorStatus::Running;
+    int guard = 0;
+    while (status == BehaviorStatus::Running && guard < 200) {
+        status = followRouteStep(ctx);
+        ++guard;
+    }
+    CHECK(status == BehaviorStatus::Success);
+    CHECK(agent.routeFinished());
+    CHECK_NEAR(agent.position.x, 4.5f, 1e-4f);
+    CHECK(guard < 200);
+}
