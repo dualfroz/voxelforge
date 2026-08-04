@@ -473,3 +473,164 @@ bool repathVillager(const World& world, Villager& villager, const Vec3i& goal,
     return true;
 }
 
+bool stepVillagerAlongPath(Villager& villager, float speed, float dt) {
+    if (villager.path.empty()) return false;
+    int last = static_cast<int>(villager.path.size()) - 1;
+    float budget = speed * dt;
+    while (budget > 0.0f) {
+        Vec3 target = cellCentre(villager.path[villager.pathCursor]);
+        Vec3 delta = target - villager.body.position;
+        float remaining = length(delta);
+        if (remaining <= budget) {
+            villager.body.position = target;
+            budget -= remaining;
+            if (villager.pathCursor >= last) {
+                villager.state = VillagerState::AtTarget;
+                return true;
+            }
+            ++villager.pathCursor;
+        } else {
+            villager.body.position += normalize(delta) * budget;
+            villager.state = VillagerState::Travelling;
+            return false;
+        }
+    }
+    villager.state = VillagerState::Travelling;
+    return false;
+}
+
+void tickVillager(const World& world, Villager& villager, PoiRegistry& pois, const TimeOfDay& clock,
+                  const VillagerSchedule& schedule, const Vec3i& villageCenter,
+                  bool villageThreatened, float dt, const PathConfig& config) {
+    if (!villager.alive) {
+        villager.state = VillagerState::Dead;
+        return;
+    }
+
+    syncVillagerPois(villager, pois);
+    settleVillager(world, villager, config);
+    if (villager.bedIndex < 0) assignVillagerBed(villager, pois);
+
+    VillagerActivity next = chooseVillagerActivity(villager, schedule, clock, villageThreatened);
+    if (next != villager.activity) {
+        villager.activity = next;
+        villager.hasGoal = false;
+        villager.path.clear();
+        villager.pathCursor = 0;
+        villager.state = VillagerState::Idle;
+    }
+
+    Vec3i goal;
+    int poiIndex = -1;
+    if (!villagerGoalFor(villager, pois, villageCenter, next, goal, poiIndex)) {
+        villager.hasGoal = false;
+        villager.path.clear();
+        villager.pathCursor = 0;
+        villager.targetPoiIndex = -1;
+        villager.state = VillagerState::Idle;
+        return;
+    }
+
+    if (!villager.hasGoal || villager.goalCell != goal) {
+        villager.targetPoiIndex = poiIndex;
+        repathVillager(world, villager, goal, config);
+    }
+
+    bool arrived = stepVillagerAlongPath(villager, villagerWalkSpeed, dt);
+    if (!arrived && villager.state != VillagerState::AtTarget) return;
+
+    switch (next) {
+        case VillagerActivity::Work:
+            ++villager.workTicks;
+            break;
+        case VillagerActivity::SeekWorkstation:
+            if (villager.targetPoiIndex >= 0 && pois.at(villager.targetPoiIndex).free()) {
+                pois.claim(villager.targetPoiIndex, villager.id);
+                villager.workstationIndex = villager.targetPoiIndex;
+                if (villager.profession == VillagerProfession::Unemployed)
+                    villager.profession = pois.at(villager.targetPoiIndex).profession;
+            } else {
+                villager.hasGoal = false;
+            }
+            break;
+        default:
+            break;
+    }
+}
+
+bool exchangeVillagerGossip(Villager& first, Villager& second) {
+    if (!first.alive || !second.alive || first.id == second.id) return false;
+    Vec3 delta = first.body.position - second.body.position;
+    if (length(delta) > villagerGossipRange) return false;
+    bool changed = first.gossip.shareInto(second.gossip);
+    changed = second.gossip.shareInto(first.gossip) || changed;
+    return changed;
+}
+
+int spreadVillageGossip(std::vector<Villager>& villagers) {
+    int exchanges = 0;
+    for (std::size_t i = 0; i < villagers.size(); ++i)
+        for (std::size_t j = i + 1; j < villagers.size(); ++j)
+            if (exchangeVillagerGossip(villagers[i], villagers[j])) ++exchanges;
+    return exchanges;
+}
+
+VillageCensus takeVillageCensus(const std::vector<Villager>& villagers, const PoiRegistry& pois,
+                                const Vec3i& center, int radius) {
+    VillageCensus census;
+    for (const Villager& villager : villagers) {
+        if (!withinVillage(villager.cell(), center, radius)) continue;
+        ++census.villagers;
+        if (!villager.alive) continue;
+        ++census.living;
+        if (villager.employed()) ++census.employed;
+        census.foodStock += villager.food;
+        if (villager.food >= villagerBreedingFoodCost) ++census.willingBreeders;
+    }
+    for (int i = 0; i < pois.size(); ++i) {
+        const WorkstationPoi& poi = pois.at(i);
+        if (!poi.valid || !withinVillage(poi.pos, center, radius)) continue;
+        if (poi.isBed()) {
+            ++census.beds;
+            if (poi.free()) ++census.freeBeds;
+        } else if (poi.isWorkstation()) {
+            ++census.workstations;
+            if (poi.free()) ++census.freeWorkstations;
+        }
+    }
+    return census;
+}
+
+int breedVillagers(std::vector<Villager>& villagers, PoiRegistry& pois, const Vec3i& center,
+                   int radius, uint32_t& rng) {
+    int born = 0;
+    while (takeVillageCensus(villagers, pois, center, radius).canGrow()) {
+        int firstParent = -1;
+        int secondParent = -1;
+        for (std::size_t i = 0; i < villagers.size(); ++i) {
+            const Villager& candidate = villagers[i];
+            if (!candidate.alive || candidate.food < villagerBreedingFoodCost) continue;
+            if (!withinVillage(candidate.cell(), center, radius)) continue;
+            if (firstParent < 0) firstParent = static_cast<int>(i);
+            else if (secondParent < 0) secondParent = static_cast<int>(i);
+        }
+        if (secondParent < 0) break;
+
+        villagers[firstParent].food -= villagerBreedingFoodCost;
+        villagers[secondParent].food -= villagerBreedingFoodCost;
+
+        Vec3 spawnPoint = (villagers[firstParent].body.position +
+                           villagers[secondParent].body.position) * 0.5f;
+        int nextId = 0;
+        for (const Villager& existing : villagers)
+            if (existing.id >= nextId) nextId = existing.id + 1;
+
+        Villager child = makeVillager(nextId, spawnPoint, nextRandom(rng));
+        if (!assignVillagerBed(child, pois)) break;
+        villagers.push_back(child);
+        ++born;
+    }
+    return born;
+}
+
+} // namespace vf
