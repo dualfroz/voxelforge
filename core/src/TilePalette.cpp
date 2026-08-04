@@ -295,3 +295,138 @@ void appendEnd(std::vector<TileSpec>& rows) {
                                                 0.11f, 0.45f, 0.65f))));
 }
 
+// The village: glass, masonry, furniture and every workstation a villager
+// claims. Sided workstations keep a wooden side and a worked top so the two
+// tiles never collapse into the same entry.
+void appendVillage(std::vector<TileSpec>& rows) {
+    rows.push_back(cutOut(makeTile("glass", M::Crystal, P::Pane, {214, 236, 244}, {160, 200, 218},
+                                   0.06f, 0.30f, 0.40f)));
+    rows.push_back(makeTile("bricks", M::Stone, P::Brick, {150, 86, 66}, {192, 172, 158},
+                            0.08f, 0.40f, 0.50f));
+    rows.push_back(makeTile("stoneBricks", M::Stone, P::Brick, {128, 128, 132}, {84, 84, 88},
+                            0.08f, 0.45f, 0.50f));
+    rows.push_back(makeTile("mossyCobblestone", M::Stone, P::Splatter, {112, 124, 104},
+                            {64, 92, 56}, 0.11f, 0.40f, 0.50f));
+    rows.push_back(runsVertical(makeTile("door", M::Wood, P::Plank, {146, 112, 66}, {94, 68, 38},
+                                         0.09f, 0.45f, 0.45f)));
+    rows.push_back(makeTile("slabCutFace", M::Stone, P::Solid, {158, 158, 162}, {128, 128, 132},
+                            0.08f, 0.60f, 0.50f));
+    rows.push_back(makeTile("slabProfile", M::Stone, P::Strata, {148, 148, 152}, {116, 116, 120},
+                            0.08f, 0.25f, 0.45f));
+    rows.push_back(cutOut(runsVertical(makeTile("fence", M::Wood, P::Lattice, {154, 118, 70},
+                                                {106, 78, 44}, 0.10f, 0.50f, 0.30f))));
+    rows.push_back(makeTile("bedQuilt", M::Fabric, P::Solid, {182, 42, 48}, {224, 96, 100},
+                            0.09f, 0.40f, 0.55f));
+    rows.push_back(makeTile("bedFrame", M::Wood, P::EdgeBand, {132, 100, 58}, {182, 42, 48},
+                            0.09f, 0.25f, 0.50f));
+    rows.push_back(makeTile("bell", M::Metal, P::GrowthRings, {214, 176, 66}, {150, 114, 32},
+                            0.10f, 0.55f, 0.70f));
+    rows.push_back(cutOut(flipped(makeTile("lantern", M::Light, P::Lattice, {248, 222, 140},
+                                           {96, 88, 76}, 0.14f, 0.40f, 0.55f))));
+    rows.push_back(makeTile("composterOpen", M::Organic, P::Splatter, {104, 84, 44},
+                            {144, 130, 62}, 0.12f, 0.35f, 0.50f));
+    rows.push_back(runsVertical(makeTile("composterSlats", M::Wood, P::Plank, {124, 96, 54},
+                                         {84, 62, 34}, 0.10f, 0.22f, 0.50f)));
+    rows.push_back(makeTile("barrelLid", M::Wood, P::GrowthRings, {148, 116, 70}, {92, 70, 40},
+                            0.10f, 0.28f, 0.75f));
+    rows.push_back(runsVertical(makeTile("barrelStaves", M::Wood, P::Plank, {138, 106, 62},
+                                         {88, 66, 38}, 0.10f, 0.26f, 0.55f)));
+    rows.push_back(makeTile("smithingTableTop", M::Metal, P::Splatter, {58, 58, 66}, {102, 102, 112},
+                            0.11f, 0.35f, 0.45f));
+    rows.push_back(runsVertical(makeTile("smithingTableSide", M::Wood, P::Plank, {74, 64, 60},
+                                         {40, 34, 32}, 0.11f, 0.30f, 0.50f)));
+    rows.push_back(flipped(makeTile("loomTop", M::Fabric, P::Lattice, {206, 192, 158},
+                                    {146, 128, 94}, 0.09f, 0.10f, 0.50f)));
+    rows.push_back(runsVertical(makeTile("loomSide", M::Fabric, P::Plank, {186, 170, 134},
+                                         {128, 110, 80}, 0.09f, 0.30f, 0.50f)));
+    rows.push_back(makeTile("cartographyTableTop", M::Fabric, P::Solid, {220, 208, 180},
+                            {148, 116, 80}, 0.09f, 0.45f, 0.55f));
+    rows.push_back(runsVertical(makeTile("cartographyTableSide", M::Wood, P::Plank, {118, 92, 58},
+                                         {198, 186, 158}, 0.09f, 0.35f, 0.40f)));
+    rows.push_back(makeTile("grindstone", M::Stone, P::GrowthRings, {150, 146, 140}, {100, 76, 44},
+                            0.10f, 0.32f, 0.65f));
+    rows.push_back(makeTile("stonecutterTop", M::Stone, P::Solid, {142, 142, 146}, {108, 108, 112},
+                            0.09f, 0.40f, 0.50f));
+    rows.push_back(makeTile("stonecutterSide", M::Stone, P::Strata, {132, 132, 136},
+                            {184, 184, 188}, 0.09f, 0.55f, 0.25f));
+    rows.push_back(makeTile("lecternTop", M::Fabric, P::Solid, {206, 196, 170}, {128, 98, 58},
+                            0.09f, 0.35f, 0.60f));
+    rows.push_back(runsVertical(makeTile("lecternSide", M::Wood, P::Plank, {160, 126, 78},
+                                         {106, 80, 46}, 0.09f, 0.32f, 0.50f)));
+    rows.push_back(makeTile("hayBaleCut", M::Organic, P::GrowthRings, {206, 178, 54},
+                            {156, 132, 34}, 0.10f, 0.22f, 0.80f));
+    rows.push_back(makeTile("hayBaleSide", M::Organic, P::Plank, {198, 170, 52}, {136, 114, 28},
+                            0.10f, 0.20f, 0.60f));
+}
+
+// Geology, the deep dark and everything that grows underwater. This is where
+// the palette is most crowded, so several rocks that would read alike are
+// separated by pattern rather than by colour alone.
+void appendGeologyAndDecoration(std::vector<TileSpec>& rows) {
+    rows.push_back(makeTile("clay", M::Soil, P::Solid, {162, 166, 178}, {132, 136, 150},
+                            0.09f, 0.60f, 0.50f));
+    rows.push_back(makeTile("terracotta", M::Soil, P::Strata, {150, 92, 66}, {118, 68, 46},
+                            0.10f, 0.60f, 0.40f));
+    rows.push_back(makeTile("wool", M::Fabric, P::Solid, {228, 228, 232}, {198, 198, 206},
+                            0.10f, 0.30f, 0.50f));
+    rows.push_back(makeTile("myceliumTop", M::Organic, P::Splatter, {110, 94, 110}, {148, 128, 152},
+                            0.11f, 0.30f, 0.50f));
+    rows.push_back(makeTile("myceliumSide", M::Soil, P::EdgeBand, {114, 88, 60}, {124, 102, 128},
+                            0.11f, 0.29f, 0.50f));
+    rows.push_back(makeTile("andesite", M::Stone, P::Splatter, {136, 136, 138}, {104, 104, 108},
+                            0.10f, 0.55f, 0.50f));
+    rows.push_back(makeTile("diorite", M::Stone, P::Splatter, {196, 196, 198}, {154, 154, 160},
+                            0.10f, 0.35f, 0.50f));
+    rows.push_back(makeTile("granite", M::Stone, P::Splatter, {154, 106, 88}, {190, 138, 116},
+                            0.10f, 0.30f, 0.50f));
+    rows.push_back(makeTile("deepslateCut", M::Stone, P::Solid, {80, 80, 86}, {52, 52, 58},
+                            0.12f, 0.45f, 0.60f));
+    rows.push_back(runsVertical(makeTile("deepslateSide", M::Stone, P::Strata, {76, 76, 82},
+                                         {46, 46, 52}, 0.12f, 0.65f, 0.45f)));
+    rows.push_back(makeTile("copperOre", M::Stone, P::OreSpeckle, {129, 129, 132}, {216, 132, 88},
+                            0.11f, 0.42f, 0.32f));
+    rows.push_back(makeTile("tuff", M::Stone, P::Splatter, {108, 110, 102}, {76, 78, 70},
+                            0.11f, 0.25f, 0.55f));
+    rows.push_back(runsVertical(makeTile("dripstone", M::Stone, P::Strata, {142, 116, 100},
+                                         {108, 84, 72}, 0.11f, 0.40f, 0.50f)));
+    rows.push_back(makeTile("amethystBlock", M::Crystal, P::Dots, {154, 106, 204}, {214, 176, 246},
+                            0.11f, 0.55f, 0.65f));
+    rows.push_back(makeTile("sculk", M::Organic, P::Dots, {30, 36, 44}, {58, 180, 168},
+                            0.13f, 0.35f, 0.45f));
+    rows.push_back(makeTile("cryingObsidian", M::Crystal, P::Dots, {36, 22, 58}, {104, 56, 210},
+                            0.12f, 0.40f, 0.35f));
+    rows.push_back(makeTile("prismarine", M::Crystal, P::Brick, {96, 158, 148}, {140, 198, 184},
+                            0.09f, 0.30f, 0.50f));
+    rows.push_back(makeTile("seaLantern", M::Light, P::Dots, {188, 222, 214}, {240, 252, 248},
+                            0.14f, 0.50f, 0.60f));
+    rows.push_back(cutOut(runsVertical(makeTile("kelp", M::Foliage, P::Cross, {56, 110, 52},
+                                                {98, 152, 72}, 0.10f, 0.35f, 0.65f))));
+    rows.push_back(makeTile("coral", M::Organic, P::Splatter, {214, 72, 132}, {250, 134, 182},
+                            0.11f, 0.30f, 0.50f));
+    rows.push_back(makeTile("mud", M::Soil, P::Solid, {74, 62, 56}, {48, 40, 36},
+                            0.13f, 0.40f, 0.65f));
+    rows.push_back(makeTile("moss", M::Foliage, P::Splatter, {90, 124, 54}, {60, 92, 34},
+                            0.11f, 0.35f, 0.55f));
+}
+
+} // namespace
+
+TilePalette::TilePalette() {
+    rows.reserve(static_cast<std::size_t>(tileCount));
+    appendOverworldBasics(rows);          // 0..14
+    appendBuildingAndOres(rows);          // 15..26
+    appendUtilityAndRedstone(rows);       // 27..49
+    appendTransportAndAutomation(rows);   // 50..61
+    appendFarmingAndClimate(rows);        // 62..79
+    appendBrewingAndCombat(rows);         // 80..88
+    appendNether(rows);                   // 89..98
+    appendEnd(rows);                      // 99..105
+    appendVillage(rows);                  // 106..134
+    appendGeologyAndDecoration(rows);     // 135..156
+}
+
+const TileSpec& TilePalette::specFor(int tile) const {
+    return rows[static_cast<std::size_t>(tile)];
+}
+
+} // namespace vf
