@@ -318,3 +318,88 @@ RestoreResult BackupStore::restore(uint32_t id) const {
         payloads.push_back(std::move(chunk.payload));
     }
 
+    result.save = packSaveContainer(target->version, target->regionX, target->regionZ,
+                                    target->sectorBytes, coords, payloads, nullptr);
+    result.chunksRestored = coords.size();
+    result.ok = true;
+    return result;
+}
+
+RestoreResult BackupStore::restoreLatest() const {
+    uint32_t latest = chain.latestId();
+    if (latest == 0) {
+        RestoreResult result;
+        result.failure = "the backup index is empty";
+        return result;
+    }
+    return restore(latest);
+}
+
+bool BackupStore::drop(uint32_t id) {
+    for (std::size_t i = 0; i < chain.entries.size(); ++i) {
+        if (chain.entries[i].id != id) continue;
+        chain.entries.erase(chain.entries.begin() + static_cast<std::ptrdiff_t>(i));
+        return true;
+    }
+    return false;
+}
+
+std::vector<uint32_t> BackupStore::prune(uint64_t nowTick) {
+    failure.clear();
+    std::vector<uint32_t> keep;
+    auto markKept = [&](uint32_t id) {
+        for (uint32_t held : keep)
+            if (held == id) return;
+        keep.push_back(id);
+    };
+
+    std::vector<uint32_t> byAge;
+    for (const BackupEntry& entry : chain.entries) byAge.push_back(entry.id);
+    std::sort(byAge.begin(), byAge.end(), [](uint32_t a, uint32_t b) { return a > b; });
+    for (std::size_t i = 0; i < byAge.size() && i < retention.keepLatest; ++i) markKept(byAge[i]);
+
+    auto keepNewestPerBucket = [&](uint64_t bucketTicks, std::size_t bucketCount) {
+        if (bucketTicks == 0 || bucketCount == 0) return;
+        uint64_t currentBucket = nowTick / bucketTicks;
+        for (std::size_t offset = 0; offset < bucketCount; ++offset) {
+            if (currentBucket < offset) break;
+            uint64_t wanted = currentBucket - offset;
+            uint32_t best = 0;
+            uint64_t bestTick = 0;
+            for (const BackupEntry& entry : chain.entries) {
+                if (entry.tick / bucketTicks != wanted) continue;
+                if (best == 0 || entry.tick > bestTick ||
+                    (entry.tick == bestTick && entry.id > best)) {
+                    best = entry.id;
+                    bestTick = entry.tick;
+                }
+            }
+            if (best != 0) markKept(best);
+        }
+    };
+    keepNewestPerBucket(retention.dayTicks, retention.dailyBuckets);
+    keepNewestPerBucket(retention.weekTicks, retention.weeklyBuckets);
+
+    std::size_t scanned = 0;
+    while (scanned < keep.size()) {
+        const BackupEntry* entry = chain.find(keep[scanned]);
+        ++scanned;
+        if (entry == nullptr || entry->kind == BackupKind::Full) continue;
+        markKept(entry->parentId);
+    }
+
+    std::vector<uint32_t> removed;
+    std::vector<BackupEntry> survivors;
+    for (BackupEntry& entry : chain.entries) {
+        bool kept = false;
+        for (uint32_t held : keep)
+            if (held == entry.id) kept = true;
+        if (kept) survivors.push_back(std::move(entry));
+        else removed.push_back(entry.id);
+    }
+    chain.entries = std::move(survivors);
+    std::sort(removed.begin(), removed.end());
+    return removed;
+}
+
+} // namespace vf
