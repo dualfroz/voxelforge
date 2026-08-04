@@ -47,6 +47,10 @@ uniform vec3 uFogColor;
 out vec4 fragColor;
 void main() {
     vec4 texel = texture(uAtlas, vec3(vUv, float(vTile)));
+    // Cutout tiles (ladders, rails, grates, plants, cobweb) carry their shape
+    // in alpha. The opaque pass runs with blending off, so without this the
+    // holes would draw as solid squares of whatever sits behind them.
+    if (texel.a < 0.5) discard;
     float ndl = max(dot(normalize(vNormal), normalize(uLightDir)), 0.0);
     float directional = 0.55 + 0.45 * ndl;
     float baked = 0.18 + 0.82 * vLight;
