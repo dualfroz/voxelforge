@@ -157,3 +157,160 @@ VF_TEST(theCylinderBrushFillsATubeOfTheRequestedHeight) {
     params.height = 5;
     params.block = Block::Planks;
 
+    BrushResult outcome = stroke.apply(params, 1u);
+    CHECK_EQ(outcome.changed, Selection::cylinder({20, 10, 20}, 3, 5).count());
+    CHECK(world.blockAt(20, 10, 20) == Block::Planks);
+    CHECK(world.blockAt(20, 14, 20) == Block::Planks);
+    CHECK(world.blockAt(20, 15, 20) == Block::Air);
+    CHECK(world.blockAt(20, 9, 20) == Block::Air);
+    CHECK(world.blockAt(24, 12, 20) == Block::Air);
+
+    BrushParams shell = params;
+    shell.mode = BrushParams::VolumeMode::Shell;
+    shell.shellThickness = 1;
+    World tubeWorld;
+    EditHistory tubeHistory(1u << 22);
+    BrushStroke tubeStroke(tubeWorld, tubeHistory);
+    BrushResult carved = tubeStroke.apply(shell, 2u);
+    CHECK(carved.changed < outcome.changed);
+    CHECK(tubeWorld.blockAt(20, 10, 20) == Block::Planks);
+    CHECK(tubeWorld.blockAt(20, 11, 20) == Block::Air);
+    CHECK(tubeWorld.blockAt(20, 14, 20) == Block::Planks);
+    CHECK(tubeWorld.blockAt(23, 12, 20) == Block::Planks);
+}
+
+VF_TEST(theReplaceBrushOnlyTouchesTheListedBlockTypes) {
+    World world = bumpyWorld();
+    EditHistory history(1u << 22);
+    BrushStroke stroke(world, history);
+
+    BrushParams params = baseParams(BrushKind::Replace);
+    params.center = {8, 4, 8};
+    params.radius = 4;
+    params.block = Block::Sand;
+    params.onlyReplace = {Block::Grass};
+
+    Selection region = BrushStroke::regionOf(params);
+    std::size_t grassBefore = region.stats(world).countOf(Block::Grass);
+    CHECK(grassBefore > 0u);
+
+    BrushResult outcome = stroke.apply(params, 1u);
+    CHECK_EQ(outcome.changed, grassBefore);
+    CHECK_EQ(region.stats(world).countOf(Block::Grass), 0u);
+    CHECK_EQ(region.stats(world).countOf(Block::Sand), grassBefore);
+    CHECK(region.stats(world).countOf(Block::Stone) > 0u);
+
+    BrushParams everything = params;
+    everything.onlyReplace.clear();
+    everything.block = Block::Glass;
+    BrushResult sweep = stroke.apply(everything, 2u);
+    SelectionStats after = region.stats(world);
+    CHECK_EQ(after.countOf(Block::Stone), 0u);
+    CHECK_EQ(after.countOf(Block::Sand), 0u);
+    CHECK(sweep.changed > 0u);
+    CHECK(after.countOf(Block::Air) > 0u);
+}
+
+VF_TEST(theSmoothBrushCutsDownASpikeAndFillsAPit) {
+    World world = flatWorld(20, 4);
+    for (int y = 5; y <= 10; ++y) world.setBlock(8, y, 8, Block::Stone);
+    CHECK_EQ(surfaceHeight(world, 8, 8, 12), 10);
+
+    EditHistory history(1u << 22);
+    BrushStroke stroke(world, history);
+    BrushParams params = baseParams(BrushKind::Smooth);
+    params.center = {8, 6, 8};
+    params.radius = 4;
+
+    Selection region = Selection::box({4, 0, 4}, {12, 12, 12});
+    BrushResult outcome = stroke.applyWithin(params, region, 1u);
+    CHECK_EQ(outcome.changed, 6u);
+    CHECK_EQ(surfaceHeight(world, 8, 8, 12), 4);
+    CHECK_EQ(surfaceHeight(world, 7, 8, 12), 4);
+    CHECK(world.blockAt(8, 4, 8) == Block::Stone);
+
+    World pitWorld = flatWorld(20, 4);
+    pitWorld.setBlock(8, 4, 8, Block::Air);
+    CHECK_EQ(surfaceHeight(pitWorld, 8, 8, 12), 3);
+    EditHistory pitHistory(1u << 22);
+    BrushStroke pitStroke(pitWorld, pitHistory);
+    BrushResult filled = pitStroke.applyWithin(params, region, 2u);
+    CHECK_EQ(filled.changed, 1u);
+    CHECK(pitWorld.blockAt(8, 4, 8) == Block::Stone);
+    CHECK_EQ(surfaceHeight(pitWorld, 8, 8, 12), 4);
+}
+
+VF_TEST(theErodeBrushRemovesOnlyBlocksWithEnoughFreeNeighbours) {
+    World world = stoneCube({10, 10, 10}, 3);
+    EditHistory history(1u << 22);
+    BrushStroke stroke(world, history);
+
+    BrushParams params = baseParams(BrushKind::Erode);
+    params.center = {11, 11, 11};
+    params.radius = 2;
+    params.freeNeighbourThreshold = 3;
+
+    BrushResult outcome = stroke.apply(params, 1u);
+    // Only the eight corners of a 3x3x3 cube see three empty faces.
+    CHECK_EQ(outcome.changed, 8u);
+    CHECK(world.blockAt(10, 10, 10) == Block::Air);
+    CHECK(world.blockAt(12, 12, 12) == Block::Air);
+    CHECK(world.blockAt(11, 10, 10) == Block::Stone);
+    CHECK(world.blockAt(11, 11, 11) == Block::Stone);
+
+    CHECK(history.undo(world));
+    CHECK(world.blockAt(10, 10, 10) == Block::Stone);
+
+    BrushParams gentler = params;
+    gentler.freeNeighbourThreshold = 4;
+    BrushResult none = stroke.apply(gentler, 2u);
+    CHECK_EQ(none.changed, 0u);
+    CHECK(!none.recorded);
+}
+
+VF_TEST(theOverlayBrushDecidesFromTheStateBeforeTheStroke) {
+    World world = flatWorld(5, 4);
+    EditHistory history(1u << 22);
+    BrushStroke stroke(world, history);
+
+    BrushParams params = baseParams(BrushKind::Overlay);
+    params.block = Block::Snow;
+    params.freeNeighbourThreshold = 1;
+    Selection layer = Selection::box({0, 5, 0}, {4, 5, 4});
+
+    BrushResult outcome = stroke.applyWithin(params, layer, 1u);
+    CHECK_EQ(outcome.changed, 25u);
+    CHECK(world.blockAt(0, 5, 0) == Block::Snow);
+    CHECK(world.blockAt(2, 5, 2) == Block::Snow);
+    CHECK(world.blockAt(2, 6, 2) == Block::Air);
+
+    // A wall along x = 0 gives the column next to it two solid neighbours, and
+    // nothing else in the layer has more than one. A brush that wrote as it
+    // walked would let that first column qualify its neighbour, and the whole
+    // row would fall over like dominoes.
+    World walled = flatWorld(5, 4);
+    for (int z = 0; z < 5; ++z) walled.setBlock(0, 5, z, Block::Stone);
+    EditHistory walledHistory(1u << 22);
+    BrushStroke walledStroke(walled, walledHistory);
+    BrushParams strict = params;
+    strict.freeNeighbourThreshold = 2;
+    Selection openLayer = Selection::box({1, 5, 0}, {4, 5, 4});
+
+    BrushResult edged = walledStroke.applyWithin(strict, openLayer, 1u);
+    CHECK_EQ(edged.changed, 5u);
+    for (int z = 0; z < 5; ++z) {
+        CHECK(walled.blockAt(1, 5, z) == Block::Snow);
+        CHECK(walled.blockAt(2, 5, z) == Block::Air);
+        CHECK(walled.blockAt(3, 5, z) == Block::Air);
+        CHECK(walled.blockAt(4, 5, z) == Block::Air);
+    }
+
+    // The same layer with no wall to lean on stays untouched at that threshold.
+    World bare = flatWorld(5, 4);
+    EditHistory bareHistory(1u << 22);
+    BrushStroke bareStroke(bare, bareHistory);
+    BrushResult quiet = bareStroke.applyWithin(strict, layer, 1u);
+    CHECK_EQ(quiet.changed, 0u);
+    CHECK_EQ(bareHistory.stats().batchCount, 0u);
+}
+
