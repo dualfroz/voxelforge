@@ -314,3 +314,175 @@ VF_TEST(theOverlayBrushDecidesFromTheStateBeforeTheStroke) {
     CHECK_EQ(bareHistory.stats().batchCount, 0u);
 }
 
+VF_TEST(theNaturalizeBrushLaysGrassOverSoilOverStone) {
+    World world;
+    for (int y = 0; y <= 6; ++y) world.setBlock(3, y, 3, Block::Cobblestone);
+    for (int y = 10; y <= 12; ++y) world.setBlock(3, y, 3, Block::Cobblestone);
+
+    EditHistory history(1u << 22);
+    BrushStroke stroke(world, history);
+    BrushParams params = baseParams(BrushKind::Naturalize);
+    params.soilDepth = 2;
+
+    Selection column = Selection::box({3, 0, 3}, {3, 12, 3});
+    BrushResult outcome = stroke.applyWithin(params, column, 1u);
+    CHECK(outcome.changed > 0u);
+
+    CHECK(world.blockAt(3, 12, 3) == Block::Grass);
+    CHECK(world.blockAt(3, 11, 3) == Block::Dirt);
+    CHECK(world.blockAt(3, 10, 3) == Block::Dirt);
+    CHECK(world.blockAt(3, 9, 3) == Block::Air);
+    // The lower stack is a separate surface and gets its own grass skin.
+    CHECK(world.blockAt(3, 6, 3) == Block::Grass);
+    CHECK(world.blockAt(3, 5, 3) == Block::Dirt);
+    CHECK(world.blockAt(3, 4, 3) == Block::Dirt);
+    CHECK(world.blockAt(3, 3, 3) == Block::Stone);
+    CHECK(world.blockAt(3, 0, 3) == Block::Stone);
+
+    CHECK(history.undo(world));
+    CHECK(world.blockAt(3, 12, 3) == Block::Cobblestone);
+    CHECK(world.blockAt(3, 0, 3) == Block::Cobblestone);
+}
+
+VF_TEST(theGradientBrushRepeatsExactlyForTheSameSeed) {
+    BrushParams params = baseParams(BrushKind::Gradient);
+    params.center = {20, 20, 20};
+    params.radius = 6;
+    params.block = Block::Stone;
+    params.secondaryBlock = Block::Sand;
+    params.seed = 4242u;
+
+    World first;
+    EditHistory firstHistory(1u << 22);
+    BrushStroke firstStroke(first, firstHistory);
+    BrushResult outcome = firstStroke.apply(params, 1u);
+    CHECK(outcome.changed > 0u);
+
+    World second;
+    EditHistory secondHistory(1u << 22);
+    BrushStroke secondStroke(second, secondHistory);
+    secondStroke.apply(params, 99u);
+    CHECK_EQ(worldFingerprint(first), worldFingerprint(second));
+
+    World third;
+    EditHistory thirdHistory(1u << 22);
+    BrushStroke thirdStroke(third, thirdHistory);
+    BrushParams other = params;
+    other.seed = 4243u;
+    thirdStroke.apply(other, 1u);
+    CHECK(worldFingerprint(third) != worldFingerprint(first));
+
+    // The mix follows the distance: the centre is always the primary block and
+    // the outer shell is mostly the secondary one.
+    CHECK(first.blockAt(20, 20, 20) == Block::Stone);
+    Selection ball = Selection::sphere({20, 20, 20}, 6);
+    Selection inner = Selection::sphere({20, 20, 20}, 2);
+    SelectionStats innerStats = inner.stats(first);
+    SelectionStats shellStats = ball.differenceWith(Selection::sphere({20, 20, 20}, 5)).stats(first);
+    CHECK(innerStats.countOf(Block::Stone) > innerStats.countOf(Block::Sand));
+    CHECK(shellStats.countOf(Block::Sand) > shellStats.countOf(Block::Stone));
+    CHECK_EQ(innerStats.countOf(Block::Air), 0u);
+}
+
+VF_TEST(aBrushRestrictedToASelectionNeverPaintsOutsideIt) {
+    World world;
+    EditHistory history(1u << 22);
+    BrushStroke stroke(world, history);
+
+    BrushParams params = baseParams(BrushKind::Sphere);
+    params.center = {30, 30, 30};
+    params.radius = 5;
+    params.block = Block::Bricks;
+
+    Selection half = Selection::box({30, 25, 25}, {35, 35, 35});
+    BrushResult outcome = stroke.applyWithin(params, half, 1u);
+    CHECK(outcome.changed > 0u);
+    CHECK_EQ(outcome.changed, BrushStroke::regionOf(params).intersectWith(half).count());
+
+    CHECK(world.blockAt(30, 30, 30) == Block::Bricks);
+    CHECK(world.blockAt(29, 30, 30) == Block::Air);
+    CHECK(world.blockAt(26, 30, 30) == Block::Air);
+
+    const EditBatch* batch = history.peekUndo();
+    for (const EditOp& op : batch->ops) CHECK(half.contains(op.position));
+}
+
+VF_TEST(aStrokeReportsWhenItReachesBeyondTheLoadedWorld) {
+    World loaded;
+    for (int y = 0; y < 16; ++y)
+        for (int z = 0; z < 16; ++z)
+            for (int x = 0; x < 16; ++x) loaded.setBlock(x, y, z, Block::Stone);
+    CHECK_EQ(loaded.chunkCount(), 1u);
+
+    EditHistory history(1u << 22);
+    BrushStroke inside(loaded, history);
+    BrushParams params = baseParams(BrushKind::Sphere);
+    params.center = {8, 8, 8};
+    params.radius = 3;
+    params.block = Block::Glass;
+    BrushResult contained = inside.apply(params, 1u);
+    CHECK(!contained.outsideLoadedWorld);
+    CHECK(contained.changed > 0u);
+
+    BrushParams overhang = params;
+    overhang.center = {14, 8, 8};
+    overhang.radius = 4;
+    BrushResult spilled = inside.apply(overhang, 2u);
+    CHECK(spilled.outsideLoadedWorld);
+    CHECK(spilled.changed > 0u);
+    CHECK(loaded.chunkCount() > 1u);
+}
+
+VF_TEST(aStrokeIsClippedAtTheWorldHeightLimits) {
+    World world;
+    EditHistory history(1u << 22);
+    BrushStroke stroke(world, history);
+
+    BrushParams params = baseParams(BrushKind::Sphere);
+    params.center = {8, 2, 8};
+    params.radius = 4;
+    params.block = Block::Stone;
+    params.worldMinY = 0;
+    params.worldMaxY = 5;
+
+    BrushResult outcome = stroke.apply(params, 1u);
+    CHECK(outcome.clippedAtHeightLimit);
+    CHECK(outcome.changed > 0u);
+    CHECK(outcome.visited > outcome.changed);
+    for (int x = 4; x <= 12; ++x) {
+        CHECK(world.blockAt(x, -1, 8) == Block::Air);
+        CHECK(world.blockAt(x, 5, 8) == Block::Air);
+    }
+    CHECK(world.blockAt(8, 0, 8) == Block::Stone);
+    CHECK(world.blockAt(8, 4, 8) == Block::Stone);
+}
+
+VF_TEST(consecutiveStrokesUndoInReverseOrder) {
+    World world = bumpyWorld();
+    uint64_t start = worldFingerprint(world);
+    EditHistory history(1u << 22);
+    BrushStroke stroke(world, history);
+
+    BrushParams first = baseParams(BrushKind::Sphere);
+    first.center = {4, 10, 4};
+    first.block = Block::Wood;
+    stroke.apply(first, 1u);
+    uint64_t afterFirst = worldFingerprint(world);
+
+    BrushParams second = baseParams(BrushKind::Cylinder);
+    second.center = {12, 10, 12};
+    second.block = Block::Leaves;
+    stroke.apply(second, 2u);
+    uint64_t afterSecond = worldFingerprint(world);
+
+    CHECK_EQ(history.stats().batchCount, 2u);
+    CHECK(afterFirst != start);
+    CHECK(afterSecond != afterFirst);
+
+    CHECK(history.undo(world));
+    CHECK_EQ(worldFingerprint(world), afterFirst);
+    CHECK(history.undo(world));
+    CHECK_EQ(worldFingerprint(world), start);
+    CHECK(history.redo(world));
+    CHECK_EQ(worldFingerprint(world), afterFirst);
+}
