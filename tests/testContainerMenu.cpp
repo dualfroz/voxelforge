@@ -315,3 +315,187 @@ VF_TEST(aBoundContainerLoadsIntoTheStorageSectionAndIsWrittenBackOnClose) {
     CHECK(menu.hasContainer());
     CHECK_EQ(menu.totalOf(ItemId::Cobblestone), 90);
 
+    std::vector<int> storage = menu.containerSectionSlots();
+    CHECK_EQ(menu.stackAt(storage[5]).item, ItemId::IronPickaxe);
+    CHECK_EQ(menu.stackAt(storage[5]).meta.durability.remaining(), 100);
+    CHECK_EQ(menu.stackAt(storage[5]).meta.durability.max, toolMaxDurability(ItemId::IronPickaxe));
+
+    menu.slot(storage[10]).cell.stack = makeStack(ItemId::EmeraldGem, 7);
+    MetaStack pulled = menu.takeFrom(storage[0], 30);
+    CHECK_EQ(pulled.count, 30);
+
+    menu.unbind();
+    CHECK(!menu.hasContainer());
+    CHECK_EQ(chest.slot(10).item, ItemId::EmeraldGem);
+    CHECK_EQ(chest.slot(10).count, 7);
+    CHECK_EQ(chest.slot(0).count, 34);
+    CHECK_EQ(chest.slot(5).durability, 100);
+}
+
+VF_TEST(bindingNeverReachesPastTheContainersOwnSize) {
+    Container tiny(3);
+    tiny.insert(ItemId::Stick, 5);
+
+    ContainerMenu menu(MenuKind::Chest, &sharedRegistry());
+    menu.bindContainer(tiny);
+    CHECK_EQ(menu.totalOf(ItemId::Stick), 5);
+
+    std::vector<int> storage = menu.containerSectionSlots();
+    CHECK_EQ(menu.slot(storage[2]).backingIndex, 2);
+    CHECK_EQ(menu.slot(storage[3]).backingIndex, -1);
+
+    menu.slot(storage[9]).cell.stack = makeStack(ItemId::Stone, 4);
+    menu.unbind();
+    CHECK_EQ(tiny.totalItems(), 5);
+}
+
+VF_TEST(theFurnaceMenuBindsAThreeSlotContainerOntoItsOwnRoles) {
+    Container firebox(3);
+    firebox.setSlot(0, ItemSlot{ItemId::IronOre, 8, 0});
+    firebox.setSlot(1, ItemSlot{ItemId::CoalLump, 4, 0});
+    firebox.setSlot(2, ItemSlot{ItemId::IronIngot, 2, 0});
+
+    ContainerMenu menu(MenuKind::Furnace, &sharedRegistry());
+    menu.bindContainer(firebox);
+    CHECK_EQ(menu.stackAt(menu.slotsWithRole(MenuSlot::Role::SmeltInput)[0]).count, 8);
+    CHECK_EQ(menu.stackAt(menu.slotsWithRole(MenuSlot::Role::FuelInput)[0]).count, 4);
+    CHECK_EQ(menu.stackAt(menu.slotsWithRole(MenuSlot::Role::SmeltOutput)[0]).count, 2);
+
+    menu.takeFrom(menu.slotsWithRole(MenuSlot::Role::SmeltOutput)[0], 2);
+    menu.syncToContainer();
+    CHECK(firebox.slot(2).empty());
+}
+
+VF_TEST(menuNbtRoundTripKeepsEnchantedAndNamedStacksThatAContainerWouldLose) {
+    ContainerMenu menu(MenuKind::LargeChest, &sharedRegistry());
+    EnchantSet enchants;
+    addEnchant(enchants, EnchantKind::Fortune, 3);
+    addEnchant(enchants, EnchantKind::Unbreaking, 2);
+
+    MetaStack pickaxe = makeEnchantedTool(ItemId::DiamondPickaxe, enchants);
+    pickaxe.meta.customName = "Deep Cut";
+    pickaxe.meta.durability.used = 220;
+
+    menu.slot(0).cell.stack = pickaxe;
+    menu.slot(7).cell.stack = makeStack(ItemId::Gravel, 40);
+    menu.setCreativeMode(true);
+
+    ContainerMenu restored(MenuKind::Chest, &sharedRegistry());
+    CHECK(restored.fromNbt(menu.toNbt()));
+    CHECK(restored.kind() == MenuKind::LargeChest);
+    CHECK_EQ(restored.slotCount(), menu.slotCount());
+    CHECK(restored.creativeMode());
+    CHECK(stacksIdentical(restored.stackAt(0), pickaxe));
+    CHECK(restored.stackAt(0).meta.customName == std::string("Deep Cut"));
+    CHECK_EQ(restored.stackAt(0).meta.enchants.levelOf(EnchantKind::Fortune), 3);
+    CHECK_EQ(restored.stackAt(7).count, 40);
+}
+
+VF_TEST(menuNbtRejectsATagWhoseSlotCountDoesNotMatchTheKind) {
+    ContainerMenu menu(MenuKind::Chest, &sharedRegistry());
+    NbtTag tag = menu.toNbt();
+    NbtTag* slots = nullptr;
+    for (auto& entry : tag.asCompound()) {
+        if (entry.first == "Slots") slots = &entry.second;
+    }
+    CHECK(slots != nullptr);
+    if (slots == nullptr) return;
+    slots->asList().pop_back();
+
+    ContainerMenu target(MenuKind::Chest, &sharedRegistry());
+    CHECK(!target.fromNbt(tag));
+
+    NbtTag notAMenu = NbtTag::makeCompound();
+    notAMenu.put("Kind", NbtTag::makeShort(99));
+    CHECK(!target.fromNbt(notAMenu));
+}
+
+VF_TEST(slotAccountingAddsUpAcrossTheWholeMenu) {
+    ContainerMenu menu(MenuKind::Chest, &sharedRegistry());
+    CHECK_EQ(menu.totalItems(), 0);
+    CHECK_EQ(menu.usedSlots(), 0);
+
+    menu.slot(0).cell.stack = makeStack(ItemId::Stone, 64);
+    menu.slot(1).cell.stack = makeStack(ItemId::Stone, 12);
+    menu.slot(2).cell.stack = makeTool(ItemId::GoldAxe);
+
+    CHECK_EQ(menu.totalOf(ItemId::Stone), 76);
+    CHECK_EQ(menu.totalOf(ItemId::GoldAxe), 1);
+    CHECK_EQ(menu.totalOf(ItemId::Sand), 0);
+    CHECK_EQ(menu.totalItems(), 77);
+    CHECK_EQ(menu.usedSlots(), 3);
+    CHECK(!menu.validIndex(-1));
+    CHECK(!menu.validIndex(menu.slotCount()));
+}
+
+VF_TEST(everyRoleAndFilterNameIsSpelledOut) {
+    for (int i = 0; i < static_cast<int>(MenuSlot::Role::Count); ++i) {
+        CHECK(std::string(menuSlotRoleName(static_cast<MenuSlot::Role>(i))) !=
+              std::string("unknown"));
+    }
+    for (int i = 0; i < static_cast<int>(SlotFilter::Kind::Count); ++i) {
+        CHECK(std::string(slotFilterKindName(static_cast<SlotFilter::Kind>(i))) !=
+              std::string("unknown"));
+    }
+}
+
+// A result slot is guarded twice over: the takeOnly flag and a filter that lets
+// nothing through. Because canPlace checks takeOnly first, the filter would go
+// untested through the menu, so it is pinned here on its own.
+VF_TEST(everySlotFilterAnswersForItselfWithoutHelpFromTheTakeOnlyFlag) {
+    const CraftingRegistry& registry = sharedRegistry();
+
+    SlotFilter nothing;
+    nothing.kind = SlotFilter::Kind::Nothing;
+    CHECK(!nothing.accepts(makeStack(ItemId::Stone, 1), &registry));
+    CHECK(!nothing.accepts(makeStack(ItemId::CoalLump, 1), &registry));
+    CHECK(!nothing.accepts(makeTool(ItemId::DiamondSword), &registry));
+    CHECK(!nothing.accepts(makeStack(ItemId::LapisLazuli, 1), &registry));
+
+    SlotFilter any;
+    any.kind = SlotFilter::Kind::Any;
+    CHECK(any.accepts(makeStack(ItemId::Stone, 1), nullptr));
+    CHECK(any.accepts(makeTool(ItemId::GoldHoe), nullptr));
+
+    SlotFilter fuel;
+    fuel.kind = SlotFilter::Kind::Fuel;
+    CHECK(fuel.accepts(makeStack(ItemId::CoalLump, 1), nullptr));
+    CHECK(fuel.accepts(makeStack(ItemId::Stick, 1), nullptr));
+    CHECK(!fuel.accepts(makeStack(ItemId::IronIngot, 1), nullptr));
+
+    SlotFilter smeltable;
+    smeltable.kind = SlotFilter::Kind::Smeltable;
+    CHECK(smeltable.accepts(makeStack(ItemId::GoldOre, 1), &registry));
+    CHECK(!smeltable.accepts(makeStack(ItemId::GoldIngot, 1), &registry));
+    CHECK(!smeltable.accepts(makeStack(ItemId::GoldOre, 1), nullptr));
+
+    SlotFilter lapis;
+    lapis.kind = SlotFilter::Kind::Lapis;
+    CHECK(lapis.accepts(makeStack(ItemId::LapisLazuli, 1), nullptr));
+    CHECK(!lapis.accepts(makeStack(ItemId::LapisOre, 1), nullptr));
+
+    SlotFilter enchantable;
+    enchantable.kind = SlotFilter::Kind::Enchantable;
+    CHECK(enchantable.accepts(makeTool(ItemId::GoldSword), nullptr));
+    CHECK(!enchantable.accepts(makeStack(ItemId::Obsidian, 1), nullptr));
+
+    SlotFilter repairable;
+    repairable.kind = SlotFilter::Kind::Repairable;
+    CHECK(repairable.accepts(makeTool(ItemId::StoneHoe), nullptr));
+    CHECK(!repairable.accepts(makeStack(ItemId::Planks, 1), nullptr));
+
+    SlotFilter brewing;
+    brewing.kind = SlotFilter::Kind::BrewIngredient;
+    CHECK(brewing.accepts(makeStack(ItemId::Gunpowder, 1), nullptr));
+    CHECK(brewing.accepts(makeStack(ItemId::Glowstone, 1), nullptr));
+    CHECK(brewing.accepts(makeStack(ItemId::RedstoneDust, 1), nullptr));
+    CHECK(!brewing.accepts(makeStack(ItemId::RedstoneBlock, 1), nullptr));
+}
+
+VF_TEST(aFilterNeverAcceptsAnEmptyStack) {
+    for (int i = 0; i < static_cast<int>(SlotFilter::Kind::Count); ++i) {
+        SlotFilter filter;
+        filter.kind = static_cast<SlotFilter::Kind>(i);
+        CHECK(!filter.accepts(MetaStack{}, &sharedRegistry()));
+    }
+}
