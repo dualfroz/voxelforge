@@ -476,3 +476,115 @@ VF_TEST(oneRottenFileCostsItselfAndNothingElseInThePack) {
     CHECK(sawUppercaseId);
 }
 
+VF_TEST(recipeAndLootDocumentsAreCheckedFieldByField) {
+    RecipeData recipe;
+    LootTable table;
+    BlockTag tag;
+    std::string problem;
+
+    const char* const badRecipes[] = {
+        R"json({"pattern": ["X"], "result": {"item": "voxelforge:stone"}})json",
+        R"json({"type": "craftingShaped", "result": {"item": "voxelforge:stone"}})json",
+        R"json({"type": "craftingShaped", "pattern": ["XX", "X"],
+                 "key": {"X": "voxelforge:stone"}, "result": {"item": "voxelforge:stone"}})json",
+        R"json({"type": "craftingShaped", "pattern": ["XXXX"],
+                 "key": {"X": "voxelforge:stone"}, "result": {"item": "voxelforge:stone"}})json",
+        R"json({"type": "craftingShaped", "pattern": ["X"], "key": {},
+                 "result": {"item": "voxelforge:stone"}})json",
+        R"json({"type": "craftingShapeless", "ingredients": [],
+                 "result": {"item": "voxelforge:stone"}})json",
+        R"json({"type": "smelting", "ingredient": "voxelforge:iron_ore", "seconds": 0,
+                 "result": {"item": "voxelforge:iron_ingot"}})json",
+        R"json({"type": "smelting", "ingredient": "voxelforge:iron_ore", "experience": -1,
+                 "result": {"item": "voxelforge:iron_ingot"}})json",
+        R"json({"type": "craftingShapeless", "ingredients": ["voxelforge:stone"],
+                 "result": {"item": "voxelforge:stone", "count": 999}})json",
+    };
+    for (const char* text : badRecipes) {
+        JsonParseResult document = parseJson(text);
+        CHECK(document.ok);
+        CHECK(!parseRecipeJson(document.root, "voxelforge", recipe, problem));
+        CHECK(!problem.empty());
+    }
+
+    const char* const badTables[] = {
+        R"json({"pools": []})json",
+        R"json({"pools": [{"entries": []}]})json",
+        R"json({"pools": [{"entries": [{"item": "voxelforge:stone", "weight": 0}]}]})json",
+        R"json({"pools": [{"entries": [{"item": "voxelforge:stone", "chance": 2}]}]})json",
+        R"json({"pools": [{"rolls": {"min": 3, "max": 1},
+                 "entries": [{"item": "voxelforge:stone"}]}]})json",
+        R"json({"pools": [{"entries": [{"item": "voxelforge:stone",
+                 "conditions": ["telepathy"]}]}]})json",
+        R"json({"pools": [{"entries": [{"item": "voxelforge:stone",
+                 "functions": ["duplication"]}]}]})json",
+    };
+    for (const char* text : badTables) {
+        JsonParseResult document = parseJson(text);
+        CHECK(document.ok);
+        CHECK(!parseLootTableJson(document.root, "voxelforge", table, problem));
+        CHECK(!problem.empty());
+    }
+
+    JsonParseResult ranged = parseJson(
+        R"json({"pools": [{"rolls": {"min": 1, "max": 3},
+                 "entries": [{"item": "voxelforge:stone", "count": {"min": 1, "max": 4}}]}]})json");
+    CHECK(parseLootTableJson(ranged.root, "voxelforge", table, problem));
+    CHECK_EQ(table.pools[0].minRolls, 1);
+    CHECK_EQ(table.pools[0].maxRolls, 3);
+    // A range is only rolled when the roller is told to roll it.
+    CHECK_EQ(table.pools[0].entries[0].functions, LootEntry::CountRange);
+
+    JsonParseResult noValues = parseJson(R"json({"replace": true})json");
+    CHECK(!parseTagJson(noValues.root, "voxelforge", tag, problem));
+    JsonParseResult referenced = parseJson(R"json({"values": ["#voxelforge:logs"]})json");
+    CHECK(parseTagJson(referenced.root, "voxelforge", tag, problem));
+    CHECK_EQ(tag.entries.size(), static_cast<std::size_t>(1));
+    CHECK(tag.entries[0].reference);
+    CHECK(tag.entries[0].id == id("voxelforge:logs"));
+}
+
+VF_TEST(packsHoldTheirFilesAsASortedInMemoryTree) {
+    DataPack pack = basePack();
+    CHECK_EQ(pack.fileCount(), static_cast<std::size_t>(9));
+    CHECK(pack.hasFile("pack.json"));
+    CHECK(pack.fileContents("data/voxelforge/recipes/redstone_torch.json") != nullptr);
+    CHECK(pack.fileContents("data/voxelforge/recipes/absent.json") == nullptr);
+
+    std::vector<std::string> recipes = pack.filesUnder("data/voxelforge/recipes/");
+    CHECK_EQ(recipes.size(), static_cast<std::size_t>(3));
+    CHECK_EQ(recipes[0], std::string("data/voxelforge/recipes/bread.json"));
+    CHECK_EQ(recipes[1], std::string("data/voxelforge/recipes/redstone_torch.json"));
+    CHECK_EQ(recipes[2], std::string("data/voxelforge/recipes/sandstone.json"));
+
+    CHECK(pack.removeFile("readme.txt"));
+    CHECK(!pack.removeFile("readme.txt"));
+    CHECK_EQ(pack.fileCount(), static_cast<std::size_t>(8));
+
+    pack.addFile("data/voxelforge/recipes/redstone_torch.json", "{}");
+    CHECK_EQ(pack.fileCount(), static_cast<std::size_t>(8));
+    CHECK_EQ(*pack.fileContents("data/voxelforge/recipes/redstone_torch.json"), std::string("{}"));
+}
+
+VF_TEST(everyParsedDocumentStaysAvailableUnderItsFolder) {
+    DataPackLoader loader;
+    loader.addPack(basePack());
+    CHECK(loader.load());
+
+    const std::map<ResourceId, JsonValue>* recipes = loader.documentsIn("recipes");
+    CHECK(recipes != nullptr);
+    CHECK_EQ(recipes->size(), static_cast<std::size_t>(3));
+    CHECK(recipes->count(id("voxelforge:redstone_torch")) == 1u);
+    CHECK_EQ(recipes->at(id("voxelforge:redstone_torch")).stringOr("type", ""),
+             std::string("craftingShaped"));
+
+    CHECK(loader.documentsIn("lootTables") != nullptr);
+    CHECK(loader.documentsIn("tags/blocks") != nullptr);
+    CHECK_EQ(loader.documentsIn("tags/blocks")->size(), static_cast<std::size_t>(2));
+    CHECK(loader.documentsIn("advancements") == nullptr);
+
+    loader.clear();
+    CHECK(loader.documentsIn("recipes") == nullptr);
+    CHECK_EQ(loader.recipes().size(), static_cast<std::size_t>(0));
+    CHECK_EQ(loader.packs().size(), static_cast<std::size_t>(0));
+}
