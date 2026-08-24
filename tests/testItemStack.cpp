@@ -318,3 +318,120 @@ VF_TEST(aToolBreaksOnExactlyTheHitThatReachesZeroDurability) {
     CHECK(damageStack(pickaxe, 1, rng) == WearResult::NotDamageable);
 }
 
+VF_TEST(anUnbreakableToolNeverLosesDurability) {
+    uint32_t rng = 3u;
+    MetaStack pickaxe = makeTool(ItemId::WoodPickaxe);
+    pickaxe.meta.unbreakable = true;
+
+    for (int hit = 0; hit < 500; ++hit) {
+        CHECK(damageStack(pickaxe, 1, rng) == WearResult::Absorbed);
+    }
+    CHECK_EQ(pickaxe.meta.durability.used, 0);
+    CHECK(!pickaxe.empty());
+}
+
+VF_TEST(mendingHoldsAToolAtOneDurabilityInsteadOfLettingItBreak) {
+    uint32_t rng = 13u;
+    MetaStack pickaxe = makeEnchantedTool(ItemId::WoodPickaxe,
+                                          withEnchant(EnchantKind::Mending, 1));
+    int max = pickaxe.meta.durability.max;
+
+    WearResult wear = damageStack(pickaxe, max + 10, rng);
+    CHECK(wear == WearResult::Survived);
+    CHECK(!pickaxe.empty());
+    CHECK_EQ(pickaxe.meta.durability.remaining(), 1);
+
+    CHECK_EQ(mendingRepair(pickaxe, 4), 8);
+    CHECK_EQ(pickaxe.meta.durability.remaining(), 9);
+    CHECK_EQ(mendingRepair(pickaxe, 10000), max - 9);
+    CHECK_EQ(pickaxe.meta.durability.used, 0);
+    CHECK_EQ(mendingRepair(pickaxe, 5), 0);
+}
+
+VF_TEST(mendingRepairIgnoresToolsThatDoNotCarryTheEnchantment) {
+    MetaStack pickaxe = makeTool(ItemId::IronPickaxe);
+    pickaxe.meta.durability.used = 50;
+    CHECK_EQ(mendingRepair(pickaxe, 100), 0);
+    MetaStack rubble = makeStack(ItemId::Stone, 4);
+    CHECK_EQ(mendingRepair(rubble, 100), 0);
+}
+
+VF_TEST(unbreakingMeasurablyExtendsToolLifeOverALongRun) {
+    MetaStack plain = makeTool(ItemId::DiamondPickaxe);
+    int plainHits = hitsUntilBroken(plain, 2024u, 20000);
+    CHECK_EQ(plainHits, toolMaxDurability(ItemId::DiamondPickaxe));
+
+    MetaStack tough = makeEnchantedTool(ItemId::DiamondPickaxe,
+                                        withEnchant(EnchantKind::Unbreaking, 3));
+    int toughHits = hitsUntilBroken(tough, 2024u, 40000);
+    CHECK(toughHits > 0);
+    CHECK(toughHits > plainHits * 3);
+    CHECK(toughHits < plainHits * 5);
+
+    MetaStack mild = makeEnchantedTool(ItemId::DiamondPickaxe,
+                                       withEnchant(EnchantKind::Unbreaking, 1));
+    int mildHits = hitsUntilBroken(mild, 2024u, 40000);
+    CHECK(mildHits > plainHits);
+    CHECK(mildHits < toughHits);
+}
+
+VF_TEST(theSameSeedAlwaysProducesTheSameToolLifetime) {
+    MetaStack tool = makeEnchantedTool(ItemId::IronShovel, withEnchant(EnchantKind::Unbreaking, 2));
+    int first = hitsUntilBroken(tool, 99u, 20000);
+    int second = hitsUntilBroken(tool, 99u, 20000);
+    int different = hitsUntilBroken(tool, 100u, 20000);
+    CHECK_EQ(first, second);
+    CHECK(first > 0);
+    CHECK(first != different);
+}
+
+VF_TEST(aDamageableIngredientComesBackFromACraftOnePointWorse) {
+    MetaStack bucketLike = makeTool(ItemId::IronShovel);
+    MetaStack leftover = craftingRemainder(bucketLike);
+    CHECK(!leftover.empty());
+    CHECK(leftover.item == ItemId::IronShovel);
+    CHECK_EQ(leftover.count, 1);
+    CHECK_EQ(leftover.meta.durability.used, 1);
+
+    MetaStack almostGone = makeTool(ItemId::IronShovel);
+    almostGone.meta.durability.used = almostGone.meta.durability.max - 1;
+    CHECK(craftingRemainder(almostGone).empty());
+
+    MetaStack unbreakable = makeTool(ItemId::IronShovel);
+    unbreakable.meta.unbreakable = true;
+    MetaStack keptWhole = craftingRemainder(unbreakable);
+    CHECK_EQ(keptWhole.meta.durability.used, 0);
+
+    CHECK(craftingRemainder(makeStack(ItemId::Planks, 5)).empty());
+    CHECK(craftingRemainder(MetaStack{}).empty());
+}
+
+VF_TEST(theItemSlotBridgeKeepsWhatAnItemSlotCanActuallyHold) {
+    MetaStack pickaxe = makeTool(ItemId::IronPickaxe);
+    pickaxe.meta.durability.used = 40;
+
+    ItemSlot projected = toItemSlot(pickaxe);
+    CHECK(projected.item == ItemId::IronPickaxe);
+    CHECK_EQ(projected.count, 1);
+    CHECK_EQ(projected.durability, pickaxe.meta.durability.remaining());
+
+    MetaStack back = fromItemSlot(projected);
+    CHECK(stacksIdentical(pickaxe, back));
+
+    MetaStack blocks = makeStack(ItemId::Sandstone, 33);
+    CHECK(stacksIdentical(blocks, fromItemSlot(toItemSlot(blocks))));
+    CHECK(toItemSlot(MetaStack{}).empty());
+    CHECK(fromItemSlot(ItemSlot{}).empty());
+}
+
+VF_TEST(theItemSlotBridgeAdmitsThatItDropsEnchantmentsAndNames) {
+    MetaStack sword = makeEnchantedTool(ItemId::IronSword, withEnchant(EnchantKind::Looting, 2));
+    sword.meta.customName = "Sharptooth";
+
+    MetaStack back = fromItemSlot(toItemSlot(sword));
+    CHECK(back.item == ItemId::IronSword);
+    CHECK_EQ(back.meta.durability.used, 0);
+    CHECK(back.meta.enchants.empty());
+    CHECK(back.meta.customName.empty());
+    CHECK(!stacksMergeable(sword, back));
+}
