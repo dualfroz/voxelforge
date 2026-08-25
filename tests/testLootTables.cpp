@@ -643,3 +643,173 @@ VF_TEST(fishingSplitsIntoThreePoolsAndLuckShiftsTheWeightsAwayFromJunk) {
     CHECK_EQ(junkAtHighLuck, 0);
 }
 
+VF_TEST(everyFishingPoolHandsBackSomethingFromItsOwnTable) {
+    const LootRegistry& registry = lootRegistry();
+    int emptyCatches = 0;
+    int strayItems = 0;
+    for (int i = 0; i < 2000; ++i) {
+        FishingLoot outcome = registry.rollFishing(
+            enchantedWith(ItemId::WoodHoe, EnchantKind::Fortune, 2, seedFor(i)));
+        if (outcome.caught.empty()) ++emptyCatches;
+
+        const LootTable& table = registry.tableFor(LootTableId::ofFishing(outcome.pool));
+        for (const ItemSlot& stack : outcome.caught.items) {
+            if (!poolCanYield(table.pools[0], stack.item)) ++strayItems;
+        }
+    }
+    CHECK_EQ(emptyCatches, 0);
+    CHECK_EQ(strayItems, 0);
+}
+
+VF_TEST(lureShortensTheWaitAndTheWaitNeverFallsThroughItsFloor) {
+    const LootRegistry& registry = lootRegistry();
+    int plainTotal = 0;
+    int luredTotal = 0;
+    int belowFloor = 0;
+    int aboveCeiling = 0;
+
+    for (int i = 0; i < 1500; ++i) {
+        FishingLoot plain = registry.rollFishing(contextWith(ItemId::WoodHoe, seedFor(i)));
+        FishingLoot lured = registry.rollFishing(
+            enchantedWith(ItemId::WoodHoe, EnchantKind::Efficiency, 3, seedFor(i)));
+        plainTotal += plain.waitTicks;
+        luredTotal += lured.waitTicks;
+
+        if (plain.waitTicks < fishingMinWaitTicks) ++belowFloor;
+        if (plain.waitTicks > fishingBaseWaitTicks) ++aboveCeiling;
+        if (lured.waitTicks < fishingMinWaitTicks / 2) ++belowFloor;
+        if (lured.waitTicks > plain.waitTicks) ++aboveCeiling;
+    }
+    CHECK_EQ(belowFloor, 0);
+    CHECK_EQ(aboveCeiling, 0);
+    CHECK(luredTotal < plainTotal);
+
+    FishingLoot drowned = registry.rollFishing(
+        enchantedWith(ItemId::WoodHoe, EnchantKind::Efficiency, 5, seedFor(3)));
+    CHECK_EQ(drowned.waitTicks, fishingMinWaitTicks / 2);
+}
+
+VF_TEST(fishingIsFullyDeterministicForAGivenSeedAndRod) {
+    const LootRegistry& registry = lootRegistry();
+    for (int i = 0; i < 200; ++i) {
+        LootContext context = enchantedWith(ItemId::WoodHoe, EnchantKind::Fortune, 2, seedFor(i));
+        FishingLoot first = registry.rollFishing(context);
+        FishingLoot second = registry.rollFishing(context);
+        CHECK_EQ(first.pool, second.pool);
+        CHECK_EQ(first.waitTicks, second.waitTicks);
+        CHECK(sameRoll(first.caught, second.caught));
+    }
+}
+
+VF_TEST(lootTableHandlesRoundTripForEveryDomainAndRejectStaleIndices) {
+    const LootRegistry& registry = lootRegistry();
+
+    LootTableId stone = LootTableId::ofBlock(Block::Stone);
+    CHECK_EQ(stone.domain, LootTableId::Domain::Block);
+    CHECK_EQ(stone.index, static_cast<uint16_t>(Block::Stone));
+    CHECK(stone.valid());
+    CHECK(stone == LootTableId::ofBlock(Block::Stone));
+    CHECK(stone != LootTableId::ofBlock(Block::Dirt));
+
+    CHECK(LootTableId::ofMob(Species::Creeper).valid());
+    CHECK(LootTableId::ofChest(Structure::EndShip).valid());
+    CHECK(LootTableId::ofFishing(FishingLoot::Pool::Treasure).valid());
+
+    CHECK(!LootTableId::ofBlock(Block::Count).valid());
+    CHECK(!LootTableId::ofMob(Species::Count).valid());
+    CHECK(!LootTableId::ofChest(Structure::Count).valid());
+    CHECK(!LootTableId::ofFishing(FishingLoot::Pool::Count).valid());
+
+    LootTableId stale;
+    stale.domain = LootTableId::Domain::Block;
+    stale.index = 60000;
+    CHECK(!stale.valid());
+    CHECK(registry.tableFor(stale).empty());
+
+    LootTableId noDomain;
+    noDomain.domain = LootTableId::Domain::Count;
+    CHECK(!noDomain.valid());
+    CHECK(registry.tableFor(noDomain).empty());
+}
+
+VF_TEST(aTableFetchedByHandleRollsIdenticallyToTheRegistryShortcut) {
+    const LootRegistry& registry = lootRegistry();
+
+    for (Block block : {Block::Stone, Block::DiamondOre, Block::Grass, Block::Bookshelf}) {
+        LootContext context = contextWith(bestToolFor(registry.blockRule(block).harvestTool), 909u);
+        LootRoll viaHandle = rollLootTable(registry.tableFor(LootTableId::ofBlock(block)), context);
+        CHECK(sameRoll(viaHandle, registry.rollBlock(block, context)));
+    }
+
+    for (Species species : {Species::Zombie, Species::Witch, Species::Cow}) {
+        LootContext context = contextWith(ItemId::IronSword, 1717u);
+        context.playerKill = true;
+        LootRoll viaHandle = rollLootTable(registry.tableFor(LootTableId::ofMob(species)), context);
+        CHECK(sameRoll(viaHandle, registry.rollMob(species, context)));
+    }
+
+    for (Structure structure : {Structure::Temple, Structure::NetherFortress}) {
+        LootContext context = contextWith(ItemId::None, 31337u);
+        LootRoll viaHandle = rollLootTable(registry.tableFor(LootTableId::ofChest(structure)),
+                                           context);
+        CHECK(sameRoll(viaHandle, registry.rollChest(structure, context)));
+    }
+}
+
+VF_TEST(ruleToTableConversionBuildsExactlyThePoolsTheRuleDescribes) {
+    const LootRegistry& registry = lootRegistry();
+
+    LootTable stone = blockRuleTable(registry.blockRule(Block::Stone));
+    CHECK_EQ(stone.pools.size(), std::size_t{3});
+    CHECK_EQ(firstEntryOfPool(stone, 0), ItemId::Stone);
+    CHECK_EQ(firstEntryOfPool(stone, 1), ItemId::Cobblestone);
+    CHECK_EQ(firstEntryOfPool(stone, 2), ItemId::Stone);
+    CHECK_EQ(stone.pools[0].entries[0].conditions, LootEntry::SilkTouched);
+    CHECK_EQ(stone.pools[1].entries[0].conditions,
+             LootEntry::NotSilkTouched | LootEntry::NotFiery);
+    CHECK_EQ(stone.pools[2].entries[0].conditions, LootEntry::NotSilkTouched | LootEntry::Fiery);
+
+    LootTable leaves = blockRuleTable(registry.blockRule(Block::Leaves));
+    CHECK_EQ(leaves.pools.size(), std::size_t{3});
+    CHECK_EQ(firstEntryOfPool(leaves, 1), ItemId::Wood);
+    CHECK_EQ(leaves.pools[1].entries[0].functions, LootEntry::ChanceFortune);
+    CHECK_EQ(firstEntryOfPool(leaves, 2), ItemId::Stick);
+
+    LootTable lapis = blockRuleTable(registry.blockRule(Block::LapisOre));
+    CHECK_EQ(lapis.pools.size(), std::size_t{2});
+    CHECK_EQ(lapis.pools[1].entries[0].functions, LootEntry::CountRange | LootEntry::OreFortune);
+
+    CHECK(blockRuleTable(registry.blockRule(Block::Air)).empty());
+
+    LootTable cow = mobRuleTable(registry.mobRule(Species::Cow));
+    CHECK_EQ(cow.pools.size(), std::size_t{2});
+    CHECK_EQ(firstEntryOfPool(cow, 0), ItemId::RawBeef);
+    CHECK_EQ(firstEntryOfPool(cow, 1), ItemId::CookedBeef);
+    CHECK_EQ(cow.pools[0].entries[0].conditions, LootEntry::NotFiery);
+    CHECK_EQ(cow.pools[1].entries[0].conditions, LootEntry::Fiery);
+
+    LootTable zombie = mobRuleTable(registry.mobRule(Species::Zombie));
+    CHECK_EQ(zombie.pools.size(), std::size_t{2});
+    CHECK_EQ(zombie.pools[1].entries[0].conditions, LootEntry::PlayerKill);
+    CHECK_EQ(zombie.pools[1].entries[0].functions, LootEntry::ChanceLooting);
+}
+
+VF_TEST(theSharedRegistryIsBuiltOnceAndAlwaysHandsBackTheSameTables) {
+    CHECK(&lootRegistry() == &lootRegistry());
+    const LootRegistry& registry = lootRegistry();
+    CHECK(&registry.blockRule(Block::Stone) == &registry.blockRule(Block::Stone));
+    CHECK(&registry.tableFor(LootTableId::ofBlock(Block::Stone)) ==
+          &registry.tableFor(LootTableId::ofBlock(Block::Stone)));
+
+    LootRegistry rebuilt;
+    CHECK(rebuilt.coversEveryBlock());
+    int divergences = 0;
+    for (int index = 0; index < static_cast<int>(Block::Count); ++index) {
+        Block block = static_cast<Block>(index);
+        LootContext context = contextWith(ItemId::DiamondPickaxe, seedFor(index));
+        if (!sameRoll(rebuilt.rollBlock(block, context), registry.rollBlock(block, context))) {
+            ++divergences;
+        }
+    }
+    CHECK_EQ(divergences, 0);
+}
