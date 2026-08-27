@@ -315,3 +315,193 @@ VF_TEST(modifiersAPotionRefusesLeaveThatVariantWithNoPathAtAll) {
         CHECK(graph.reachable(bottleOf(kind, false, true)));
     }
 
+    const PotionKind noRedstone[] = {PotionKind::Healing, PotionKind::Harming};
+    for (PotionKind kind : noRedstone) {
+        CHECK(!graph.reachable(bottleOf(kind, false, true)));
+        CHECK(graph.reachable(bottleOf(kind, true, false)));
+    }
+
+    // The four effectless potions take no modifier at all: glowstone and
+    // redstone on water are recipes, not upgrades.
+    const PotionKind bases[] = {PotionKind::Water, PotionKind::Mundane, PotionKind::Thick,
+                                PotionKind::Awkward};
+    for (PotionKind kind : bases) {
+        CHECK(!graph.reachable(bottleOf(kind, true, false)));
+        CHECK(!graph.reachable(bottleOf(kind, false, true)));
+        CHECK(graph.reachable(bottleOf(kind)));
+    }
+
+    BrewPath missing = graph.shortestPath(bottleOf(PotionKind::Harming, false, true));
+    CHECK(!missing.reachable);
+    CHECK_EQ(missing.stepCount(), 0);
+    CHECK_EQ(missing.blazePowderTotal(), 0);
+    CHECK_EQ(missing.totalTicks, 0);
+}
+
+VF_TEST(gunpowderAndDragonBreathAddExactlyOneStepEachOnTopOfTheDrinkable) {
+    const BrewGraph& graph = brewGraph();
+
+    PotionItem drinkable = bottleOf(PotionKind::Strength, true);
+    PotionItem splash = drinkable;
+    splash.form = PotionItem::Form::Splash;
+    PotionItem lingering = drinkable;
+    lingering.form = PotionItem::Form::Lingering;
+
+    int drinkableDepth = graph.depthOf(drinkable);
+    CHECK_EQ(drinkableDepth, 3);
+    CHECK_EQ(graph.depthOf(splash), drinkableDepth + 1);
+    CHECK_EQ(graph.depthOf(lingering), drinkableDepth + 2);
+
+    BrewPath path = graph.shortestPath(lingering);
+    CHECK(path.reachable);
+    // Dragon breath has to close the chain, but gunpowder is free to land
+    // anywhere before it: splashing the awkward base is just as short.
+    CHECK_EQ(path.steps.back(), Ingredient::DragonBreath);
+    int gunpowderSteps = 0;
+    int dragonBreathSteps = 0;
+    for (Ingredient ingredient : path.steps) {
+        if (ingredient == Ingredient::Gunpowder) ++gunpowderSteps;
+        if (ingredient == Ingredient::DragonBreath) ++dragonBreathSteps;
+    }
+    CHECK_EQ(gunpowderSteps, 1);
+    CHECK_EQ(dragonBreathSteps, 1);
+    CHECK(replayThroughSteps(path.steps) == lingering);
+}
+
+VF_TEST(aLingeringBottleTakesNoFurtherIngredientEvenThoughTheBareStandWouldTakeOne) {
+    PotionItem lingering = bottleOf(PotionKind::Swiftness, false, false,
+                                    PotionItem::Form::Lingering);
+    for (int step = 1; step < static_cast<int>(Ingredient::Count); ++step) {
+        bool changed = false;
+        PotionItem after = catalogBrewStep(lingering, static_cast<Ingredient>(step), changed);
+        CHECK(!changed);
+        CHECK(after == lingering);
+    }
+
+    // Without the catalog guard the salvaged stand would happily push a
+    // lingering cloud back down to a splash bottle.
+    bool standChanged = false;
+    PotionItem downgraded = brewResult(lingering, Ingredient::Gunpowder, standChanged);
+    CHECK(standChanged);
+    CHECK_EQ(downgraded.form, PotionItem::Form::Splash);
+}
+
+VF_TEST(catalogBrewStepMatchesTheStandForEveryIngredientItShares) {
+    int compared = 0;
+    for (int index = 0; index < BrewGraph::stateCount(); ++index) {
+        PotionItem state = BrewGraph::stateAt(index);
+        if (state.form == PotionItem::Form::Lingering) continue;
+
+        for (int step = 1; step < static_cast<int>(Ingredient::Count); ++step) {
+            Ingredient ingredient = static_cast<Ingredient>(step);
+            if (ingredient == Ingredient::DragonBreath) continue;
+
+            bool catalogChanged = false;
+            bool standChanged = false;
+            PotionItem viaCatalog = catalogBrewStep(state, ingredient, catalogChanged);
+            PotionItem viaStand = brewResult(state, ingredient, standChanged);
+            CHECK_EQ(catalogChanged, standChanged);
+            CHECK(viaCatalog == viaStand);
+            ++compared;
+        }
+    }
+    CHECK(compared > 1000);
+}
+
+VF_TEST(dragonBreathOnlyBitesOnASplashBottle) {
+    const PotionItem::Form forms[] = {PotionItem::Form::Drinkable, PotionItem::Form::Splash};
+    for (PotionItem::Form form : forms) {
+        PotionItem bottle = bottleOf(PotionKind::Poison, false, false, form);
+        bool changed = false;
+        PotionItem after = catalogBrewStep(bottle, Ingredient::DragonBreath, changed);
+        CHECK_EQ(changed, form == PotionItem::Form::Splash);
+        if (changed) {
+            CHECK_EQ(after.form, PotionItem::Form::Lingering);
+            CHECK_EQ(after.kind, PotionKind::Poison);
+        } else {
+            CHECK(after == bottle);
+        }
+    }
+}
+
+VF_TEST(theFuelBalanceRoundsUpToWholeBlazePowderAndCountsIngredientUseSeparately) {
+    CHECK_EQ(blazePowderForBrews(0), 0);
+    CHECK_EQ(blazePowderForBrews(-5), 0);
+    CHECK_EQ(blazePowderForBrews(1), 1);
+    CHECK_EQ(blazePowderForBrews(brewsPerBlazePowder), 1);
+    CHECK_EQ(blazePowderForBrews(brewsPerBlazePowder + 1), 2);
+    CHECK_EQ(blazePowderForBrews(3 * brewsPerBlazePowder), 3);
+
+    const BrewGraph& graph = brewGraph();
+    BrewPath strength = graph.shortestPath(PotionKind::Strength);
+    CHECK_EQ(strength.stepCount(), 2);
+    CHECK_EQ(strength.blazePowderIngredient, 1);
+    CHECK_EQ(strength.blazePowderFuel, 1);
+    CHECK_EQ(strength.blazePowderTotal(), 2);
+    CHECK_EQ(strength.totalTicks, 2 * brewDurationTicks);
+
+    BrewPath swiftness = graph.shortestPath(PotionKind::Swiftness);
+    CHECK_EQ(swiftness.blazePowderIngredient, 0);
+    CHECK_EQ(swiftness.blazePowderTotal(), 1);
+
+    BrewPath water = graph.shortestPath(PotionKind::Water);
+    CHECK(water.reachable);
+    CHECK_EQ(water.stepCount(), 0);
+    CHECK_EQ(water.blazePowderFuel, 0);
+    CHECK_EQ(water.blazePowderTotal(), 0);
+}
+
+VF_TEST(everyPathTheGraphReportsIsGenuinelyShortestForItsTarget) {
+    const BrewGraph& graph = brewGraph();
+    int relaxationFailures = 0;
+    std::vector<bool> produced(static_cast<std::size_t>(BrewGraph::stateCount()), false);
+
+    for (int index = 0; index < BrewGraph::stateCount(); ++index) {
+        PotionItem state = BrewGraph::stateAt(index);
+        int depth = graph.depthOf(state);
+        if (depth < 0) continue;
+
+        for (int step = 1; step < static_cast<int>(Ingredient::Count); ++step) {
+            bool changed = false;
+            PotionItem next = catalogBrewStep(state, static_cast<Ingredient>(step), changed);
+            if (!changed) continue;
+            produced[static_cast<std::size_t>(BrewGraph::stateIndex(next))] = true;
+            int nextDepth = graph.depthOf(next);
+            if (nextDepth < 0 || nextDepth > depth + 1) ++relaxationFailures;
+        }
+    }
+    CHECK_EQ(relaxationFailures, 0);
+
+    // Water is the only bottle no brew produces; everything else the graph
+    // calls reachable has to come out of some edge, and nothing outside the
+    // reachable set may be produced at all.
+    int mismatches = 0;
+    for (int index = 0; index < BrewGraph::stateCount(); ++index) {
+        bool isReachable = graph.depthOf(BrewGraph::stateAt(index)) >= 0;
+        bool expectProduced = isReachable && index != BrewGraph::stateIndex(PotionItem{});
+        if (produced[static_cast<std::size_t>(index)] != expectProduced) ++mismatches;
+    }
+    CHECK_EQ(mismatches, 0);
+}
+
+VF_TEST(stateIndexAndStateAtAreExactInversesOverTheWholeSpace) {
+    for (int index = 0; index < BrewGraph::stateCount(); ++index) {
+        PotionItem state = BrewGraph::stateAt(index);
+        CHECK_EQ(BrewGraph::stateIndex(state), index);
+        CHECK(!(state.upgraded && state.extended));
+    }
+    CHECK_EQ(BrewGraph::stateCount(), static_cast<int>(PotionKind::Count) * 9);
+    CHECK_EQ(BrewGraph::stateIndex(PotionItem{}), 0);
+}
+
+VF_TEST(theSharedCatalogAndGraphInstancesAreTheSameObjectEveryTime) {
+    CHECK(&potionCatalog() == &potionCatalog());
+    CHECK(&brewGraph() == &brewGraph());
+
+    BrewGraph rebuilt(potionCatalog());
+    CHECK_EQ(rebuilt.reachableStateCount(), brewGraph().reachableStateCount());
+    for (int index = 0; index < BrewGraph::stateCount(); ++index) {
+        CHECK_EQ(rebuilt.depthOf(BrewGraph::stateAt(index)),
+                 brewGraph().depthOf(BrewGraph::stateAt(index)));
+    }
+}
