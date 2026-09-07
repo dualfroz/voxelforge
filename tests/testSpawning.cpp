@@ -472,3 +472,99 @@ VF_TEST(theSpawnerBlockCountsDownActivatesAndRespectsItsNearbyLimit) {
     SpawnEnvironment env = nightEnvironment(world, light);
     env.playerPosition = {0.5f, static_cast<float>(spawnY), 0.5f};
 
+    SpawnerBlockState spawner;
+    spawner.position = originCell();
+    spawner.delay = 3;
+    spawner.minDelay = 40;
+    spawner.maxDelay = 60;
+
+    for (int tick = 0; tick < 3; ++tick) {
+        SpawnerTickResult step = tickSpawnerBlock(spawner, env, 0);
+        CHECK(step.playerInRange);
+        CHECK(!step.fired);
+        CHECK_EQ(step.delayAfter, 2 - tick);
+    }
+
+    SpawnerTickResult firing = tickSpawnerBlock(spawner, env, 0);
+    CHECK(firing.fired);
+    CHECK(firing.denial == SpawnDenial::None);
+    CHECK(!firing.positions.empty());
+    CHECK(firing.delayAfter >= spawner.minDelay);
+    CHECK(firing.delayAfter <= spawner.maxDelay);
+    CHECK_EQ(spawner.cyclesFired, 1);
+    CHECK(spawner.totalSpawned > 0);
+
+    spawner.delay = 0;
+    SpawnerTickResult crowded = tickSpawnerBlock(spawner, env, spawner.nearbyLimit);
+    CHECK(!crowded.fired);
+    CHECK(crowded.denial == SpawnDenial::CategoryCapReached);
+    CHECK(crowded.delayAfter >= spawner.minDelay);
+
+    spawner.delay = 0;
+    env.playerPosition = {500.0f, static_cast<float>(spawnY), 0.5f};
+    SpawnerTickResult idle = tickSpawnerBlock(spawner, env, 0);
+    CHECK(!idle.playerInRange);
+    CHECK(!idle.fired);
+    CHECK(idle.denial == SpawnDenial::TooFarFromPlayer);
+    CHECK_EQ(idle.delayAfter, 0);
+}
+
+VF_TEST(twoSpawnCyclesOnTheSameSeedProduceTheSameWorld) {
+    World world = plateWorld(Block::Grass);
+    LightField light = bakeLight(world);
+
+    std::vector<Vec3i> columns;
+    for (int cx = -1; cx <= 1; ++cx) {
+        for (int cz = -1; cz <= 1; ++cz) columns.push_back(Vec3i{cx, 0, cz});
+    }
+
+    auto runCycle = [&world, &light, &columns]() {
+        SpawnEnvironment env = nightEnvironment(world, light);
+        env.playerPosition = {0.5f, static_cast<float>(spawnY), 0.5f};
+        Spawner spawner;
+        spawner.setAttemptsPerColumn(4);
+        return spawner.runCycle(env, SpawnCategory::Hostile, columns, 0xfeed1234u);
+    };
+
+    std::vector<SpawnResult> first = runCycle();
+    std::vector<SpawnResult> second = runCycle();
+
+    CHECK_EQ(first.size(), second.size());
+    int accepted = 0;
+    for (std::size_t i = 0; i < first.size() && i < second.size(); ++i) {
+        CHECK(first[i].spawned == second[i].spawned);
+        CHECK(first[i].denial == second[i].denial);
+        CHECK(first[i].species == second[i].species);
+        CHECK(first[i].origin == second[i].origin);
+        CHECK_EQ(first[i].positions.size(), second[i].positions.size());
+        for (std::size_t member = 0;
+             member < first[i].positions.size() && member < second[i].positions.size(); ++member) {
+            CHECK_NEAR(first[i].positions[member].x, second[i].positions[member].x, 1e-6f);
+            CHECK_NEAR(first[i].positions[member].z, second[i].positions[member].z, 1e-6f);
+        }
+        if (first[i].spawned) ++accepted;
+    }
+    CHECK(accepted > 0);
+}
+
+VF_TEST(theSameSeedAlwaysPicksTheSameCellAndDifferentSeedsDoNot) {
+    World world = plateWorld(Block::Grass);
+    LightField light = bakeLight(world);
+    SpawnEnvironment env = nightEnvironment(world, light);
+
+    Vec3i first;
+    Vec3i second;
+    CHECK(pickSpawnCell(env, Vec3i{1, 0, 1}, 555u, 0, first));
+    CHECK(pickSpawnCell(env, Vec3i{1, 0, 1}, 555u, 0, second));
+    CHECK(first == second);
+    CHECK_EQ(first.y, spawnY);
+    CHECK(first.x >= chunkSize);
+    CHECK(first.x < chunkSize * 2);
+
+    Vec3i other;
+    CHECK(pickSpawnCell(env, Vec3i{1, 0, 1}, 556u, 0, other));
+    CHECK(first != other);
+
+    CHECK(spawnHash(1u, 2, 3, 4, 5) == spawnHash(1u, 2, 3, 4, 5));
+    CHECK(spawnHash(1u, 2, 3, 4, 5) != spawnHash(1u, 2, 3, 4, 6));
+}
