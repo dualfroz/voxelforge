@@ -44,7 +44,7 @@ SweptBox unitCellBox(const Vec3i& cell, float loY, float hiY, float inset) {
     return SweptBox{{x + inset, y + loY, z + inset}, {x + 1.0f - inset, y + hiY, z + 1.0f - inset}};
 }
 
-} // namespace
+}
 
 SweptBox makeBoxAtFeet(const Vec3& feetCentre, float width, float height) {
     float half = width * 0.5f;
@@ -124,7 +124,6 @@ ShapeBoxes shapeBoxesAt(CollisionShape shape, const Vec3i& cell) {
             out.boxes[out.count++] = unitCellBox(cell, 0.5f, 1.0f, 0.0f);
             break;
         case CollisionShape::Stairs:
-            // Lower slab plus the upper step over the +X half of the cell.
             out.boxes[out.count++] = unitCellBox(cell, 0.0f, 0.5f, 0.0f);
             {
                 SweptBox upper = unitCellBox(cell, 0.5f, 1.0f, 0.0f);
@@ -133,8 +132,6 @@ ShapeBoxes shapeBoxesAt(CollisionShape shape, const Vec3i& cell) {
             }
             break;
         case CollisionShape::Fence:
-            // The post reaches above its own cell, which is why a body cannot
-            // hop a fence the way it hops a full block.
             out.boxes[out.count++] = unitCellBox(cell, 0.0f, fencePostHeight, 0.375f);
             break;
         case CollisionShape::Carpet:
@@ -264,8 +261,6 @@ bool restsOnGround(const World& world, const SweptBox& box, float probeDepth) {
     SweptBox probe = box;
     probe.max.y = box.min.y;
     probe.min.y = box.min.y - probeDepth;
-    // Pull the footprint in so a body flush against a wall does not read the
-    // wall itself as a floor.
     probe.min.x += contactSkin;
     probe.min.z += contactSkin;
     probe.max.x -= contactSkin;
@@ -344,4 +339,4 @@ Vec3 clipVelocity(const Vec3& velocity, const CollisionResult& collision) {
     return out;
 }
 
-} // namespace vf
+}

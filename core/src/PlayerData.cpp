@@ -26,7 +26,7 @@ bool readInt(const NbtTag& compound, const std::string& key, int& out) {
     return true;
 }
 
-}  // namespace
+}
 
 NbtTag playerToNbt(const PlayerData& player) {
     NbtTag root = NbtTag::makeCompound();
@@ -130,4 +130,4 @@ bool loadPlayer(const uint8_t* data, std::size_t size, PlayerData& out) {
     return playerFromNbt(root, out);
 }
 
-} // namespace vf
+}

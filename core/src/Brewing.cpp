@@ -12,30 +12,30 @@ using Ingredient = BrewRecipe::Ingredient;
 struct PotionProfile {
     EffectKind kind = EffectKind::Count;
     int baseTicks = 0;
-    int extendedTicks = 0;  // zero: redstone does nothing
-    int upgradedTicks = 0;  // zero: glowstone does nothing
+    int extendedTicks = 0;
+    int upgradedTicks = 0;
     int upgradedLevel = 1;
 };
 
 const PotionProfile& profileFor(PotionKind kind) {
     static const PotionProfile profiles[] = {
-        {EffectKind::Count, 0, 0, 0, 1},                 // Water
-        {EffectKind::Count, 0, 0, 0, 1},                 // Mundane
-        {EffectKind::Count, 0, 0, 0, 1},                 // Thick
-        {EffectKind::Count, 0, 0, 0, 1},                 // Awkward
-        {EffectKind::InstantHealth, 1, 0, 1, 2},         // Healing
-        {EffectKind::InstantDamage, 1, 0, 1, 2},         // Harming
-        {EffectKind::Regeneration, 900, 1800, 440, 2},   // Regeneration
-        {EffectKind::Poison, 900, 1800, 432, 2},         // Poison
-        {EffectKind::Speed, 3600, 9600, 1800, 2},        // Swiftness
-        {EffectKind::Slowness, 1800, 4800, 400, 4},      // Slowness
-        {EffectKind::JumpBoost, 3600, 9600, 1800, 2},    // Leaping
-        {EffectKind::Strength, 3600, 9600, 1800, 2},     // Strength
-        {EffectKind::Weakness, 1800, 4800, 0, 1},        // Weakness
-        {EffectKind::FireResistance, 3600, 9600, 0, 1},  // FireResistance
-        {EffectKind::WaterBreathing, 3600, 9600, 0, 1},  // WaterBreathing
-        {EffectKind::NightVision, 3600, 9600, 0, 1},     // NightVision
-        {EffectKind::Invisibility, 3600, 9600, 0, 1},    // Invisibility
+        {EffectKind::Count, 0, 0, 0, 1},
+        {EffectKind::Count, 0, 0, 0, 1},
+        {EffectKind::Count, 0, 0, 0, 1},
+        {EffectKind::Count, 0, 0, 0, 1},
+        {EffectKind::InstantHealth, 1, 0, 1, 2},
+        {EffectKind::InstantDamage, 1, 0, 1, 2},
+        {EffectKind::Regeneration, 900, 1800, 440, 2},
+        {EffectKind::Poison, 900, 1800, 432, 2},
+        {EffectKind::Speed, 3600, 9600, 1800, 2},
+        {EffectKind::Slowness, 1800, 4800, 400, 4},
+        {EffectKind::JumpBoost, 3600, 9600, 1800, 2},
+        {EffectKind::Strength, 3600, 9600, 1800, 2},
+        {EffectKind::Weakness, 1800, 4800, 0, 1},
+        {EffectKind::FireResistance, 3600, 9600, 0, 1},
+        {EffectKind::WaterBreathing, 3600, 9600, 0, 1},
+        {EffectKind::NightVision, 3600, 9600, 0, 1},
+        {EffectKind::Invisibility, 3600, 9600, 0, 1},
     };
     static_assert(sizeof(profiles) / sizeof(profiles[0]) ==
                       static_cast<std::size_t>(PotionKind::Count),
@@ -65,7 +65,7 @@ bool applyModifier(PotionItem& potion, Ingredient ingredient) {
     }
 }
 
-} // namespace
+}
 
 const std::vector<BrewRecipe>& brewRecipes() {
     static const std::vector<BrewRecipe> recipes = {
@@ -241,4 +241,4 @@ bool splashPotion(EffectSet& target, const PotionItem& potion, float distance, f
     return applyEffect(target, effect);
 }
 
-} // namespace vf
+}

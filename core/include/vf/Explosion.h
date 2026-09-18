@@ -34,4 +34,4 @@ Vec3 explosionKnockback(const Vec3i& center, const Vec3& entityPos, float power)
 
 void igniteTnt(BlockTickScheduler& scheduler, const Vec3i& pos, int fuseTicks = 4);
 
-} // namespace vf
+}

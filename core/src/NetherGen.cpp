@@ -25,7 +25,7 @@ bool replaceable(Block block) {
     return block == Block::Air || block == Block::Lava;
 }
 
-} // namespace
+}
 
 NetherGenerator::NetherGenerator() : NetherGenerator(Params{}) {}
 
@@ -295,4 +295,4 @@ void NetherGenerator::decorateColumn(World& world, int columnX, int columnZ) con
     }
 }
 
-} // namespace vf
+}

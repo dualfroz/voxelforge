@@ -197,4 +197,4 @@ HistoryStats EditHistory::stats() const {
     return summary;
 }
 
-} // namespace vf
+}

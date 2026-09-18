@@ -25,7 +25,7 @@ const Vec3i neighbourOffsets[6] = {
     {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1},
 };
 
-} // namespace
+}
 
 Climate::Climate(const BiomeGen& biomes, const ClimateConfig& config)
     : biomes(biomes), config(config) {}
@@ -159,4 +159,4 @@ void Climate::apply(World& world, const std::vector<ClimateChange>& changes) {
     }
 }
 
-} // namespace vf
+}

@@ -33,52 +33,37 @@ struct BoundingBoxI {
 };
 
 struct StructurePiece {
-    Vec3i offset;   // relative to StructurePlan::origin
+    Vec3i offset;
     Block block;
 };
 
 struct StructurePlan {
     StructureGenKind kind = StructureGenKind::Village;
-    Vec3i origin;                          // world-space anchor
-    BoundingBoxI bounds;                   // world-space, covers every piece
+    Vec3i origin;
+    BoundingBoxI bounds;
     std::vector<StructurePiece> pieces;
 };
 
 struct StructureGenParams {
     uint32_t seed = 1337u;
     int chunkSize = 16;
-    int villageChance = 42;    // 1 in N chunks host a village
+    int villageChance = 42;
     int dungeonChance = 37;
     int mineshaftChance = 53;
     int ravineChance = 61;
     int templeChance = 71;
 };
 
-// Deterministic 32-bit mix of seed, chunk coordinate and a salt distinguishing
-// use sites. Named apart from vf::structureHash in Structures.h to avoid a
-// duplicate symbol when both translation units link together.
 uint32_t chunkStructureHash(uint32_t seed, int chunkX, int chunkZ, uint32_t salt);
 
-// Deterministic per-chunk structure placement and piece-list generation:
-// village (house grid + paths), dungeon (room + spawner + chests), mineshaft
-// (branching corridors + supports), ravine (carved canyon) and desert temple
-// (stepped pyramid + hidden chamber). Every method is a pure function of its
-// inputs, so identical seed and chunk coordinates always produce an
-// identical plan.
 class StructureGen {
 public:
     explicit StructureGen(const StructureGenParams& params = {});
 
-    // Decides whether chunk (chunkX, chunkZ) hosts a structure and which
-    // kind, in priority order village > temple > dungeon > mineshaft > ravine.
     bool structureForChunk(int chunkX, int chunkZ, StructureGenKind& outKind) const;
 
-    // Builds the full piece list and bounding box for `kind` anchored at
-    // groundY within chunk (chunkX, chunkZ).
     StructurePlan buildStructure(StructureGenKind kind, int chunkX, int chunkZ, int groundY) const;
 
-    // Writes every piece into the world, skipping pieces that fall outside
-    // [0, maxY).
     void stamp(World& world, const StructurePlan& plan, int maxY) const;
 
     const StructureGenParams& settings() const { return params; }
@@ -95,4 +80,4 @@ private:
     StructureGenParams params;
 };
 
-} // namespace vf
+}

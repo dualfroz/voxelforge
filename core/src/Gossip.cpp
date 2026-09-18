@@ -13,7 +13,6 @@ int clampInt(int value, int low, int high) {
 }
 
 const GossipEntry::Tuning tuningTable[static_cast<int>(GossipKind::Count)] = {
-    // weight, maxValue, decayPerDay, shareCap, sharePercent
     {5, 100, 10, 0, 0},
     {5, 200, 20, 100, 50},
     {1, 25, 2, 20, 50},
@@ -21,7 +20,7 @@ const GossipEntry::Tuning tuningTable[static_cast<int>(GossipKind::Count)] = {
     {-5, 100, 2, 0, 0},
 };
 
-} // namespace
+}
 
 const char* gossipKindName(GossipKind kind) {
     switch (kind) {
@@ -139,4 +138,4 @@ ReputationView buildReputation(const GossipLedger& personal,
     return view;
 }
 
-} // namespace vf
+}

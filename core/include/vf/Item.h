@@ -59,21 +59,13 @@ bool isFood(ItemId id);
 int maxStackSize(ItemId id);
 int toolMaxDurability(ItemId id);
 
-// Bidirectional mapping between placeable/obtainable blocks and their item form.
-// blockForItem returns Block::Air and itemForBlock returns ItemId::None when the
-// given side has no counterpart.
 Block blockForItem(ItemId id);
 ItemId itemForBlock(Block block);
 
-// The tool type that is efficient against a block, or ToolType::None when no
-// tool gives a bonus (bare hands are as fast as any tool).
 ToolType correctToolFor(Block block);
 
-// Base multiplier for a tool tier regardless of block, 1.0 for bare hands.
 float toolTierSpeedMultiplier(ToolTier tier);
 
-// Combines correctToolFor and toolTierSpeedMultiplier: 1.0 unless toolItem is a
-// tool whose type matches the block's preferred class.
 float miningSpeedMultiplier(ItemId toolItem, Block block);
 
 struct FoodValue {
@@ -93,16 +85,10 @@ struct ItemSlot {
 
 ItemSlot makeToolStack(ItemId toolItem);
 
-// Moves as many items as possible from `from` into `into` (same item, same
-// durability, respecting the item's max stack). Returns the amount moved.
 int mergeStacks(ItemSlot& into, ItemSlot& from);
 
-// Removes up to `amount` items from `stack` and returns them as a new stack.
 ItemSlot splitStack(ItemSlot& stack, int amount);
 
-// Reduces a tool's durability by `amount`. Clears the slot to empty and
-// returns true when durability reaches zero. No-op (returns false) on
-// non-tool stacks.
 bool damageTool(ItemSlot& stack, int amount = 1);
 
-} // namespace vf
+}

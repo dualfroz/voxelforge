@@ -91,7 +91,7 @@ void addModifier(EquipmentStats& stats, AttributeModifier::Attribute attribute,
     stats.modifiers.push_back(modifier);
 }
 
-} // namespace
+}
 
 const char* equipSlotName(EquipSlot slot) {
     switch (slot) {
@@ -391,4 +391,4 @@ float equippedMeleeDamage(const Equipment& gear, const CombatStats& attacker,
                              arthropodTarget, critical);
 }
 
-} // namespace vf
+}

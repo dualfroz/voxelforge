@@ -402,6 +402,7 @@ CommandResult cmdSummon(CommandContext& ctx, const std::vector<std::string>& arg
     if (!parseSpeciesName(args[0], species)) return fail("unknown mob: " + args[0]);
     Vec3i cell;
     if (!parseCorner(args, 1, callerBlock(ctx), cell)) return fail("invalid coordinates");
+    if (!inWorldBounds(ctx, cell)) return fail("position out of bounds");
 
     Vec3 position{static_cast<float>(cell.x) + 0.5f, static_cast<float>(cell.y),
                   static_cast<float>(cell.z) + 0.5f};
@@ -420,6 +421,7 @@ CommandResult cmdTp(CommandContext& ctx, const std::vector<std::string>& args) {
     if (args.size() != 3u) return fail("usage: tp <x> <y> <z>");
     Vec3i target;
     if (!parseCorner(args, 0, callerBlock(ctx), target)) return fail("invalid coordinates");
+    if (!inWorldBounds(ctx, target)) return fail("position out of bounds");
     ctx.callerPos = {static_cast<float>(target.x), static_cast<float>(target.y),
                      static_cast<float>(target.z)};
     CommandResult out = okResult("teleported to " + posText(target), 1);
@@ -565,7 +567,7 @@ CommandResult cmdSeed(CommandContext& ctx, const std::vector<std::string>& args)
     return okResult("seed: " + std::to_string(ctx.seed), 0);
 }
 
-} // namespace
+}
 
 std::vector<std::string> tokenizeCommand(const std::string& line) {
     std::vector<std::string> tokens;
@@ -774,4 +776,4 @@ CommandResult CommandDispatcher::execute(CommandContext& context, const std::str
     return handler->second(context, args);
 }
 
-} // namespace vf
+}

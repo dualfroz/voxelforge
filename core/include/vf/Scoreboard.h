@@ -14,9 +14,6 @@
 
 namespace vf {
 
-// What a statistic counts. The three families differ in their unit: distances
-// are whole centimetres, PlayTicks is world ticks, everything else is a plain
-// tally.
 enum class StatKind : uint8_t {
     DistanceWalked,
     DistanceSprinted,
@@ -35,19 +32,15 @@ enum class StatKind : uint8_t {
 
 const char* statKindName(StatKind kind);
 bool parseStatKindName(const std::string& text, StatKind& out);
-// True for the kinds counted once per block, item or species.
 bool statKindHasSubject(StatKind kind);
 bool statKindIsDistance(StatKind kind);
 
-// One counted cell. `subject` is the block, item or species the tally belongs
-// to, cast to int; it stays 0 for the kinds that count a single total.
 struct StatCounter {
     StatKind kind = StatKind::PlayTicks;
     int subject = 0;
     long long value = 0;
 };
 
-// Everything one player has done, as integers so a replay counts identically.
 class StatSheet {
 public:
     void add(StatKind kind, long long amount);
@@ -57,7 +50,6 @@ public:
     void addMobKilled(Species species, long long amount = 1);
     void clear();
 
-    // Summed over every subject of that kind.
     long long total(StatKind kind) const;
     long long value(StatKind kind, int subject) const;
     long long blocksBroken(Block block) const;
@@ -65,10 +57,8 @@ public:
     long long mobsKilled(Species species) const;
     long long distanceTravelled() const;
 
-    // Sorted by kind then subject, so two equal sheets serialize identically.
     std::vector<StatCounter> counters() const;
     int distinctSubjects(StatKind kind) const;
-    // Incremented on every change, so a cache can tell it went stale.
     long long revision() const { return changes; }
 
 private:
@@ -76,14 +66,10 @@ private:
     long long changes = 0;
 };
 
-// Where a scoreboard objective is shown.
 enum class DisplaySlot : uint8_t { PlayerList, Sidebar, BelowName, Count };
 
 const char* displaySlotName(DisplaySlot slot);
 
-// A tracked score column. A Manual objective only moves when something calls
-// setScore or addScore; a Statistic objective is a live view of the players'
-// stat sheets and needs no update step at all.
 struct ScoreObjective {
     enum class Criterion : uint8_t { Manual, Statistic };
     enum class Sort : uint8_t { Descending, Ascending };
@@ -93,14 +79,11 @@ struct ScoreObjective {
     std::string displayName;
     Criterion criterion = Criterion::Manual;
     StatKind statKind = StatKind::PlayTicks;
-    // -1 totals every subject of the kind, otherwise it is the one block, item
-    // or species this objective follows.
     int statSubject = -1;
     Sort sort = Sort::Descending;
     Format format = Format::Integer;
 
     bool automatic() const { return criterion == Criterion::Statistic; }
-    // The score rendered for display: a plain number, "12.34 m" or "1h 02m 03s".
     std::string formatScore(int score) const;
 };
 
@@ -110,8 +93,6 @@ struct ScoreEntry {
     std::string formatted;
 };
 
-// A named group of players with its own colour, friendly fire rule and name
-// visibility.
 struct ScoreTeam {
     enum class Color : uint8_t {
         White, Gray, Black, Red, Green, Blue, Yellow, Aqua, Purple, Gold, Count
@@ -132,9 +113,6 @@ struct ScoreTeam {
 
 const char* scoreTeamColorName(ScoreTeam::Color color);
 
-// Objectives, scores, display slots, teams and the per player stat sheets the
-// automatic objectives read. Every listing comes back sorted, so two runs of
-// the same game produce the same board.
 class Scoreboard {
 public:
     bool addObjective(const ScoreObjective& objective);
@@ -146,7 +124,6 @@ public:
     const StatSheet* statsFor(const std::string& player) const;
     std::vector<std::string> players() const;
 
-    // Refused for automatic objectives: their value belongs to the stat sheet.
     bool setScore(const std::string& objectiveName, const std::string& player, int value);
     bool addScore(const std::string& objectiveName, const std::string& player, int delta);
     bool resetScore(const std::string& objectiveName, const std::string& player);
@@ -155,7 +132,6 @@ public:
     int score(const std::string& objectiveName, const std::string& player) const;
     bool tracked(const std::string& objectiveName, const std::string& player) const;
 
-    // Sorted by the objective's sort order, ties broken by player name.
     std::vector<ScoreEntry> entries(const std::string& objectiveName) const;
 
     void setDisplay(DisplaySlot slot, const std::string& objectiveName);
@@ -186,4 +162,4 @@ private:
     std::array<std::string, static_cast<std::size_t>(DisplaySlot::Count)> slots;
 };
 
-} // namespace vf
+}

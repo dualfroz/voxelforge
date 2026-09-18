@@ -17,7 +17,7 @@ uint64_t widthMask(int bitWidth) {
     return bitWidth >= 64 ? ~0ull : ((1ull << bitWidth) - 1ull);
 }
 
-}  // namespace
+}
 
 std::vector<uint64_t> BitPacker::pack(const std::vector<uint32_t>& values, int bitWidth) {
     int perWord = 64 / bitWidth;
@@ -222,7 +222,7 @@ bool readColumnBody(ByteReader& reader, AnvilColumn& column) {
 
 const uint8_t anvilMagic[4] = {'V', 'X', 'A', '5'};
 
-}  // namespace
+}
 
 ByteBuffer AnvilRegion::serialize() const {
     ByteWriter out;
@@ -342,4 +342,4 @@ bool anvilDeserializeWorld(const uint8_t* data, std::size_t size, World& out) {
     return true;
 }
 
-} // namespace vf
+}

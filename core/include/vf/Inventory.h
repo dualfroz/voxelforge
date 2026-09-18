@@ -14,8 +14,6 @@ struct ItemStack {
     bool empty() const { return count <= 0 || block == Block::Air; }
 };
 
-// The player's hotbar: a fixed row of stacks with one selected slot. Placing a
-// block consumes from the selected stack; breaking a block returns it here.
 class Hotbar {
 public:
     Hotbar() {
@@ -33,10 +31,8 @@ public:
         selected = ((index % hotbarSize) + hotbarSize) % hotbarSize;
     }
 
-    // Wheel or bracket keys: step the selection, wrapping both ends.
     void scroll(int steps) { select(selected + steps); }
 
-    // Breaking a block: stack it onto a matching slot, else the first empty one.
     void add(Block block, int count) {
         if (block == Block::Air || count <= 0) return;
         for (ItemStack& stack : slots) {
@@ -54,7 +50,6 @@ public:
         }
     }
 
-    // Placing a block: draw one from the selected stack. False if it was empty.
     bool consumeSelected() {
         ItemStack& stack = slots[selected];
         if (stack.empty()) return false;
@@ -67,4 +62,4 @@ private:
     int selected = 0;
 };
 
-} // namespace vf
+}

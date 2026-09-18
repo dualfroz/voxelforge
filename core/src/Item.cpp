@@ -113,7 +113,7 @@ const std::array<BlockItemPair, 37>& blockItemPairs() {
     return pairs;
 }
 
-} // namespace
+}
 
 const ItemInfo& itemInfo(ItemId id) {
     static const std::array<ItemInfo, static_cast<std::size_t>(ItemId::Count)> table = buildItemTable();
@@ -233,4 +233,4 @@ bool damageTool(ItemSlot& stack, int amount) {
     return false;
 }
 
-} // namespace vf
+}

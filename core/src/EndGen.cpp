@@ -39,7 +39,7 @@ float horizontalDistance(int gx, int gz, const Vec3i& center) {
     return std::sqrt(dx * dx + dz * dz);
 }
 
-} // namespace
+}
 
 EndGenerator::EndGenerator() : EndGenerator(Params{}) {}
 
@@ -341,4 +341,4 @@ void EndGenerator::generateColumn(World& world, int columnX, int columnZ) const 
     decorateColumn(world, columnX, columnZ);
 }
 
-} // namespace vf
+}

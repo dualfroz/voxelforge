@@ -28,10 +28,6 @@ struct TimeOfDayConfig {
     int moonPhaseCount = 8;
 };
 
-// Deterministic world clock. Maps an absolute tick counter onto a day cycle:
-// within-day fraction, four named phases, a sky-light curve peaking at noon and
-// bottoming at midnight, a moon phase advancing once per day, and sunrise/sunset
-// crossing detection for the interval covered by the most recent advance.
 class TimeOfDay {
 public:
     explicit TimeOfDay(WorldTick startTick = 0, const TimeOfDayConfig& config = {});
@@ -70,4 +66,4 @@ private:
     bool sunsetCrossed = false;
 };
 
-} // namespace vf
+}

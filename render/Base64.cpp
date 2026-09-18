@@ -52,4 +52,4 @@ std::vector<uint8_t> base64Decode(const std::string& text) {
     return out;
 }
 
-} // namespace vf
+}

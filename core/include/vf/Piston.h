@@ -21,4 +21,4 @@ bool isPistonBlock(Block b);
 PistonMoveResult extendPiston(World& world, const Vec3i& pos, Face facing);
 PistonMoveResult retractPiston(World& world, const Vec3i& pos, Face facing);
 
-} // namespace vf
+}

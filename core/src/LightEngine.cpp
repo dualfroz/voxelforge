@@ -8,9 +8,9 @@ namespace {
 
 const int offsets[6][3] = {{1, 0, 0},  {-1, 0, 0}, {0, 1, 0},
                            {0, -1, 0}, {0, 0, 1},  {0, 0, -1}};
-constexpr int downDir = 3;   // offsets[3] == {0, -1, 0}
+constexpr int downDir = 3;
 
-} // namespace
+}
 
 LightEngine::LightEngine(World& world, const Vec3i& origin, const Vec3i& dims)
     : world(world), origin(origin), dims(dims) {
@@ -73,7 +73,7 @@ void LightEngine::floodRemove(std::vector<uint8_t>& field, std::vector<Node>& re
 
             bool dependent;
             if (isSun && d == downDir && r.level == maxLightLevel && neighbour == maxLightLevel)
-                dependent = true;   // vertical sky beam cut from above
+                dependent = true;
             else
                 dependent = neighbour < r.level;
 
@@ -194,4 +194,4 @@ float LightEngine::combinedAt(int gx, int gy, int gz, float dayFactor) const {
     return best / static_cast<float>(maxLightLevel);
 }
 
-} // namespace vf
+}

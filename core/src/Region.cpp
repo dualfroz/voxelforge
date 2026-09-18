@@ -4,9 +4,9 @@ namespace vf {
 
 namespace {
 
-constexpr uint32_t regionMagic = 0x31525856;   // "VXR1"
+constexpr uint32_t regionMagic = 0x31525856;
 constexpr uint32_t regionVersion = 1;
-constexpr uint32_t regionsMagic = 0x53525856;   // "VXRS"
+constexpr uint32_t regionsMagic = 0x53525856;
 
 void putU32(std::vector<uint8_t>& out, uint32_t value) {
     out.push_back(static_cast<uint8_t>(value & 0xff));
@@ -80,7 +80,7 @@ bool decodeChunk(Reader& reader, Chunk& chunk) {
     return true;
 }
 
-} // namespace
+}
 
 RegionCoord regionForChunk(const Vec3i& chunkCoord) {
     return {floorDiv(chunkCoord.x, regionSize), floorDiv(chunkCoord.z, regionSize)};
@@ -187,4 +187,4 @@ bool deserializeRegions(const uint8_t* data, std::size_t size, World& out) {
     return true;
 }
 
-} // namespace vf
+}

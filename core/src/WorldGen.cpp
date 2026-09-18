@@ -42,7 +42,7 @@ void placeTree(World& world, int gx, int baseY, int gz, int maxY, bool tall) {
     }
 }
 
-} // namespace
+}
 
 WorldGen::WorldGen(const WorldGenParams& params)
     : params(params),
@@ -191,7 +191,7 @@ void WorldGen::placeStructures(World& world, int columnX, int columnZ) const {
     if (!params.structures) return;
 
     uint32_t h = structureHash(params.seed ^ 0x51ed270bu, columnX, 0, columnZ);
-    int lx = 2 + static_cast<int>(h % 12u);          // interior anchor, footprint stays in column
+    int lx = 2 + static_cast<int>(h % 12u);
     int lz = 2 + static_cast<int>((h >> 8) % 12u);
     int gx = columnX * chunkSize + lx;
     int gz = columnZ * chunkSize + lz;
@@ -231,4 +231,4 @@ void WorldGen::placeStructures(World& world, int columnX, int columnZ) const {
     stampStructure(world, {gx, surface + 1, gz}, edits, params.maxY);
 }
 
-} // namespace vf
+}

@@ -30,9 +30,6 @@ uint32_t scramble(uint32_t v) {
     return v;
 }
 
-// The tile id takes part in the hash so two tiles that share a pattern still
-// get different grain, and the seed is folded in so params.noiseSeed actually
-// reaches every sample.
 uint32_t gridHash(int tileSalt, int x, int y, uint32_t salt, uint32_t seed) {
     uint32_t h = static_cast<uint32_t>(tileSalt) * 374761393u +
                  static_cast<uint32_t>(x) * 668265263u +
@@ -68,7 +65,6 @@ float fractalNoise(int tileSalt, float fx, float fy, uint32_t salt, uint32_t see
     return coarse * 0.66f + fine * 0.34f;
 }
 
-// Noise that varies along one axis only, for grain and for warping band edges.
 float lineNoise(int tileSalt, float along, uint32_t salt, uint32_t seed) {
     return valueNoise(tileSalt, along, 0.5f, salt, seed);
 }
@@ -82,8 +78,6 @@ TileRgb mixRgb(TileRgb from, TileRgb to, float t) {
     return out;
 }
 
-// What a pattern says about one pixel: how far it moved from base towards
-// accent, how it is lit, and whether the pattern left a gap there.
 struct PatternSample {
     float accentWeight = 0.0f;
     float shade = 1.0f;
@@ -114,9 +108,6 @@ PatternSample orePattern(const TileSpec& spec, int tileSalt, int x, int y, int s
     return out;
 }
 
-// Courses of brick with mortar between them. Odd rows shift by half a brick;
-// without that shift the tile reads as a grid and every brick wall in the world
-// lines its joints up vertically.
 PatternSample brickPattern(const TileSpec& spec, int tileSalt, int x, int y, int size,
                            uint32_t seed) {
     int courseHeight = std::max(2, static_cast<int>(std::lround(size * (0.16f + spec.scale * 0.2f))));
@@ -139,8 +130,6 @@ PatternSample brickPattern(const TileSpec& spec, int tileSalt, int x, int y, int
     return out;
 }
 
-// Boards laid side by side with a seam between them, and grain that runs the
-// length of the board rather than across it.
 PatternSample plankPattern(const TileSpec& spec, int tileSalt, int x, int y, int size,
                            uint32_t seed) {
     int across = spec.vertical ? x : y;
@@ -164,9 +153,6 @@ PatternSample plankPattern(const TileSpec& spec, int tileSalt, int x, int y, int
     return out;
 }
 
-// Two rails with rungs strung between them, or a full grid when flipped. The
-// rails sit a little inside the tile edge, which is the difference between a
-// ladder and a border, and the rungs only span the gap between them.
 PatternSample latticePattern(const TileSpec& spec, int tileSalt, int x, int y, int size,
                              uint32_t seed) {
     int barWidth = std::max(1, static_cast<int>(std::lround(size * (0.06f + spec.scale * 0.14f))));
@@ -199,8 +185,6 @@ PatternSample latticePattern(const TileSpec& spec, int tileSalt, int x, int y, i
     return out;
 }
 
-// A band of accent hugging one edge, its inner boundary chewed up by noise so
-// it does not read as a ruled line.
 PatternSample edgeBandPattern(const TileSpec& spec, int tileSalt, int x, int y, int size,
                               uint32_t seed) {
     float thickness = size * (0.15f + spec.scale * 0.35f);
@@ -226,8 +210,6 @@ PatternSample growthRingsPattern(const TileSpec& spec, int tileSalt, int x, int 
     float dy = y + 0.5f - centre;
     float radius = std::sqrt(dx * dx + dy * dy);
     float spacing = std::max(1.2f, size * (0.05f + spec.scale * 0.16f));
-    // The warp has to stay a fraction of the ring spacing. Scaled to the tile
-    // instead, it swallows tightly spaced rings and the tile goes flat.
     float warp = (fractalNoise(tileSalt, x * 3.0f / size, y * 3.0f / size, 47u, seed) - 0.5f) *
                  spacing * 0.7f;
     float phase = (radius + warp) / spacing;
@@ -240,8 +222,6 @@ PatternSample growthRingsPattern(const TileSpec& spec, int tileSalt, int x, int 
     return out;
 }
 
-// Round dots on a jittered cell grid: glowstone crumbs, amethyst facets, the
-// sculk's blue eyes. Only the nine surrounding cells are ever consulted.
 PatternSample dotsPattern(const TileSpec& spec, int tileSalt, int x, int y, int size,
                           uint32_t seed) {
     float cells = 2.0f + (1.0f - spec.scale) * 4.0f;
@@ -291,8 +271,6 @@ PatternSample strataPattern(const TileSpec& spec, int tileSalt, int x, int y, in
     return out;
 }
 
-// Irregular blobs with a dark rim, which is what turns a flat colour into
-// cobble, gravel or netherrack.
 PatternSample splatterPattern(const TileSpec& spec, int tileSalt, int x, int y, int size,
                               uint32_t seed) {
     float coarseCells = 2.0f + spec.scale * 3.0f;
@@ -312,8 +290,6 @@ PatternSample splatterPattern(const TileSpec& spec, int tileSalt, int x, int y, 
     return out;
 }
 
-// Travelling crests with ripple on top. When the spec is a cutout the troughs
-// open right through, which is how a portal reads as a hole in the world.
 PatternSample liquidPattern(const TileSpec& spec, int tileSalt, int x, int y, int size,
                             uint32_t seed) {
     float drift = lineNoise(tileSalt, x * 2.0f / size, 71u, seed);
@@ -327,9 +303,6 @@ PatternSample liquidPattern(const TileSpec& spec, int tileSalt, int x, int y, in
     return out;
 }
 
-// A plant sprite: a wandering stalk with leaves hung off it, everything else
-// cut away. Without the vertical flag it becomes the flat cross a dust line or
-// a tripwire draws on the ground.
 PatternSample crossPattern(const TileSpec& spec, int tileSalt, int x, int y, int size,
                            uint32_t seed) {
     float centre = (size - 1) * 0.5f;
@@ -354,8 +327,6 @@ PatternSample crossPattern(const TileSpec& spec, int tileSalt, int x, int y, int
     float stalkHalf = std::max(0.6f, size * (0.05f + spec.scale * 0.07f));
     float dx = std::fabs(x - centre - sway);
     if (dx <= stalkHalf) {
-        // The top of a stalk is its head: the flame on a torch, the ear on
-        // wheat, the bud on a sapling. It carries the accent, the stem does not.
         float headDepth = size * 0.30f;
         out.accentWeight = clamp01((headDepth - y) / headDepth);
         out.shade = 1.02f - 0.22f * (dx / std::max(1.0f, stalkHalf));
@@ -451,9 +422,6 @@ PatternSample samplePattern(const TileSpec& spec, int tileSalt, int x, int y, in
     return PatternSample{};
 }
 
-// The grain the material lays over the pattern, as a brightness multiplier.
-// Its amplitude is the spec's noise, so a tile with no noise has no grain at
-// all and shows exactly what its pattern drew.
 float materialGrain(const TileSpec& spec, int tileSalt, int x, int y, int size, uint32_t seed) {
     float amount = spec.noise;
     if (amount <= 0.0f) return 1.0f;
@@ -531,7 +499,7 @@ float materialGrain(const TileSpec& spec, int tileSalt, int x, int y, int size, 
     return std::max(0.0f, 1.0f + amount * shape);
 }
 
-} // namespace
+}
 
 TileSampler::TileSampler(const TileTextureParams& params) : settings(params) {}
 
@@ -544,8 +512,6 @@ TilePixel TileSampler::pixelOf(const TileSpec& spec, int tileSalt, int x, int y)
     TileRgb blended = mixRgb(spec.base, spec.accent, pattern.accentWeight);
 
     float brightness = pattern.shade * materialGrain(spec, tileSalt, x, y, size, settings.noiseSeed);
-    // The old atlas darkened the first row and column so block edges stayed
-    // legible against each other. Cheap, and every tile still needs it.
     if (x == 0 || y == 0) brightness *= 0.86f;
 
     float red = blended.r * brightness;
@@ -583,4 +549,4 @@ void TileSampler::writeTile(int tile, uint8_t* rgba) const {
     }
 }
 
-} // namespace vf
+}

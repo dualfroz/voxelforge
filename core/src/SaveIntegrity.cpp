@@ -64,7 +64,7 @@ bool actionOutranks(RepairActionKind candidate, RepairActionKind existing) {
     return rank(candidate) > rank(existing);
 }
 
-} // namespace
+}
 
 const char* issueSeverityName(IssueSeverity severity) {
     switch (severity) {
@@ -674,4 +674,4 @@ RepairResult SaveScanner::scanAndRepair(const ByteBuffer& buffer) const {
     return repair(buffer.data(), buffer.size(), plan);
 }
 
-} // namespace vf
+}

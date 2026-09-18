@@ -8,8 +8,8 @@ namespace vf {
 
 namespace {
 
-constexpr uint32_t magicV1 = 0x31465856;   // "VXF1"
-constexpr uint32_t magicV3 = 0x33465856;   // "VXF3"
+constexpr uint32_t magicV1 = 0x31465856;
+constexpr uint32_t magicV3 = 0x33465856;
 constexpr uint32_t formatVersion3 = 3;
 
 constexpr uint32_t tagMobs = 0x4d4f4253;
@@ -179,7 +179,7 @@ bool readMob(Reader& reader, Mob& mob) {
     return true;
 }
 
-} // namespace
+}
 
 std::vector<uint8_t> serializeSaveV3(const SaveV3& save) {
     std::vector<uint8_t> out;
@@ -219,7 +219,7 @@ bool deserializeSaveV3(const uint8_t* data, std::size_t size, SaveV3& out) {
     if (!peek.u32(magic)) return false;
 
     if (magic == magicV1) {
-        return deserializeWorld(data, size, out.world);   // legacy v1/v2 migration
+        return deserializeWorld(data, size, out.world);
     }
     if (magic != magicV3) return false;
 
@@ -250,9 +250,9 @@ bool deserializeSaveV3(const uint8_t* data, std::size_t size, SaveV3& out) {
             if (!readGrid(reader, out.light)) return false;
             out.hasLight = true;
         }
-        reader.pos = sectionStart + length;   // resync / skip unknown sections
+        reader.pos = sectionStart + length;
     }
     return true;
 }
 
-} // namespace vf
+}

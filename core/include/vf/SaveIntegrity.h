@@ -12,20 +12,11 @@
 
 namespace vf {
 
-// Consistency control for a region save container (format in SaveMigration.h).
-//
-// The scanner never trusts a field before it has been bounded by the buffer it
-// came from, so a save damaged in any way still produces a report rather than a
-// crash. Every finding carries a severity, a location and a sentence a person
-// can act on; the repair planner turns the recoverable ones into explicit
-// actions, and applying them rewrites the container while leaving every healthy
-// chunk byte for byte where it was.
-
 enum class IssueSeverity : uint8_t {
-    Info = 0,          // worth mentioning, costs nothing
-    Warning = 1,       // stale or sloppy, still readable
-    Recoverable = 2,   // damage the repair planner can act on
-    Fatal = 3,         // the container cannot be interpreted at all
+    Info = 0,
+    Warning = 1,
+    Recoverable = 2,
+    Fatal = 3,
 };
 
 enum class IntegrityIssueKind : uint8_t {
@@ -121,9 +112,6 @@ struct RepairResult {
     std::string failure;
 };
 
-// Deterministic replacement terrain for a chunk that cannot be salvaged: an
-// integer value-noise surface over a 16 block lattice, seeded by the world seed
-// and the chunk coordinate only. The same seed always rebuilds the same blocks.
 Chunk regenerateChunkFromSeed(uint64_t seed, const Vec3i& coord);
 int regeneratedSurfaceHeight(uint64_t seed, int worldX, int worldZ);
 
@@ -143,4 +131,4 @@ public:
     RepairResult scanAndRepair(const ByteBuffer& buffer) const;
 };
 
-} // namespace vf
+}

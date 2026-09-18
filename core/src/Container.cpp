@@ -143,4 +143,4 @@ const Container* ContainerStore::at(const Vec3i& pos) const {
     return it == containers.end() ? nullptr : &it->second;
 }
 
-} // namespace vf
+}

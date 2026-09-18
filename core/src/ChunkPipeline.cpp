@@ -26,7 +26,7 @@ std::string coordLabel(const Vec3i& coord) {
            std::to_string(coord.z) + ")";
 }
 
-} // namespace
+}
 
 const char* chunkStageName(ChunkStage stage) {
     switch (stage) {
@@ -418,4 +418,4 @@ std::vector<std::uint8_t> ChunkPipeline::digest() const {
     return bytes;
 }
 
-} // namespace vf
+}

@@ -19,7 +19,7 @@ struct CornerSample {
     float light;
 };
 
-} // namespace
+}
 
 ChunkMesh meshChunkLit(const World& world, const Vec3i& chunkCoord, const LightField& light) {
     ChunkMesh out;
@@ -122,4 +122,4 @@ ChunkMesh meshChunkLit(const World& world, const Vec3i& chunkCoord, const LightF
     return out;
 }
 
-} // namespace vf
+}

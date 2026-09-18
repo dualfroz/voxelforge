@@ -56,4 +56,4 @@ private:
     RandomTickHook randomTickHook;
 };
 
-} // namespace vf
+}

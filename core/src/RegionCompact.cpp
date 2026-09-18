@@ -56,7 +56,7 @@ void rewriteTableChecksum(ByteBuffer& buffer, const SaveHeader& header) {
     saveWriteU32At(buffer.data(), buffer.size(), 24, checksum);
 }
 
-} // namespace
+}
 
 bool updateChunkInPlace(ByteBuffer& buffer, const SaveChunkRecord& record, bool compressBody) {
     SaveHeader header;
@@ -257,4 +257,4 @@ bool RegionCompactor::compact(const uint8_t* data, std::size_t size, ByteBuffer&
     return true;
 }
 
-} // namespace vf
+}

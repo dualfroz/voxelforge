@@ -14,7 +14,7 @@ int shiftedInterval(int base, int amplifier) {
 
 float clampZero(float value) { return value < 0.0f ? 0.0f : value; }
 
-} // namespace
+}
 
 bool isInstantEffect(EffectKind kind) {
     return kind == EffectKind::InstantHealth || kind == EffectKind::InstantDamage;
@@ -231,4 +231,4 @@ float applyEffectTick(const EffectSet::Pending& pending, float& health, float ma
     return health - before;
 }
 
-} // namespace vf
+}

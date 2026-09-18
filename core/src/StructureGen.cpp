@@ -26,7 +26,7 @@ struct SplitMix32 {
 
 const Vec3i cardinalDirections[4] = {{1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}};
 
-} // namespace
+}
 
 uint32_t chunkStructureHash(uint32_t seed, int chunkX, int chunkZ, uint32_t salt) {
     uint64_t h = 1469598103934665603ull;
@@ -149,7 +149,7 @@ StructurePlan StructureGen::buildDungeon(int chunkX, int chunkZ, int groundY, ui
         }
     }
 
-    plan.pieces.push_back({{width / 2, 1, depth / 2}, Block::Glowstone});   // mob spawner marker
+    plan.pieces.push_back({{width / 2, 1, depth / 2}, Block::Glowstone});
     plan.pieces.push_back({{1, 1, 1}, Block::Chest});
     plan.pieces.push_back({{width - 2, 1, depth - 2}, Block::Chest});
 
@@ -281,4 +281,4 @@ void StructureGen::stamp(World& world, const StructurePlan& plan, int maxY) cons
     }
 }
 
-} // namespace vf
+}

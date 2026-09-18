@@ -36,7 +36,7 @@ std::vector<Vec3> rayDirections(int gridSizeIn) {
     return dirs;
 }
 
-} // namespace
+}
 
 float blastResistance(Block b) {
     switch (b) {
@@ -176,4 +176,4 @@ void igniteTnt(BlockTickScheduler& scheduler, const Vec3i& pos, int fuseTicks) {
     scheduler.schedule(pos, fuseTicks);
 }
 
-} // namespace vf
+}

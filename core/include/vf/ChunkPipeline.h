@@ -53,8 +53,8 @@ struct ChunkTaskResult {
 
 struct PipelineConfig {
     unsigned threadCount = 0;
-    int viewRadius = 2;          // chunk columns kept around the observer
-    int verticalChunks = 2;      // chunk layers stacked upwards from y = 0
+    int viewRadius = 2;
+    int verticalChunks = 2;
     std::uint64_t cacheBudgetBytes = 256ull * 1024ull * 1024ull;
     CachePolicy cachePolicy = CachePolicy::DistanceWeighted;
     WorldGenParams gen;
@@ -70,19 +70,6 @@ struct PipelineStats {
     double averageStageMs(ChunkStage stage) const;
 };
 
-// Chunk production line running on a JobSystem.
-//
-// Every queued chunk becomes four graph nodes: Generate fills its blocks, Light
-// floods a box one voxel wider than the chunk on each side, Mesh bakes the lit
-// and ambient-occluded geometry, Ready snapshots the entry for the cache. Light
-// and Mesh both read across the chunk border, so their nodes depend on the
-// Generate nodes of every one of the 26 neighbours that is part of the same run.
-//
-// The output is order independent by construction: workers only ever write into
-// their own preallocated slot, and the slots are folded back in chunk
-// coordinate order once the graph has drained. The same configuration with one
-// worker and with eight therefore produces the same bytes, which digest() makes
-// directly comparable.
 class ChunkPipeline {
 public:
     explicit ChunkPipeline(const PipelineConfig& config = {});
@@ -105,16 +92,11 @@ public:
     std::size_t enqueueViewVolume();
     std::size_t pendingCount() const;
 
-    // Marks a chunk cancelled. Every stage tests the flag as it starts, so a
-    // chunk that leaves the view radius stops at the next stage boundary and
-    // never reaches the result list or the cache.
     void cancel(const Vec3i& chunkCoord);
     bool isCancelled(const Vec3i& chunkCoord) const;
 
-    // Distance ordered, nearest first, each tagged with its service class.
     std::vector<ChunkTask> pendingTasks() const;
 
-    // Drains the pending queue through all four stages and folds the results in.
     void run();
 
     const std::vector<ChunkTaskResult>& results() const { return completedResults; }
@@ -123,8 +105,6 @@ public:
     PipelineStats stats() const;
     void resetStats();
 
-    // Deterministic byte image of the world, the merged results and the cache
-    // footprint. Two runs that agree here agree on every produced byte.
     std::vector<std::uint8_t> digest() const;
 
 private:
@@ -156,4 +136,4 @@ private:
     PipelineStats counters;
 };
 
-} // namespace vf
+}

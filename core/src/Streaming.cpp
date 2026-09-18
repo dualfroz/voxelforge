@@ -12,7 +12,7 @@ long long distanceSquared(ColumnCoord a, ColumnCoord b) {
     return dx * dx + dz * dz;
 }
 
-} // namespace
+}
 
 std::vector<ColumnCoord> columnsInRadius(ColumnCoord centre, int radius) {
     std::vector<ColumnCoord> columns;
@@ -48,4 +48,4 @@ StreamDelta ChunkStreamer::update(ColumnCoord centre) {
     return delta;
 }
 
-} // namespace vf
+}

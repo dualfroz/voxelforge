@@ -215,7 +215,7 @@ constexpr int rleMinRun = 3;
 constexpr int rleMaxRun = 130;
 constexpr int rleMaxLiteral = 128;
 
-}  // namespace
+}
 
 ByteBuffer rleEncode(const uint8_t* data, std::size_t size) {
     ByteBuffer out;
@@ -302,7 +302,7 @@ bool getVarU32Raw(const uint8_t* data, std::size_t size, std::size_t& pos, uint3
     return false;
 }
 
-}  // namespace
+}
 
 ByteBuffer lz77Compress(const uint8_t* data, std::size_t size) {
     ByteBuffer out;
@@ -466,4 +466,4 @@ bool decompress(const uint8_t* data, std::size_t size, ByteBuffer& out) {
     return fnv1a32(out.data(), out.size()) == checksum;
 }
 
-} // namespace vf
+}

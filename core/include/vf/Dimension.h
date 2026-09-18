@@ -19,8 +19,6 @@ enum class DimensionId : uint8_t {
     Count,
 };
 
-// Per-dimension rules. coordinateScale counts overworld blocks per one block
-// of this dimension, so the Nether's 8.0 is the familiar 1:8 ratio.
 struct DimensionConfig {
     DimensionId id = DimensionId::Overworld;
     int floorY = 0;
@@ -44,8 +42,6 @@ struct DimensionConfig {
     int clampY(int y) const;
 };
 
-// One world plus the generator that fills it. Exactly one generator is live
-// per dimension; the others stay null.
 class Dimension {
 public:
     Dimension(const DimensionConfig& dimensionConfig, uint32_t worldSeed);
@@ -64,13 +60,9 @@ public:
 
     void tick(int steps) { elapsed += steps; }
     long long ticks() const { return elapsed; }
-    // Local time of day in [0, 1). Dimensions without a day cycle are frozen
-    // at their ambient level and always report the same fraction.
     float dayFraction() const;
 
     int highestSolidY(int gx, int gz) const;
-    // Lowest feet position at or above fromY that rests on something solid and
-    // has `clearance` free blocks above it.
     bool standingSpot(int gx, int gz, int fromY, int clearance, int& outFeetY) const;
 
     const WorldGen* overworldGenerator() const { return overworld.get(); }
@@ -88,7 +80,6 @@ private:
     std::unique_ptr<EndGenerator> end;
 };
 
-// Owns one Dimension per DimensionId; each ticks and generates independently.
 class DimensionSet {
 public:
     static constexpr int dimensionCount = static_cast<int>(DimensionId::Count);
@@ -117,20 +108,16 @@ struct TravelResult {
     DimensionId from = DimensionId::Overworld;
     DimensionId to = DimensionId::Nether;
     Vec3i source;
-    Vec3i scaledTarget;              // pure coordinate mapping
-    Vec3i target;                    // scaledTarget clamped into the destination
+    Vec3i scaledTarget;
+    Vec3i target;
     bool clampedToFloor = false;
     bool clampedToCeiling = false;
     bool needsPortal = true;
     int searchRadius = 0;
-    int nearestIndex = -1;           // index into the candidate list passed to plan()
+    int nearestIndex = -1;
     int nearestDistanceSquared = 0;
 };
 
-// Moves a position between dimensions: scales the horizontal coordinates by
-// the ratio of the two coordinate scales, clamps the result into the target's
-// vertical bounds, and reports whether an existing portal was close enough to
-// reuse or a new one has to be raised.
 class DimensionTravel {
 public:
     explicit DimensionTravel(DimensionSet& set) : worlds(set) {}
@@ -153,4 +140,4 @@ private:
     DimensionSet& worlds;
 };
 
-} // namespace vf
+}

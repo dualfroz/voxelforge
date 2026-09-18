@@ -45,7 +45,7 @@ DispenseResult fire(World& world, const Vec3i& pos, DispenserState& state,
     return ejectInto(store, front, one);
 }
 
-} // namespace
+}
 
 int chooseNonEmptySlot(const Container& inventory, std::uint32_t& rng) {
     int candidates = 0;
@@ -84,4 +84,4 @@ DispenseResult tickDropper(World& world, const Vec3i& pos, DispenserState& state
     return tickDropper(world, pos, state, store, circuit.powerAt(pos.x, pos.y, pos.z));
 }
 
-} // namespace vf
+}

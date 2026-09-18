@@ -14,7 +14,7 @@ Plane normalized(float a, float b, float c, float d) {
     return Plane{a * inv, b * inv, c * inv, d * inv};
 }
 
-} // namespace
+}
 
 Frustum Frustum::fromMatrix(const Mat4& vp) {
     auto el = [&](int row, int col) { return vp.at(col, row); };
@@ -27,12 +27,12 @@ Frustum Frustum::fromMatrix(const Mat4& vp) {
     auto r3 = row(3);
 
     Frustum f;
-    f.planes[0] = normalized(r3[0] + r0[0], r3[1] + r0[1], r3[2] + r0[2], r3[3] + r0[3]);  // left
-    f.planes[1] = normalized(r3[0] - r0[0], r3[1] - r0[1], r3[2] - r0[2], r3[3] - r0[3]);  // right
-    f.planes[2] = normalized(r3[0] + r1[0], r3[1] + r1[1], r3[2] + r1[2], r3[3] + r1[3]);  // bottom
-    f.planes[3] = normalized(r3[0] - r1[0], r3[1] - r1[1], r3[2] - r1[2], r3[3] - r1[3]);  // top
-    f.planes[4] = normalized(r3[0] + r2[0], r3[1] + r2[1], r3[2] + r2[2], r3[3] + r2[3]);  // near
-    f.planes[5] = normalized(r3[0] - r2[0], r3[1] - r2[1], r3[2] - r2[2], r3[3] - r2[3]);  // far
+    f.planes[0] = normalized(r3[0] + r0[0], r3[1] + r0[1], r3[2] + r0[2], r3[3] + r0[3]);
+    f.planes[1] = normalized(r3[0] - r0[0], r3[1] - r0[1], r3[2] - r0[2], r3[3] - r0[3]);
+    f.planes[2] = normalized(r3[0] + r1[0], r3[1] + r1[1], r3[2] + r1[2], r3[3] + r1[3]);
+    f.planes[3] = normalized(r3[0] - r1[0], r3[1] - r1[1], r3[2] - r1[2], r3[3] - r1[3]);
+    f.planes[4] = normalized(r3[0] + r2[0], r3[1] + r2[1], r3[2] + r2[2], r3[3] + r2[3]);
+    f.planes[5] = normalized(r3[0] - r2[0], r3[1] - r2[1], r3[2] - r2[2], r3[3] - r2[3]);
     return f;
 }
 
@@ -52,4 +52,4 @@ bool Frustum::intersectsAabb(const Aabb& box) const {
     return true;
 }
 
-} // namespace vf
+}

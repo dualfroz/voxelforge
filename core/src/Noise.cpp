@@ -18,13 +18,12 @@ inline float grad(int hash, float x, float y, float z) {
     return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v);
 }
 
-} // namespace
+}
 
 void PerlinNoise::reseed(uint32_t seed) {
     std::array<int, 256> base;
     std::iota(base.begin(), base.end(), 0);
 
-    // xorshift32 permutation shuffle, fully determined by the seed.
     uint32_t state = seed ? seed : 0x9e3779b9u;
     auto next = [&state]() {
         state ^= state << 13;
@@ -87,4 +86,4 @@ float PerlinNoise::fbm2D(float x, float y, int octaves, float lacunarity, float 
     return totalAmplitude > 0.0f ? sum / totalAmplitude : 0.0f;
 }
 
-} // namespace vf
+}

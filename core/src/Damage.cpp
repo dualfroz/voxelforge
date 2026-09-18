@@ -21,7 +21,6 @@ int rollBelow(uint32_t& rng, int bound) {
     return static_cast<int>(xorshift(rng) % static_cast<uint32_t>(bound));
 }
 
-// Vanilla per-slot durability bases, scaled by the material factor below.
 int slotDurabilityBase(Armor::Slot slot) {
     switch (slot) {
         case Armor::Slot::Helmet:     return 11;
@@ -69,7 +68,7 @@ Vec3 knockbackAlong(const Vec3& heading, float strength) {
     return {flat.x * horizontal, 0.4f, flat.z * horizontal};
 }
 
-} // namespace
+}
 
 bool bypassesArmor(DamageType type) {
     switch (type) {
@@ -297,7 +296,6 @@ float meleeAttackDamage(const CombatStats& attacker, const EnchantSet& weapon,
     if (arthropodTarget) {
         enchantBonus += 2.5f * static_cast<float>(weapon.levelOf(EnchantKind::BaneOfArthropods));
     }
-    // A partially charged swing only lands a fraction of the enchantment bonus.
     damage += enchantBonus * charge;
 
     if (critical && charge >= 0.9f) damage *= criticalMultiplier;
@@ -406,4 +404,4 @@ CombatResult applyDamage(CombatStats& target, const EffectSet& targetEffects,
     return result;
 }
 
-} // namespace vf
+}

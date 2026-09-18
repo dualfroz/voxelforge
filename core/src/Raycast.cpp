@@ -73,4 +73,4 @@ RaycastHit raycastVoxels(const World& world, const Vec3& origin, const Vec3& dir
     return result;
 }
 
-} // namespace vf
+}

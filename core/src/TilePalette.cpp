@@ -36,9 +36,6 @@ TileSpec cutOut(TileSpec spec) {
     return spec;
 }
 
-// Tiles 0..14 predate the palette. Their base colours, the three ore vein
-// colours and the green lip on the grass side are copied out of the old
-// render/Atlas.cpp byte for byte so the existing world keeps its look.
 void appendOverworldBasics(std::vector<TileSpec>& rows) {
     rows.push_back(makeTile("grassTop", M::Foliage, P::Solid, {86, 154, 66}, {112, 182, 88},
                             0.11f, 0.45f, 0.45f));
@@ -72,9 +69,6 @@ void appendOverworldBasics(std::vector<TileSpec>& rows) {
                             0.14f, 0.40f, 0.50f));
 }
 
-// Cut stone, worked wood and the deep ores. Every stone borne ore keeps the
-// stone base colour and is told apart by its vein colour alone, which is how
-// the three original ores already worked.
 void appendBuildingAndOres(std::vector<TileSpec>& rows) {
     rows.push_back(makeTile("cobblestone", M::Stone, P::Splatter, {124, 124, 126}, {90, 90, 94},
                             0.12f, 0.45f, 0.52f));
@@ -102,9 +96,6 @@ void appendBuildingAndOres(std::vector<TileSpec>& rows) {
                             0.11f, 0.40f, 0.28f));
 }
 
-// Workstations, the furnace pair and the whole redstone bench. Anything that
-// has a hot state carries the Light material so its glow reads as emitted
-// rather than painted on.
 void appendUtilityAndRedstone(std::vector<TileSpec>& rows) {
     rows.push_back(flipped(makeTile("craftingTableTop", M::Wood, P::Lattice, {162, 128, 80},
                                     {96, 70, 42}, 0.08f, 0.10f, 0.55f)));
@@ -154,8 +145,6 @@ void appendUtilityAndRedstone(std::vector<TileSpec>& rows) {
                             0.09f, 0.20f, 0.30f));
 }
 
-// Rails, hoppers and the machine blocks. Everything a minecart runs on is a
-// cutout: the track has to leave the ground showing between its ties.
 void appendTransportAndAutomation(std::vector<TileSpec>& rows) {
     rows.push_back(cutOut(runsVertical(makeTile("ladder", M::Wood, P::Lattice, {142, 108, 62},
                                                 {96, 70, 38}, 0.10f, 0.45f, 0.55f))));
@@ -183,9 +172,6 @@ void appendTransportAndAutomation(std::vector<TileSpec>& rows) {
                             0.10f, 0.75f, 0.70f));
 }
 
-// Crops, gourds and the cold blocks. Crops are cross sprites, so their tiles
-// are cut out around the stalk; the gourds are solid and get their ribbing
-// from a vertical plank pattern.
 void appendFarmingAndClimate(std::vector<TileSpec>& rows) {
     rows.push_back(makeTile("farmlandTop", M::Soil, P::Plank, {104, 72, 42}, {66, 44, 24},
                             0.11f, 0.30f, 0.45f));
@@ -225,9 +211,6 @@ void appendFarmingAndClimate(std::vector<TileSpec>& rows) {
                             0.08f, 0.45f, 0.40f));
 }
 
-// The brewing bench, the enchanting corner and the two blocks that hang in the
-// air. The cobweb is the only Web tile in the palette and the only one whose
-// shape is drawn from the centre outwards.
 void appendBrewingAndCombat(std::vector<TileSpec>& rows) {
     rows.push_back(cutOut(runsVertical(makeTile("brewingStand", M::Metal, P::Lattice,
                                                 {124, 116, 110}, {188, 168, 96},
@@ -250,9 +233,6 @@ void appendBrewingAndCombat(std::vector<TileSpec>& rows) {
                                    0.09f, 0.45f, 0.50f)));
 }
 
-// The Nether. Everything here is warm and dark, so the accents carry most of
-// the contrast: a red rock with a slightly redder rock on top would render as
-// one flat plate.
 void appendNether(std::vector<TileSpec>& rows) {
     rows.push_back(makeTile("netherrack", M::Stone, P::Splatter, {124, 44, 44}, {84, 24, 24},
                             0.12f, 0.30f, 0.55f));
@@ -276,7 +256,6 @@ void appendNether(std::vector<TileSpec>& rows) {
                             0.14f, 0.45f, 0.55f));
 }
 
-// The End. Pale stone, purple masonry and two plants that grow on nothing.
 void appendEnd(std::vector<TileSpec>& rows) {
     rows.push_back(makeTile("endStone", M::Stone, P::Solid, {222, 222, 164}, {192, 190, 126},
                             0.09f, 0.55f, 0.50f));
@@ -295,9 +274,6 @@ void appendEnd(std::vector<TileSpec>& rows) {
                                                 0.11f, 0.45f, 0.65f))));
 }
 
-// The village: glass, masonry, furniture and every workstation a villager
-// claims. Sided workstations keep a wooden side and a worked top so the two
-// tiles never collapse into the same entry.
 void appendVillage(std::vector<TileSpec>& rows) {
     rows.push_back(cutOut(makeTile("glass", M::Crystal, P::Pane, {214, 236, 244}, {160, 200, 218},
                                    0.06f, 0.30f, 0.40f)));
@@ -359,9 +335,6 @@ void appendVillage(std::vector<TileSpec>& rows) {
                             0.10f, 0.20f, 0.60f));
 }
 
-// Geology, the deep dark and everything that grows underwater. This is where
-// the palette is most crowded, so several rocks that would read alike are
-// separated by pattern rather than by colour alone.
 void appendGeologyAndDecoration(std::vector<TileSpec>& rows) {
     rows.push_back(makeTile("clay", M::Soil, P::Solid, {162, 166, 178}, {132, 136, 150},
                             0.09f, 0.60f, 0.50f));
@@ -409,24 +382,24 @@ void appendGeologyAndDecoration(std::vector<TileSpec>& rows) {
                             0.11f, 0.35f, 0.55f));
 }
 
-} // namespace
+}
 
 TilePalette::TilePalette() {
     rows.reserve(static_cast<std::size_t>(tileCount));
-    appendOverworldBasics(rows);          // 0..14
-    appendBuildingAndOres(rows);          // 15..26
-    appendUtilityAndRedstone(rows);       // 27..49
-    appendTransportAndAutomation(rows);   // 50..61
-    appendFarmingAndClimate(rows);        // 62..79
-    appendBrewingAndCombat(rows);         // 80..88
-    appendNether(rows);                   // 89..98
-    appendEnd(rows);                      // 99..105
-    appendVillage(rows);                  // 106..134
-    appendGeologyAndDecoration(rows);     // 135..156
+    appendOverworldBasics(rows);
+    appendBuildingAndOres(rows);
+    appendUtilityAndRedstone(rows);
+    appendTransportAndAutomation(rows);
+    appendFarmingAndClimate(rows);
+    appendBrewingAndCombat(rows);
+    appendNether(rows);
+    appendEnd(rows);
+    appendVillage(rows);
+    appendGeologyAndDecoration(rows);
 }
 
 const TileSpec& TilePalette::specFor(int tile) const {
     return rows[static_cast<std::size_t>(tile)];
 }
 
-} // namespace vf
+}

@@ -14,8 +14,6 @@ struct NamedDimension {
     DimensionId id;
 };
 
-// Kept in step with DimensionConfig::nameOf, which Dimension.cpp cannot hand
-// back a parser for without dragging every world generator into the link.
 const NamedDimension dimensionNames[] = {
     {"overworld", DimensionId::Overworld},
     {"nether", DimensionId::Nether},
@@ -172,7 +170,7 @@ bool parseCriterionJson(const std::string& criterionName, const JsonValue& root,
     return true;
 }
 
-} // namespace
+}
 
 AdvancementCriterion::Event AdvancementCriterion::Event::itemObtained(ItemId item, int amount) {
     Event event;
@@ -559,4 +557,4 @@ AdvancementTree loadAdvancements(const DataPackLoader& loader, std::vector<DataP
     return tree;
 }
 
-} // namespace vf
+}

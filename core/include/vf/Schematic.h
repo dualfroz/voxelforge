@@ -14,7 +14,6 @@
 
 namespace vf {
 
-// Quarter turns around the vertical axis, clockwise seen from above.
 enum class Rotation : uint8_t {
     None = 0,
     Cw90 = 1,
@@ -28,9 +27,6 @@ enum class MirrorAxis : uint8_t {
     Z = 2,
 };
 
-// On-disk format revisions. v1 is dimensions plus a palette-indexed block
-// stream; v2 adds metadata and the void mask that lets a non-box selection keep
-// its holes. The reader accepts both and hands back v2 either way.
 enum class SchematicVersion : uint8_t {
     V1 = 1,
     V2 = 2,
@@ -46,9 +42,6 @@ enum class SchematicError : uint8_t {
     BadPalette = 6,
 };
 
-// A dense block volume with a per-cell presence flag. Presence is what makes a
-// sphere copied out of a world paste back as a sphere instead of as its
-// bounding box.
 class ClipboardBuffer {
 public:
     enum class PasteMode : uint8_t {
@@ -94,9 +87,6 @@ private:
     SelectionMask present;
 };
 
-// Everything the reader needs before it touches the block stream. paletteSize
-// and indexBits are kept in sync with the buffer, so they describe what the
-// next encode() would emit.
 struct SchematicHeader {
     SchematicVersion version = SchematicVersion::V2;
     Vec3i dims{0, 0, 0};
@@ -109,9 +99,6 @@ struct SchematicHeader {
     bool hasVoidMask = false;
 };
 
-// A portable construction: header plus block volume, encoded into a byte buffer
-// and nothing else. No path, no stream, no clock - the creation time is a game
-// tick handed in by the caller.
 class Schematic {
 public:
     Schematic() = default;
@@ -153,4 +140,4 @@ private:
     bool migrated = false;
 };
 
-} // namespace vf
+}

@@ -27,8 +27,6 @@ void appendUtf8(uint32_t codePoint, std::string& out) {
     }
 }
 
-// Bytes consumed, or 0 when the sequence at `at` is not well formed UTF-8.
-// Overlong forms, encoded surrogates and anything above U+10FFFF are refused.
 std::size_t decodeUtf8(const std::string& text, std::size_t at, uint32_t& codePoint) {
     unsigned char lead = static_cast<unsigned char>(text[at]);
     std::size_t length = 0;
@@ -478,13 +476,11 @@ std::string formatNumber(const JsonValue& value) {
         if (std::strtod(buffer, nullptr) == raw) break;
     }
     std::string text(buffer);
-    // A double that prints without a fraction would come back as an integer and
-    // print differently the next time round, so the writer keeps it a double.
     if (text.find_first_of(".eE") == std::string::npos) text += ".0";
     return text;
 }
 
-} // namespace
+}
 
 JsonValue JsonValue::makeNull() { return JsonValue(); }
 
@@ -683,8 +679,6 @@ void JsonWriter::writeString(const std::string& value, std::string& out) const {
         uint32_t codePoint = 0u;
         std::size_t length = decodeUtf8(value, at, codePoint);
         if (length == 0u) {
-            // Only reachable for a hand built string that never went through the
-            // parser; the byte is kept so nothing is silently rewritten.
             out.push_back(value[at]);
             ++at;
             continue;
@@ -854,7 +848,7 @@ bool arrayIndexOf(const std::string& token, std::size_t& out) {
     return true;
 }
 
-} // namespace
+}
 
 const JsonValue* JsonPointer::resolve(const JsonValue& root) const {
     if (!wellFormed) return nullptr;
@@ -886,4 +880,4 @@ const JsonValue* JsonPointer::find(const JsonValue& root, const std::string& poi
     return path.resolve(root);
 }
 
-} // namespace vf
+}

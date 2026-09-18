@@ -76,7 +76,7 @@ struct ToolMaterial {
     ItemId material;
 };
 
-} // namespace
+}
 
 CraftingRegistry::CraftingRegistry() { registerDefaults(); }
 
@@ -260,4 +260,4 @@ float Furnace::smeltFraction() const {
     return smeltProgress / recipe->smeltSeconds;
 }
 
-} // namespace vf
+}

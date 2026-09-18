@@ -6,14 +6,8 @@
 
 namespace vf {
 
-constexpr uint8_t fluidMax = 8;   // a full source cell; flow decays to 1 at the edge
+constexpr uint8_t fluidMax = 8;
 
-// Cellular water automaton over a fixed world box. Levels run 0 (dry) to
-// fluidMax. Source cells stay full every tick; flowing water spreads to lower
-// horizontal neighbours losing one level per step, and pours straight down a
-// gap filling the cell below fully. Updates are double buffered, so a tick is a
-// pure function of the previous state (deterministic). Solid world voxels block
-// and support the flow.
 class FluidSim {
 public:
     FluidSim(World& world, const Vec3i& origin, const Vec3i& dims);
@@ -26,12 +20,9 @@ public:
     bool isSource(int gx, int gy, int gz) const;
     bool isWater(int gx, int gy, int gz) const { return level(gx, gy, gz) > 0; }
 
-    // Advances one tick. Returns true if any cell changed.
     bool step();
-    // Steps until stable or maxSteps reached. Returns the number of steps taken.
     int settle(int maxSteps);
 
-    // Writes Block::Water into the world for every wet, currently-air cell.
     void applyToWorld() const;
 
     const Vec3i& regionOrigin() const { return origin; }
@@ -56,4 +47,4 @@ private:
     std::vector<uint8_t> source_;
 };
 
-} // namespace vf
+}

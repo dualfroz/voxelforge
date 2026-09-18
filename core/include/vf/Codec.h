@@ -9,8 +9,6 @@ namespace vf {
 
 using ByteBuffer = std::vector<uint8_t>;
 
-// Growable byte writer with big-endian fixed ints plus LEB128 varints and
-// zigzag signed varints. Shared codec surface for the region and wire formats.
 class ByteWriter {
 public:
     void putU8(uint8_t v) { buffer.push_back(v); }
@@ -32,8 +30,6 @@ public:
     const ByteBuffer& bytes() const { return buffer; }
     ByteBuffer& bytes() { return buffer; }
 
-    // Reserve a placeholder byte and return its index so a header can be
-    // patched once the trailing payload length is known.
     std::size_t reserveU8() {
         std::size_t at = buffer.size();
         buffer.push_back(0);
@@ -45,8 +41,6 @@ private:
     ByteBuffer buffer;
 };
 
-// Cursor over an immutable byte span. Every read is bounds checked and sets a
-// sticky failure flag; callers check ok() at the end rather than each read.
 class ByteReader {
 public:
     ByteReader(const uint8_t* data, std::size_t size) : data(data), size(size) {}
@@ -89,24 +83,16 @@ uint32_t fnv1a32(const uint8_t* data, std::size_t size);
 uint64_t fnv1a64(const uint8_t* data, std::size_t size);
 uint32_t adler32(const uint8_t* data, std::size_t size);
 
-// Byte-oriented run-length codec. Literal tokens carry 1..128 bytes, run
-// tokens carry a value repeated 3..130 times, so it never expands input by
-// more than one byte per 128 literals.
 ByteBuffer rleEncode(const uint8_t* data, std::size_t size);
 bool rleDecode(const uint8_t* data, std::size_t size, ByteBuffer& out);
 
-// LZ77 with a hash-chain match finder and a flag-byte token stream (literal or
-// varint offset+length match). The raw length is embedded so decode stops
-// exactly, and it reconstructs the input byte for byte.
 ByteBuffer lz77Compress(const uint8_t* data, std::size_t size);
 bool lz77Decompress(const uint8_t* data, std::size_t size, ByteBuffer& out);
 
 enum class CodecMethod : uint8_t { Store = 0, Rle = 1, Lz77 = 2 };
 
-// Frames a payload: method + varint raw length + fnv1a32 of the raw bytes +
-// the smallest of {store, rle, lz77}. decompress verifies length and checksum.
 ByteBuffer compress(const uint8_t* data, std::size_t size);
 ByteBuffer compress(const ByteBuffer& in);
 bool decompress(const uint8_t* data, std::size_t size, ByteBuffer& out);
 
-} // namespace vf
+}

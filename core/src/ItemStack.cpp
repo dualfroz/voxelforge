@@ -25,7 +25,7 @@ int32_t intField(const NbtTag& compound, const std::string& key, NbtType type, i
     return found == nullptr ? fallback : found->asInt();
 }
 
-} // namespace
+}
 
 float Durability::fraction() const {
     if (max <= 0) return 1.0f;
@@ -393,4 +393,4 @@ bool stackListFromNbt(const NbtTag& tag, std::vector<MetaStack>& out) {
     return true;
 }
 
-} // namespace vf
+}

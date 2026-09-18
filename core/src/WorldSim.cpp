@@ -26,7 +26,7 @@ uint64_t fnv1a(uint64_t hash, uint8_t byte) {
     return hash;
 }
 
-} // namespace
+}
 
 WorldSim::WorldSim(World& world, const Vec3i& regionOrigin, const Vec3i& regionDims,
                    const WorldSimConfig& config)
@@ -203,4 +203,4 @@ void WorldSim::setPlayer(const Vec3& pos) {
 
 void WorldSim::clearPlayer() { hasPlayer = false; }
 
-} // namespace vf
+}

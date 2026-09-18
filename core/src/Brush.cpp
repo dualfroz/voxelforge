@@ -11,9 +11,6 @@ const Vec3i faceOffsets[6] = {
     {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1},
 };
 
-// Position hash used by the gradient brush. Pure function of the seed and the
-// block coordinate, so the same stroke on the same seed always paints the same
-// pattern - no clock, no global generator state.
 uint32_t brushHash(uint32_t seed, const Vec3i& cell) {
     uint32_t h = seed * 2654435761u;
     h ^= static_cast<uint32_t>(cell.x) * 73856093u;
@@ -41,7 +38,7 @@ Selection innerVolume(const BrushParams& params) {
     return Selection::sphere(params.center, innerRadius);
 }
 
-} // namespace
+}
 
 BrushStroke::BrushStroke(World& world, EditHistory& history) : world(world), history(history) {}
 
@@ -181,8 +178,6 @@ void BrushStroke::paintSmooth(const BrushParams& params, const Selection& limit,
         surface[column] = top;
     }
 
-    // Averaged over the disc of radius `radius`, from the heights sampled above
-    // so a column smoothed earlier in the pass cannot drag its neighbours.
     std::vector<int> target(columns, 0);
     int reach = std::max(params.radius, 1);
     for (std::size_t column = 0; column < columns; ++column) {
@@ -294,4 +289,4 @@ void BrushStroke::paintGradient(const BrushParams& params, const Selection& limi
     });
 }
 
-} // namespace vf
+}

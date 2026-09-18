@@ -38,9 +38,6 @@ struct ServerStats {
     uint64_t editsApplied = 0;
 };
 
-// One connected player: its own link, its own transport, its own session. The
-// slot outlives the connection so the index handed out at accept stays valid
-// until the slot is reused.
 struct ClientSlot {
     bool active = false;
     int32_t entityId = 0;
@@ -53,14 +50,10 @@ struct ClientSlot {
     std::unique_ptr<NetSession> session;
 };
 
-// Many clients over one authoritative world. Every block edit is applied once
-// and then offered to each session, which decides on its own whether that
-// client is close enough to care.
 class NetServer {
 public:
     NetServer(World& world, ServerConfig config = {});
 
-    // The slot index, or -1 when every slot is taken.
     int acceptClient();
     void dropClient(int slot);
 
@@ -71,9 +64,6 @@ public:
     uint32_t activeClients() const;
     bool isActive(int slot) const;
 
-    // Authoritative edit: the world, the dirty feed and every session's work
-    // list move together, so no client can be told about a block the world
-    // does not already have.
     void setBlock(int gx, int gy, int gz, Block block);
     void moveEntity(int32_t entityId, const Vec3& position, float yaw, float pitch, bool onGround);
 
@@ -96,4 +86,4 @@ private:
     ServerStats statistics;
 };
 
-} // namespace vf
+}

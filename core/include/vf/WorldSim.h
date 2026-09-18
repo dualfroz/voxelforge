@@ -25,13 +25,8 @@
 
 namespace vf {
 
-// Climate carries its own vf::BlockChange that collides with the one in
-// Protocol.h. Kept out of this header (forward declared, held by pointer) so a
-// translation unit can pull WorldSim together with ChunkSync/Protocol.
 class Climate;
 
-// Mirror of ClimateConfig's tunables, so callers can shape the climate without
-// pulling Climate.h (and its clashing BlockChange) into their translation unit.
 struct WorldClimateSettings {
     int seaLevel = 26;
     float heightLapse = 0.006f;
@@ -46,9 +41,7 @@ struct WorldClimateSettings {
 struct WorldSimConfig {
     uint32_t worldSeed = 1u;
 
-    // Farming random ticks dispatched by the WorldSim's own selector.
     int randomTicksPerChunk = 3;
-    // Vanilla block random ticks handled by the reused BlockTickScheduler.
     int blockRandomTicksPerChunk = 3;
 
     long long weatherIntervalTicks = 1;
@@ -68,13 +61,6 @@ struct WorldSimConfig {
     CreatureConfig creature;
 };
 
-// Deterministic orchestrator that folds the standalone simulation modules into
-// one step. Every tick advances the clock, periodically the weather and the
-// regional climate, dispatches random ticks to farming and vanilla block
-// behaviour, runs redstone, logistics (hoppers/dispensers), minecarts and
-// creatures, then collects the block cells that changed inside the active
-// region as a dirty feed for chunk replication. Given the same seed and the
-// same inputs, two WorldSims produce byte-identical world state.
 class WorldSim {
 public:
     WorldSim(World& world, const Vec3i& regionOrigin, const Vec3i& regionDims,
@@ -100,7 +86,6 @@ public:
     ContainerStore& containers() { return store; }
     const ContainerStore& containers() const { return store; }
 
-    // Climate readouts exposed without leaking Climate.h into callers.
     int snowDepthAt(const Vec3i& pos) const;
     int iceAgeAt(const Vec3i& pos) const;
     float temperatureAt(int gx, int gy, int gz) const;
@@ -117,8 +102,6 @@ public:
     void setPlayer(const Vec3& pos);
     void clearPlayer();
 
-    // Global cells whose block changed versus the last clearDirty (or since
-    // construction), in a deterministic sorted order.
     const std::vector<Vec3i>& dirtyBlocks() const { return dirtyList; }
     void clearDirty();
 
@@ -170,4 +153,4 @@ private:
     std::vector<Vec3i> dirtyList;
 };
 
-} // namespace vf
+}

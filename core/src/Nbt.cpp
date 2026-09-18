@@ -354,7 +354,7 @@ bool readPayload(NbtReader& reader, NbtType type, NbtTag& out) {
     return false;
 }
 
-} // namespace
+}
 
 std::vector<uint8_t> serializeNbt(const std::string& rootName, const NbtTag& root) {
     std::vector<uint8_t> out;
@@ -420,4 +420,4 @@ void decodeSectionPalette(const NbtPaletteSection& section, std::array<Block, ch
     }
 }
 
-} // namespace vf
+}

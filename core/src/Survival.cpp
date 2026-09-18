@@ -10,7 +10,7 @@ namespace {
 
 constexpr float breathRecoverRate = 2.0f;
 
-} // namespace
+}
 
 SurvivalState::SurvivalState(const SurvivalConfig& config)
     : health(config.maxHealth), hunger(config.maxHunger), saturation(config.maxSaturation * 0.25f),
@@ -185,4 +185,4 @@ float miningSeconds(Block block, ItemId tool) {
     return hardness / multiplier;
 }
 
-} // namespace vf
+}

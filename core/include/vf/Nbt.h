@@ -29,9 +29,6 @@ class NbtTag;
 using NbtList = std::vector<NbtTag>;
 using NbtCompound = std::vector<std::pair<std::string, NbtTag>>;
 
-// A single NBT-like tag: one of the scalar/array/container payloads above.
-// Containers (List, Compound) hold NbtTag by value, so a whole tree round
-// trips as one self-contained object.
 class NbtTag {
 public:
     NbtTag() = default;
@@ -82,15 +79,9 @@ private:
     NbtCompound compoundValue;
 };
 
-// Big-endian binary encoding: tagType(1) + nameLen(u16) + name + payload,
-// recursively. Compounds are terminated by an End tag; lists carry a shared
-// element type and a u32 count instead of per-element headers.
 std::vector<uint8_t> serializeNbt(const std::string& rootName, const NbtTag& root);
 bool deserializeNbt(const uint8_t* data, std::size_t size, std::string& rootName, NbtTag& root);
 
-// Palette-based section encoding (format v4): the distinct blocks used by a
-// chunkVolume-sized section, followed by fixed-width bit-packed indices into
-// that palette (LSB-first within each byte).
 struct NbtPaletteSection {
     std::vector<Block> palette;
     std::vector<uint8_t> packedIndices;
@@ -100,4 +91,4 @@ struct NbtPaletteSection {
 NbtPaletteSection encodeSectionPalette(const std::array<Block, chunkVolume>& blocks);
 void decodeSectionPalette(const NbtPaletteSection& section, std::array<Block, chunkVolume>& outBlocks);
 
-} // namespace vf
+}

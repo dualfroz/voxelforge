@@ -7,9 +7,6 @@
 
 namespace vf {
 
-// Standalone climate-driven biome catalogue. Deliberately named BiomeKind,
-// distinct from vf::Biome in WorldGen.h, so this header can be included
-// alongside WorldGen.h without redefinition.
 enum class BiomeKind : uint8_t {
     Ocean = 0,
     Beach = 1,
@@ -27,13 +24,12 @@ enum class BiomeKind : uint8_t {
 
 const char* biomeKindName(BiomeKind biome);
 
-// Five-axis climate sample at a world column, each roughly in [-1, 1].
 struct ClimateSample {
     float temperature = 0.0f;
     float humidity = 0.0f;
-    float continentalness = 0.0f;  // low = ocean, high = deep inland
-    float erosion = 0.0f;          // low = jagged/mountainous, high = flat
-    float weirdness = 0.0f;        // near 0 carves a river valley
+    float continentalness = 0.0f;
+    float erosion = 0.0f;
+    float weirdness = 0.0f;
 };
 
 struct BiomeGenParams {
@@ -54,21 +50,15 @@ struct SurfaceLayers {
 struct DecoratorDensity {
     float treeDensity = 0.0f;
     float bushDensity = 0.0f;
-    float caneDensity = 0.0f;  // cactus in desert, reeds in swamp/jungle
+    float caneDensity = 0.0f;
 };
 
-// Vote-blended biome weights over a neighbourhood, used to smooth borders
-// (surface colour, height blending) instead of a hard biome edge.
 struct BiomeWeights {
     std::array<float, static_cast<std::size_t>(BiomeKind::Count)> weight{};
 
     float weightOf(BiomeKind biome) const { return weight[static_cast<std::size_t>(biome)]; }
 };
 
-// Climate-parameter biome classifier with river carving, surface builders
-// and decorator density tables. Independent of vf::WorldGen: samples are
-// pure functions of world column coordinates, so identical seed and column
-// always yield an identical result.
 class BiomeGen {
 public:
     explicit BiomeGen(const BiomeGenParams& params = {});
@@ -81,14 +71,10 @@ public:
 
     SurfaceLayers surfaceFor(BiomeKind biome) const;
 
-    // Surface block at height `height` for the column at (gx, gz): river
-    // water/sand overrides the biome's ordinary top block.
     Block surfaceBlockAt(int gx, int gz, int height) const;
 
     DecoratorDensity decoratorsFor(BiomeKind biome) const;
 
-    // Box-blurred biome vote over a (2*radius+1)^2 neighbourhood, weights
-    // sum to 1.
     BiomeWeights biomeBlend(int gx, int gz, int radius) const;
 
     const BiomeGenParams& settings() const { return params; }
@@ -102,4 +88,4 @@ private:
     NoiseAdv weirdnessNoise;
 };
 
-} // namespace vf
+}

@@ -19,7 +19,7 @@ std::string twoDigits(long long value) {
     return text.size() < 2u ? "0" + text : text;
 }
 
-} // namespace
+}
 
 const char* statKindName(StatKind kind) {
     switch (kind) {
@@ -432,4 +432,4 @@ std::string Scoreboard::displayNameOf(const std::string& player) const {
     return membership->prefix + player + membership->suffix;
 }
 
-} // namespace vf
+}

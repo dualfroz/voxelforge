@@ -25,10 +25,6 @@ bool FluidSim::sourceLocal(int lx, int ly, int lz) const {
     return source_[index(lx, ly, lz)] != 0;
 }
 
-// A cell that actively pushes water sideways: a source, or water that rests on a
-// solid floor, or a surface pool cell (nothing pouring onto it from above but
-// water beneath). Mid-fall water is deliberately excluded so a vertical stream
-// does not wet every level it passes.
 bool FluidSim::spreader(int lx, int ly, int lz) const {
     if (sourceLocal(lx, ly, lz)) return true;
     if (levelLocal(lx, ly, lz) == 0) return false;
@@ -40,7 +36,7 @@ bool FluidSim::spreader(int lx, int ly, int lz) const {
 uint8_t FluidSim::computeNext(int lx, int ly, int lz) const {
     if (solidWorld(origin.x + lx, origin.y + ly, origin.z + lz)) return 0;
     if (sourceLocal(lx, ly, lz)) return fluidMax;
-    if (levelLocal(lx, ly + 1, lz) > 0) return fluidMax;   // fed from above
+    if (levelLocal(lx, ly + 1, lz) > 0) return fluidMax;
 
     uint8_t best = 0;
     const int horiz[4][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
@@ -114,4 +110,4 @@ void FluidSim::loadRaw(const std::vector<uint8_t>& levels, const std::vector<uin
     if (sources.size() == source_.size()) source_ = sources;
 }
 
-} // namespace vf
+}

@@ -19,7 +19,6 @@ enum class Block : uint8_t {
     GoldOre = 11,
     Gravel = 12,
     Glowstone = 13,
-    // --- extended palette (wave 1, additive; values above are frozen) ---
     Cobblestone = 14,
     Planks = 15,
     Sandstone = 16,
@@ -50,8 +49,6 @@ enum class Block : uint8_t {
     PistonHead = 41,
     Tnt = 42,
     Ladder = 43,
-    // --- extended palette (wave 2, additive; values above are frozen) ---
-    // Automation & logistics (agent A).
     Rail = 44,
     PoweredRail = 45,
     DetectorRail = 46,
@@ -63,7 +60,6 @@ enum class Block : uint8_t {
     TargetBlock = 52,
     SlimeBlock = 53,
     NoteBlock = 54,
-    // Environment, farming & climate (agent B).
     Farmland = 55,
     Wheat = 56,
     Carrot = 57,
@@ -78,16 +74,12 @@ enum class Block : uint8_t {
     Vine = 66,
     SnowLayer = 67,
     PackedIce = 68,
-    // --- extended palette (wave 5, additive; values above are frozen) ---
-    // Combat, brewing, enchanting.
     BrewingStand = 69,
     EnchantingTable = 70,
     Cauldron = 71,
     AnvilBlock = 72,
     Bookshelf = 73,
     Cobweb = 74,
-    // --- extended palette (wave 6, additive) ---
-    // Nether and End dimensions.
     Netherrack = 75,
     SoulSand = 76,
     SoulSoil = 77,
@@ -103,7 +95,6 @@ enum class Block : uint8_t {
     Purpur = 87,
     ChorusPlant = 88,
     ChorusFlower = 89,
-    // Village and construction blocks.
     Glass = 90,
     Bricks = 91,
     StoneBricks = 92,
@@ -124,8 +115,6 @@ enum class Block : uint8_t {
     Stonecutter = 107,
     Lectern = 108,
     HayBale = 109,
-    // --- extended palette (waves 7-8, additive) ---
-    // Geology, loot and decoration.
     Clay = 110,
     Terracotta = 111,
     Wool = 112,
@@ -160,7 +149,6 @@ enum class Face : uint8_t {
 
 inline bool isAir(Block b) { return b == Block::Air; }
 
-// Non-solid blocks are walked through: fluids and thin redstone/utility parts.
 inline bool isSolid(Block b) {
     switch (b) {
         case Block::Air:
@@ -202,8 +190,6 @@ inline bool isSolid(Block b) {
     }
 }
 
-// Opaque blocks fully hide the neighbouring face. Leaves, fluids, ice and the
-// thin redstone/utility blocks do not.
 inline bool isOpaque(Block b) {
     switch (b) {
         case Block::Air:
@@ -261,10 +247,6 @@ inline bool isOpaque(Block b) {
     }
 }
 
-// Whether a face of `self` should be emitted given the neighbour `other`.
-// A face is visible when the neighbour does not opaquely cover it, and the
-// two blocks are not the same translucent type (so water/leaves/ice do not
-// draw internal seams against their own kind).
 inline bool faceVisible(Block self, Block other) {
     if (isAir(self)) return false;
     if (isOpaque(other)) return false;
@@ -272,19 +254,18 @@ inline bool faceVisible(Block self, Block other) {
     return true;
 }
 
-// Texture-array layer for a given block face. Sided blocks vary by face.
 inline int faceTile(Block block, Face face) {
     switch (block) {
         case Block::Grass:
-            if (face == Face::PosY) return 0;  // grass top
-            if (face == Face::NegY) return 2;  // dirt bottom
-            return 1;                          // grass side
+            if (face == Face::PosY) return 0;
+            if (face == Face::NegY) return 2;
+            return 1;
         case Block::Dirt: return 2;
         case Block::Stone: return 3;
         case Block::Sand: return 4;
         case Block::Wood:
-            if (face == Face::PosY || face == Face::NegY) return 6;  // rings
-            return 5;                                                // bark
+            if (face == Face::PosY || face == Face::NegY) return 6;
+            return 5;
         case Block::Leaves: return 7;
         case Block::Water: return 8;
         case Block::Snow: return 9;
@@ -296,8 +277,8 @@ inline int faceTile(Block block, Face face) {
         case Block::Cobblestone: return 15;
         case Block::Planks: return 16;
         case Block::Sandstone:
-            if (face == Face::PosY || face == Face::NegY) return 17;  // top/bottom
-            return 18;                                                // side
+            if (face == Face::PosY || face == Face::NegY) return 17;
+            return 18;
         case Block::Ice: return 19;
         case Block::Bedrock: return 20;
         case Block::Obsidian: return 21;
@@ -307,15 +288,15 @@ inline int faceTile(Block block, Face face) {
         case Block::EmeraldOre: return 25;
         case Block::LapisOre: return 26;
         case Block::CraftingTable:
-            if (face == Face::PosY) return 27;  // grid top
-            if (face == Face::NegY) return 16;  // planks bottom
-            return 28;                          // tools side
+            if (face == Face::PosY) return 27;
+            if (face == Face::NegY) return 16;
+            return 28;
         case Block::Furnace:
-            if (face == Face::PosZ) return 29;  // cold front
+            if (face == Face::PosZ) return 29;
             if (face == Face::PosY || face == Face::NegY) return 30;
-            return 30;                          // side
+            return 30;
         case Block::FurnaceLit:
-            if (face == Face::PosZ) return 31;  // burning front
+            if (face == Face::PosZ) return 31;
             return 30;
         case Block::Chest: return 32;
         case Block::Torch: return 33;
@@ -329,17 +310,17 @@ inline int faceTile(Block block, Face face) {
         case Block::Repeater: return 41;
         case Block::Comparator: return 42;
         case Block::Piston:
-            if (face == Face::PosZ) return 43;  // face plate
-            if (face == Face::NegZ) return 45;  // back
-            return 44;                          // side
+            if (face == Face::PosZ) return 43;
+            if (face == Face::NegZ) return 45;
+            return 44;
         case Block::PistonSticky:
-            if (face == Face::PosZ) return 46;  // sticky face
+            if (face == Face::PosZ) return 46;
             if (face == Face::NegZ) return 45;
             return 44;
         case Block::PistonHead: return 47;
         case Block::Tnt:
-            if (face == Face::PosY || face == Face::NegY) return 48;  // caps
-            return 49;                                                // fuse band
+            if (face == Face::PosY || face == Face::NegY) return 48;
+            return 49;
         case Block::Ladder: return 50;
         case Block::Rail: return 51;
         case Block::PoweredRail: return 52;
@@ -353,8 +334,8 @@ inline int faceTile(Block block, Face face) {
         case Block::SlimeBlock: return 60;
         case Block::NoteBlock: return 61;
         case Block::Farmland:
-            if (face == Face::PosY) return 62;  // tilled top
-            return 2;                           // dirt sides/bottom
+            if (face == Face::PosY) return 62;
+            return 2;
         case Block::Wheat: return 63;
         case Block::Carrot: return 64;
         case Block::Potato: return 65;
@@ -377,18 +358,18 @@ inline int faceTile(Block block, Face face) {
         case Block::PackedIce: return 79;
         case Block::BrewingStand: return 80;
         case Block::EnchantingTable:
-            if (face == Face::PosY) return 81;  // arcane book cover
-            if (face == Face::NegY) return 21;  // obsidian base
-            return 82;                          // side
+            if (face == Face::PosY) return 81;
+            if (face == Face::NegY) return 21;
+            return 82;
         case Block::Cauldron:
-            if (face == Face::PosY) return 83;  // rim with water
-            return 84;                          // iron side
+            if (face == Face::PosY) return 83;
+            return 84;
         case Block::AnvilBlock:
-            if (face == Face::PosY) return 85;  // worn face
-            return 86;                          // side
+            if (face == Face::PosY) return 85;
+            return 86;
         case Block::Bookshelf:
-            if (face == Face::PosY || face == Face::NegY) return 16;  // planks
-            return 87;                                                // spines
+            if (face == Face::PosY || face == Face::NegY) return 16;
+            return 87;
         case Block::Cobweb: return 88;
         case Block::Netherrack: return 89;
         case Block::SoulSand: return 90;
@@ -398,14 +379,14 @@ inline int faceTile(Block block, Face face) {
         case Block::NetherPortal: return 94;
         case Block::Magma: return 95;
         case Block::Basalt:
-            if (face == Face::PosY || face == Face::NegY) return 96;  // cracked cap
-            return 97;                                                // column side
+            if (face == Face::PosY || face == Face::NegY) return 96;
+            return 97;
         case Block::Blackstone: return 98;
         case Block::EndStone: return 99;
         case Block::EndPortal: return 100;
         case Block::EndPortalFrame:
-            if (face == Face::PosY) return 101;  // eye socket
-            return 102;                          // side
+            if (face == Face::PosY) return 101;
+            return 102;
         case Block::Purpur: return 103;
         case Block::ChorusPlant: return 104;
         case Block::ChorusFlower: return 105;
@@ -415,21 +396,21 @@ inline int faceTile(Block block, Face face) {
         case Block::MossyCobblestone: return 109;
         case Block::Door: return 110;
         case Block::Slab:
-            if (face == Face::PosY || face == Face::NegY) return 111;  // cut face
-            return 112;                                                // profile
+            if (face == Face::PosY || face == Face::NegY) return 111;
+            return 112;
         case Block::Stairs: return 112;
         case Block::Fence: return 113;
         case Block::Bed:
-            if (face == Face::PosY) return 114;  // quilt
-            return 115;                          // frame
+            if (face == Face::PosY) return 114;
+            return 115;
         case Block::Bell: return 116;
         case Block::Lantern: return 117;
         case Block::Composter:
-            if (face == Face::PosY) return 118;  // open compost
-            return 119;                          // slats
+            if (face == Face::PosY) return 118;
+            return 119;
         case Block::Barrel:
-            if (face == Face::PosY || face == Face::NegY) return 120;  // lid
-            return 121;                                                // staves
+            if (face == Face::PosY || face == Face::NegY) return 120;
+            return 121;
         case Block::SmithingTable:
             if (face == Face::PosY) return 122;
             return 123;
@@ -447,21 +428,21 @@ inline int faceTile(Block block, Face face) {
             if (face == Face::PosY) return 131;
             return 132;
         case Block::HayBale:
-            if (face == Face::PosY || face == Face::NegY) return 133;  // cut ends
-            return 134;                                                // bound side
+            if (face == Face::PosY || face == Face::NegY) return 133;
+            return 134;
         case Block::Clay: return 135;
         case Block::Terracotta: return 136;
         case Block::Wool: return 137;
         case Block::Mycelium:
             if (face == Face::PosY) return 138;
-            if (face == Face::NegY) return 2;  // dirt bottom
+            if (face == Face::NegY) return 2;
             return 139;
         case Block::Andesite: return 140;
         case Block::Diorite: return 141;
         case Block::Granite: return 142;
         case Block::Deepslate:
-            if (face == Face::PosY || face == Face::NegY) return 143;  // cut face
-            return 144;                                                // striated side
+            if (face == Face::PosY || face == Face::NegY) return 143;
+            return 144;
         case Block::CopperOre: return 145;
         case Block::Tuff: return 146;
         case Block::Dripstone: return 147;
@@ -480,7 +461,6 @@ inline int faceTile(Block block, Face face) {
 
 constexpr int tileCount = 157;
 
-// Block light emitted by a block itself, 0..15.
 inline int blockLightEmission(Block b) {
     switch (b) {
         case Block::Glowstone:       return 15;
@@ -489,7 +469,7 @@ inline int blockLightEmission(Block b) {
         case Block::Torch:           return 14;
         case Block::FurnaceLit:      return 13;
         case Block::RedstoneTorch:   return 7;
-        case Block::RedstoneOre:     return 0;  // lit only on touch, handled by gameplay
+        case Block::RedstoneOre:     return 0;
         case Block::EndPortal:       return 15;
         case Block::SeaLantern:      return 15;
         case Block::Lantern:         return 15;
@@ -501,13 +481,11 @@ inline int blockLightEmission(Block b) {
     }
 }
 
-// A block that ambient-occludes its neighbours and blocks light propagation.
 inline bool occludesLight(Block b) { return isOpaque(b); }
 
-// Meshed in the transparent pass (depth write off, back-to-front): fluids + ice.
 inline bool isTransparent(Block b) {
     return b == Block::Water || b == Block::Ice || b == Block::Glass ||
            b == Block::NetherPortal || b == Block::EndPortal;
 }
 
-} // namespace vf
+}

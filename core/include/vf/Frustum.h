@@ -11,9 +11,6 @@ struct Plane {
 
 class Frustum {
 public:
-    // Extracts the six clip planes from a view-projection matrix
-    // (Gribb and Hartmann). Planes point inward; a point is inside when its
-    // signed distance to every plane is non-negative.
     static Frustum fromMatrix(const Mat4& viewProjection);
 
     bool containsPoint(const Vec3& p) const;
@@ -25,4 +22,4 @@ private:
     Plane planes[6];
 };
 
-} // namespace vf
+}

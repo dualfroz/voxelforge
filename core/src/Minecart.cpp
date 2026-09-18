@@ -80,7 +80,7 @@ void assignVelocity(Minecart& cart, const Vec3& vel) {
     }
 }
 
-} // namespace
+}
 
 Minecart makeMinecart(const Vec3i& railPos, RailDir moveDir, CartKind kind) {
     Minecart cart;
@@ -165,4 +165,4 @@ void stepMinecarts(World& world, std::vector<Minecart>& carts, const CartConfig&
     }
 }
 
-} // namespace vf
+}

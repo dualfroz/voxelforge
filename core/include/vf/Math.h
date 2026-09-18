@@ -57,7 +57,6 @@ struct Vec3iHash {
     }
 };
 
-// Column-major 4x4, matching the layout GL uploads without transpose.
 struct Mat4 {
     float m[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
 
@@ -121,4 +120,4 @@ inline Vec3 directionFromYawPitch(float yawRadians, float pitchRadians) {
     };
 }
 
-} // namespace vf
+}

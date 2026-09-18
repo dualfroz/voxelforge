@@ -8,8 +8,8 @@ namespace vf {
 
 namespace {
 
-constexpr float simplexF2 = 0.3660254037844386f;   // (sqrt(3) - 1) / 2
-constexpr float simplexG2 = 0.21132486540518713f;  // (3 - sqrt(3)) / 6
+constexpr float simplexF2 = 0.3660254037844386f;
+constexpr float simplexG2 = 0.21132486540518713f;
 constexpr float simplexF3 = 1.0f / 3.0f;
 constexpr float simplexG3 = 1.0f / 6.0f;
 
@@ -33,7 +33,7 @@ float clampUnit(float v) {
     return std::max(-1.0f, std::min(1.0f, v));
 }
 
-} // namespace
+}
 
 void NoiseAdv::reseed(uint32_t seed) {
     seedValue = seed;
@@ -336,4 +336,4 @@ float NoiseAdv::warpedFbm2D(float x, float y, const FbmParams& fbmParams, float 
     return fbm2D(x + warpX * warpStrength, y + warpY * warpStrength, fbmParams);
 }
 
-} // namespace vf
+}

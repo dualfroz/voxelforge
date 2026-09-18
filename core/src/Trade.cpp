@@ -217,7 +217,7 @@ bool containerHasRoom(const Container& container, ItemId item, int count) {
     return capacity >= count;
 }
 
-} // namespace
+}
 
 const char* tradeTierName(TradeTier tier) {
     switch (tier) {
@@ -471,4 +471,4 @@ TradeResult TradeSession::trade(int index) {
     return outcome;
 }
 
-} // namespace vf
+}

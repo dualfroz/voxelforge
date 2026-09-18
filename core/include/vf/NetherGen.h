@@ -16,9 +16,6 @@ enum class NetherBiome : uint8_t {
     Count,
 };
 
-// Vertical profile of a single Nether column. The cavern is the gap between
-// the top of the lower mass (floorHeight) and the underside of the roof mass
-// (ceilingHeight); everything at or below lavaLevel inside that gap is lava.
 struct NetherColumn {
     NetherBiome biome = NetherBiome::NetherWastes;
     int floorHeight = 0;
@@ -29,10 +26,6 @@ struct NetherColumn {
     int cavernHeight() const { return ceilingHeight - floorHeight - 1; }
 };
 
-// Deterministic Nether generator: a solid rock volume between a bedrock floor
-// and a bedrock roof, hollowed out by a cavern profile plus 3D carving noise,
-// flooded with a lava sea at a fixed level, and surfaced per Nether biome.
-// The same seed and column always yield the same blocks.
 class NetherGenerator {
 public:
     struct Params {
@@ -62,8 +55,6 @@ public:
     NetherBiome biomeAt(int gx, int gz) const;
     NetherColumn columnAt(int gx, int gz) const;
 
-    // Tunnel network cut through the solid mass, sampled independently of the
-    // column profile so it links the floor rock to the roof rock.
     bool isCarved(int gx, int gy, int gz) const;
     bool isBedrock(int gx, int gy, int gz) const;
 
@@ -92,4 +83,4 @@ private:
     NoiseAdv biomeNoise;
 };
 
-} // namespace vf
+}

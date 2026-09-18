@@ -12,8 +12,6 @@ const MetaStack& emptyStack() {
 }
 
 bool isBrewIngredient(ItemId item) {
-    // Brewing.h models potions with PotionItem, not ItemId, so only the
-    // ingredients that also exist as items can be filtered here.
     return item == ItemId::RedstoneDust || item == ItemId::Glowstone ||
            item == ItemId::Gunpowder;
 }
@@ -46,7 +44,7 @@ void appendPlayerSections(std::vector<MenuSlot>& slots, MenuLayout& layout, bool
     }
 }
 
-} // namespace
+}
 
 const char* slotFilterKindName(SlotFilter::Kind kind) {
     switch (kind) {
@@ -249,7 +247,7 @@ std::vector<MenuSlot> buildLayout(MenuKind kind, MenuLayout& layout) {
     return slots;
 }
 
-} // namespace
+}
 
 MenuLayout layoutFor(MenuKind kind) {
     MenuLayout layout;
@@ -354,8 +352,6 @@ int CraftingView::craftAll(int limit) {
         ++crafted;
         menu->distributeInto(targets, batch);
         if (!batch.empty()) {
-            // No room left: the unplaced remainder goes back to the result slot
-            // and crafting stops, exactly as a full inventory does in game.
             menu->stackAt(menu->layout().resultSlot) = batch;
             break;
         }
@@ -540,4 +536,4 @@ bool ContainerMenu::fromNbt(const NbtTag& tag) {
     return true;
 }
 
-} // namespace vf
+}

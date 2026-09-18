@@ -62,7 +62,7 @@ int clampDelay(int delayTicks) {
     return delayTicks;
 }
 
-} // namespace
+}
 
 RedstoneCircuit::RedstoneCircuit(World& world, const Vec3i& origin, const Vec3i& dims)
     : world(world), origin(origin), dims(dims) {
@@ -304,4 +304,4 @@ void RedstoneCircuit::applyLamps() {
     }
 }
 
-} // namespace vf
+}

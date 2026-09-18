@@ -55,8 +55,6 @@ PotionEntry instantPotion(PotionKind kind, const char* name, PotionKind base, In
     return entry;
 }
 
-// The durations mirror the profile table the stand keeps privately; the catalog
-// tests hold the two against each other rather than assuming they agree.
 std::vector<PotionEntry> buildRows() {
     std::vector<PotionEntry> rows;
     rows.push_back(basePotion(PotionKind::Water, "water", PotionKind::Water, Ingredient::None));
@@ -117,7 +115,7 @@ int modifierIndex(const PotionItem& potion) {
     return 0;
 }
 
-} // namespace
+}
 
 PotionCatalog::PotionCatalog() : rows(buildRows()) {}
 
@@ -307,4 +305,4 @@ const BrewGraph& brewGraph() {
     return graph;
 }
 
-} // namespace vf
+}

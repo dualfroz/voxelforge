@@ -15,10 +15,6 @@
 
 namespace vf {
 
-// Behaviour trees layered on top of the reactive creature AI in Mob.h. A node
-// answers with one of three verdicts every tick and the tree remembers which
-// node was left Running, so the next tick resumes there instead of restarting
-// the whole traversal.
 enum class BehaviorStatus : uint8_t {
     Failure = 0,
     Success = 1,
@@ -27,12 +23,8 @@ enum class BehaviorStatus : uint8_t {
 
 const char* behaviorStatusName(BehaviorStatus status);
 
-// Traversal is recursive, so a malformed tree would blow the stack. Trees are
-// measured when the root is installed and refuse to run past this.
 constexpr int maxBehaviorDepth = 48;
 
-// Deterministic xorshift shared by every module built on this one. No clock,
-// no global state: the caller owns the stream.
 uint32_t behaviorNextRandom(uint32_t& state);
 float behaviorUnitFloat(uint32_t& state);
 int behaviorRandomRange(uint32_t& state, int minInclusive, int maxInclusive);
@@ -41,9 +33,6 @@ Vec3i behaviorCellOf(const Vec3& position);
 Vec3 behaviorCellCenter(const Vec3i& cell);
 float behaviorHorizontalDistance(const Vec3& a, const Vec3& b);
 
-// Typed shared storage between nodes. One map per value type rather than a
-// variant, so a key written as a route can never be read back as a number.
-// Ordered maps keep iteration stable for anyone dumping the contents.
 class Blackboard {
 public:
     void setNumber(const std::string& key, float value);
@@ -81,8 +70,6 @@ private:
     std::map<std::string, std::vector<Vec3i>> routes;
 };
 
-// Tunables the stock trees read. Kept out of the node code so a caller can
-// retune a behaviour without rebuilding the tree.
 struct BehaviorTuning {
     float arriveEpsilon = 0.35f;
     float fleeRadius = 8.0f;
@@ -99,8 +86,6 @@ struct BehaviorTuning {
     int shelterHoldTicks = 60;
 };
 
-// The mob the stock trees steer. Movement is expressed in blocks per tick so
-// the whole simulation stays integer-tick driven and reproducible.
 struct BehaviorAgent {
     Species species = Species::Zombie;
     Vec3 position;
@@ -124,9 +109,6 @@ struct BehaviorAgent {
     bool routeFinished() const { return routeCursor >= static_cast<int>(route.size()); }
 };
 
-// Everything a node may read or write. `agent` is null for trees that drive
-// something other than a mob (the boss fights capture their own state in the
-// node lambdas instead).
 struct BehaviorContext {
     const World* world = nullptr;
     BehaviorAgent* agent = nullptr;
@@ -154,8 +136,6 @@ struct BehaviorContext {
 using BehaviorPredicate = std::function<bool(BehaviorContext&)>;
 using BehaviorAction = std::function<BehaviorStatus(BehaviorContext&)>;
 
-// Base node. `tick` and `reset` are the non-virtual entry points: they keep the
-// trace and the cached verdict honest, then hand over to the subclass hooks.
 class BehaviorNode {
 public:
     explicit BehaviorNode(std::string nodeName);
@@ -218,11 +198,6 @@ protected:
     std::vector<std::unique_ptr<BehaviorNode>> children;
 };
 
-// Runs children in order until one succeeds. A child left Running is resumed
-// on the next tick; earlier children are not re-evaluated until the selector
-// settles on Success or Failure. Settling clears only the composite's own
-// cursor - a child's latched state (a cooldown, a repeat counter) survives, so
-// only BehaviorTree::reset wipes a whole tree back to its starting state.
 class SelectorNode : public BehaviorComposite {
 public:
     explicit SelectorNode(std::string nodeName);
@@ -236,7 +211,6 @@ private:
     int runningChild = 0;
 };
 
-// Runs children in order until one fails. Same resumption rule as the selector.
 class SequenceNode : public BehaviorComposite {
 public:
     explicit SequenceNode(std::string nodeName);
@@ -250,9 +224,6 @@ private:
     int runningChild = 0;
 };
 
-// Ticks every unfinished child each tick and latches the ones that settled.
-// Succeeds once `successThreshold` children have succeeded, fails once
-// `failureThreshold` have failed.
 class ParallelNode : public BehaviorComposite {
 public:
     ParallelNode(std::string nodeName, int successThreshold, int failureThreshold);
@@ -293,9 +264,6 @@ protected:
     BehaviorStatus onTick(BehaviorContext& ctx) override;
 };
 
-// Ticks the child once per tick and counts completions. Succeeds after
-// `repeatLimit` completions; with `stopOnFailure` a failing child ends the
-// repeat immediately.
 class RepeaterNode : public DecoratorNode {
 public:
     RepeaterNode(std::string nodeName, std::unique_ptr<BehaviorNode> child, int repeatLimit,
@@ -313,7 +281,6 @@ private:
     int completed = 0;
 };
 
-// Reports Running while the child keeps failing, up to `maxAttempts` tries.
 class RetryUntilSuccessNode : public DecoratorNode {
 public:
     RetryUntilSuccessNode(std::string nodeName, std::unique_ptr<BehaviorNode> child,
@@ -330,8 +297,6 @@ private:
     int attempts = 0;
 };
 
-// After the child settles, the next `cooldownTicks` ticks report Failure
-// without touching the child at all.
 class CooldownNode : public DecoratorNode {
 public:
     CooldownNode(std::string nodeName, std::unique_ptr<BehaviorNode> child, int cooldownTicks);
@@ -347,8 +312,6 @@ private:
     int remaining = 0;
 };
 
-// Gives the child `limitTicks` consecutive ticks to settle. On the tick that
-// exceeds the budget the child is reset and the decorator fails.
 class TimeLimitNode : public DecoratorNode {
 public:
     TimeLimitNode(std::string nodeName, std::unique_ptr<BehaviorNode> child, int limitTicks);
@@ -370,8 +333,6 @@ struct BehaviorTreeStats {
     bool withinDepthLimit = true;
 };
 
-// Owns a root and the structural measurement taken when it was installed.
-// Ticking an over-deep tree is refused rather than attempted.
 class BehaviorTree {
 public:
     BehaviorTree() = default;
@@ -386,8 +347,6 @@ public:
     const BehaviorTreeStats& stats() const { return treeStats; }
     bool structureValid() const { return rootNode != nullptr && treeStats.withinDepthLimit; }
 
-    // Advances ctx.tick, then traverses. Returns Failure without traversing
-    // when the structure was rejected.
     BehaviorStatus tick(BehaviorContext& ctx);
     void reset();
 
@@ -399,8 +358,6 @@ private:
     long long ticks = 0;
 };
 
-// Measures a subtree without recursing, so a pathological tree is diagnosed
-// instead of crashing the measurement.
 BehaviorTreeStats measureBehaviorTree(const BehaviorNode* root);
 
 enum class BehaviorRole : uint8_t {
@@ -412,31 +369,21 @@ enum class BehaviorRole : uint8_t {
 
 const char* behaviorRoleName(BehaviorRole role);
 
-// The role a freshly spawned species walks with. Spawning.h hands its results
-// straight to this so spawned mobs are driven by a tree, not by a state enum.
 BehaviorRole roleForSpecies(Species species);
 
-// Wheat-equivalent lure and breeding item per species.
 ItemId breedingFoodFor(Species species);
 bool isBreedingFood(Species species, ItemId held);
 
-// Search -> path in -> strike -> walk home when the target is lost.
 BehaviorTree makeHostileHunterTree(const BehaviorTuning& tuning = {});
-// Flee -> breed on a cooldown -> follow held food -> graze -> wander.
 BehaviorTree makeGrazingAnimalTree(const BehaviorTuning& tuning = {});
-// Run for shade in daylight, hold there, patrol at night.
 BehaviorTree makeSunAvoiderTree(const BehaviorTuning& tuning = {});
 BehaviorTree makeTreeForRole(BehaviorRole role, const BehaviorTuning& tuning = {});
 
-// Movement primitives the stock actions are built from; exported because the
-// boss fights steer their own bodies with the same rules.
 bool stepTowardPoint(BehaviorAgent& agent, const Vec3& goal, float arriveEpsilon);
 BehaviorStatus followRouteStep(BehaviorContext& ctx);
 bool planRouteTo(BehaviorContext& ctx, const Vec3i& goal, bool force);
 
-// Nearest standable cell with something solid overhead, scanned in a fixed
-// order so the answer never depends on iteration luck.
 bool findShadedCell(const World& world, const Vec3i& from, int radius, const PathConfig& config,
                     Vec3i& outCell);
 
-} // namespace vf
+}

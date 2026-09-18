@@ -65,7 +65,7 @@ Vec3i feetCellOf(const Vec3& position) {
             static_cast<int>(std::floor(position.z))};
 }
 
-} // namespace
+}
 
 Aabb mobBox(const Mob& mob) { return boxAt(mob, mob.position); }
 
@@ -113,4 +113,4 @@ Vec3 updateMobBrain(const World& world, Mob& mob, const Vec3& targetPos, const M
     return wanderDirection(mob);
 }
 
-} // namespace vf
+}

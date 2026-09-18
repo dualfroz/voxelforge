@@ -15,7 +15,7 @@ double approach(double value, double target, double step) {
     return value;
 }
 
-} // namespace
+}
 
 const char* weatherStateName(WeatherState state) {
     switch (state) {
@@ -113,4 +113,4 @@ Precipitation Weather::precipitationAt(float temperature) const {
     return temperature < config.snowTemperature ? Precipitation::Snow : Precipitation::Rain;
 }
 
-} // namespace vf
+}

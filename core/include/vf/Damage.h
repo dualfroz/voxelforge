@@ -14,11 +14,8 @@ enum class DamageType : uint8_t {
     Count
 };
 
-// Armour points do nothing against these; the hit lands on health directly.
 bool bypassesArmor(DamageType type);
-// Ignores the post-hit invulnerability window, so it lands every tick.
 bool bypassesInvulnerability(DamageType type);
-// Neither Resistance nor Protection help against these.
 bool bypassesMitigation(DamageType type);
 bool isFireDamage(DamageType type);
 bool isProjectileDamage(DamageType type);
@@ -41,7 +38,7 @@ struct DamageEvent {
     float amount = 0.0f;
     bool critical = false;
     float knockbackStrength = 0.0f;
-    Vec3 direction;  // attacker toward target, drives knockback
+    Vec3 direction;
 };
 
 struct Armor {
@@ -72,16 +69,12 @@ struct ArmorSet {
 
     int totalPoints() const;
     float totalToughness() const;
-    // Summed enchantment protection factor for a damage type, before the cap.
     int protectionPoints(DamageType type) const;
     int levelOf(EnchantKind kind) const;
 };
 
-// Vanilla armour curve: points bite harder against small hits, toughness keeps
-// them relevant against large ones.
 float armorReduction(int points, float toughness, float damage);
 
-// Protection family reduction factor, 1.0 for none down to 0.2 at the cap.
 float protectionFactor(int protectionPoints);
 
 struct CombatStats {
@@ -105,8 +98,6 @@ int attackCooldownTicks(float attackSpeed);
 float attackCharge(const CombatStats& stats);
 void registerSwing(CombatStats& stats);
 
-// One combat tick: recharges the attack, counts down invulnerability and
-// resolves the periodic half of the entity's effects onto its health.
 EffectSet::Pending tickCombat(CombatStats& stats, EffectSet& effects);
 
 struct CombatResult {
@@ -124,25 +115,17 @@ struct CombatResult {
     Vec3 knockback;
 };
 
-// Full swing damage: base attack scaled by the charge bar, Strength/Weakness,
-// the Sharpness family against the right target, then the critical multiplier.
 float meleeAttackDamage(const CombatStats& attacker, const EnchantSet& weapon,
                         const EffectSet& attackerEffects, bool undeadTarget, bool arthropodTarget,
                         bool critical);
 
-// Raw fall damage before armour and Feather Falling, reduced by Jump Boost the
-// way vanilla does.
 float fallDamage(float fallDistance, const EffectSet& effects);
 
 Vec3 knockbackVector(const Vec3& attackerPos, const Vec3& targetPos, float strength);
 
-// Wears every worn piece by one point per four damage, honouring Unbreaking.
-// Returns the durability actually spent.
 int wearArmor(ArmorSet& armor, float incomingDamage, uint32_t& rng);
 
-// Runs the whole pipeline: invulnerability window, armour, Resistance,
-// Protection, absorption, health, knockback, thorns and armour wear.
 CombatResult applyDamage(CombatStats& target, const EffectSet& targetEffects,
                          const DamageEvent& event, uint32_t& rng);
 
-} // namespace vf
+}

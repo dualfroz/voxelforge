@@ -11,9 +11,6 @@
 
 namespace vf {
 
-// Everything that persists for one player between sessions: transform, the
-// survival vitals, experience, the selected hotbar slot and the full item
-// inventory (block items, materials, food and tools with durability).
 struct PlayerData {
     Vec3 position;
     float yaw = 0.0f;
@@ -28,8 +25,7 @@ struct PlayerData {
 NbtTag playerToNbt(const PlayerData& player);
 bool playerFromNbt(const NbtTag& root, PlayerData& out);
 
-// NBT-backed byte serialization, round-tripping through the existing tag tree.
 ByteBuffer savePlayer(const PlayerData& player);
 bool loadPlayer(const uint8_t* data, std::size_t size, PlayerData& out);
 
-} // namespace vf
+}

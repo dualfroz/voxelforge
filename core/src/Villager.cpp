@@ -30,8 +30,6 @@ const int levelThresholds[villagerMaxLevel] = {0, 10, 70, 150, 250};
 
 const int horizontalOffsets[4][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 
-// A point of interest is worked from the cell on top of it when it is solid,
-// from its own cell when it is not, or from any walkable neighbour otherwise.
 bool resolveStandCell(const World& world, const Vec3i& pos, Block block, const PathConfig& config,
                       Vec3i& outStand) {
     if (!isSolid(block) && isStandable(world, pos, config)) {
@@ -60,9 +58,6 @@ bool poiBlock(Block block) {
     return block == Block::Bed || block == Block::Bell || isWorkstationBlock(block);
 }
 
-// Nothing under the feet any more, usually because the workstation the villager
-// was standing on got mined out: drop it onto the first solid ground below and
-// throw away the route it was walking.
 bool settleVillager(const World& world, Villager& villager, const PathConfig& config) {
     Vec3i cell = villager.cell();
     if (isStandable(world, cell, config)) return false;
@@ -83,7 +78,7 @@ bool withinVillage(const Vec3i& cell, const Vec3i& center, int radius) {
            std::abs(cell.y - center.y) <= radius;
 }
 
-} // namespace
+}
 
 const char* villagerProfessionName(VillagerProfession profession) {
     switch (profession) {
@@ -633,4 +628,4 @@ int breedVillagers(std::vector<Villager>& villagers, PoiRegistry& pois, const Ve
     return born;
 }
 
-} // namespace vf
+}

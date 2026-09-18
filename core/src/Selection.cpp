@@ -35,7 +35,7 @@ Vec3i extentOf(const Vec3i& lo, const Vec3i& hi) {
     return {hi.x - lo.x + 1, hi.y - lo.y + 1, hi.z - lo.z + 1};
 }
 
-} // namespace
+}
 
 SelectionMask::SelectionMask(const Vec3i& minCornerIn, const Vec3i& dims) {
     if (dims.x <= 0 || dims.y <= 0 || dims.z <= 0) return;
@@ -469,4 +469,4 @@ void Selection::forEach(const std::function<void(const Vec3i&)>& visit) const {
     cells.forEach(visit);
 }
 
-} // namespace vf
+}

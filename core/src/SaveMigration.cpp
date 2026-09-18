@@ -97,7 +97,7 @@ std::string versionPair(SaveVersion from, SaveVersion to) {
     return std::string(saveVersionName(from)) + " -> " + saveVersionName(to);
 }
 
-} // namespace
+}
 
 const SaveChunkRecord* SaveContainer::find(const Vec3i& coord) const {
     for (const SaveChunkRecord& record : chunks)
@@ -304,7 +304,7 @@ bool decodeBodyV4(const uint8_t* body, std::size_t bodySize, SaveChunkRecord& ou
     return true;
 }
 
-} // namespace
+}
 
 bool decodeChunkPayload(SaveVersion version, const uint8_t* data, std::size_t size,
                         SaveChunkRecord& out, SavePayloadInfo* info) {
@@ -704,4 +704,4 @@ MigrationResult SaveMigrator::migrateToCurrent(const ByteBuffer& buffer) const {
     return migrate(buffer.data(), buffer.size(), currentSaveVersion);
 }
 
-} // namespace vf
+}

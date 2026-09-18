@@ -9,21 +9,12 @@ namespace vf {
 
 constexpr int maxLightLevel = 15;
 
-// Incremental sky + block light over a fixed world box. Sky light is seeded from
-// the open top of the box at full strength and travels straight down without loss
-// while unobstructed, attenuating one level per step in every other direction.
-// Block light radiates from emitters, attenuating one level per step. Editing a
-// block re-lights only the affected neighbourhood (flood-fill add plus removal
-// darkening) and yields the same field a full rebuild would produce. The box is
-// chunk-agnostic: it indexes by world coordinate, so light crosses chunk borders
-// seamlessly.
 class LightEngine {
 public:
     LightEngine(World& world, const Vec3i& origin, const Vec3i& dims);
 
     void rebuild();
 
-    // Sets a world block and incrementally updates both light channels.
     void setBlock(int gx, int gy, int gz, Block block);
 
     uint8_t sunAt(int gx, int gy, int gz) const;
@@ -49,7 +40,6 @@ private:
     bool inBox(int lx, int ly, int lz) const;
     bool occludesLocal(int lx, int ly, int lz) const;
 
-    // isSun selects the straight-down full-strength rule for the channel.
     void floodAdd(std::vector<uint8_t>& field, std::vector<Node>& queue, bool isSun);
     void floodRemove(std::vector<uint8_t>& field, std::vector<Node>& removals,
                      std::vector<Node>& reAdd, bool isSun);
@@ -63,4 +53,4 @@ private:
     std::vector<uint8_t> block;
 };
 
-} // namespace vf
+}

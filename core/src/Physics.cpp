@@ -18,8 +18,6 @@ Aabb boxAt(const Player& player, const Vec3& position) {
     };
 }
 
-// Moves the player one axis by `disp`, snapping out of any solid voxel it
-// enters. Returns true when a collision stopped the motion on that axis.
 bool moveAxis(const World& world, Player& player, int a, float disp) {
     axis(player.position, a) += disp;
     Aabb box = boxAt(player, player.position);
@@ -35,7 +33,7 @@ bool moveAxis(const World& world, Player& player, int a, float disp) {
     return true;
 }
 
-} // namespace
+}
 
 Aabb playerBox(const Player& player) { return boxAt(player, player.position); }
 
@@ -93,4 +91,4 @@ void stepPlayer(const World& world, Player& player, const MoveInput& input,
     }
 }
 
-} // namespace vf
+}

@@ -21,7 +21,6 @@ std::size_t fragmentEncodedSize(uint32_t messageId, uint32_t fragmentIndex, uint
            varUintSize(static_cast<uint32_t>(payload)) + payload;
 }
 
-// Modular "is a newer than b" over the 16-bit sequence space.
 bool sequenceGreater(SequenceNumber a, SequenceNumber b) {
     return (a != b) && (static_cast<SequenceNumber>(a - b) < 0x8000u);
 }
@@ -30,7 +29,7 @@ uint16_t sequenceDistance(SequenceNumber ahead, SequenceNumber behind) {
     return static_cast<uint16_t>(ahead - behind);
 }
 
-}  // namespace
+}
 
 LoopbackLink::LoopbackLink(LinkQuality quality) : quality(quality), rngState(quality.seed | 1ull) {}
 
@@ -323,8 +322,6 @@ bool UnreliableChannel::accept(const Datagram::Fragment& piece) {
     anyDelivered = true;
     incoming.erase(it);
 
-    // Anything still half-assembled below the newest complete message can only
-    // ever produce a stale update, so it is abandoned right away.
     for (auto stalePart = incoming.begin(); stalePart != incoming.end();) {
         if (stalePart->first < highestDelivered) {
             ++stale;
@@ -527,8 +524,6 @@ void Transport::flush(uint64_t tick) {
         sentAnything = true;
     }
 
-    // A pure ack keeps the peer's window moving when traffic is one-directional.
-    // It carries no fragments, so it cannot itself provoke another ack.
     if (!sentAnything && ackPending) {
         Datagram datagram;
         datagram.sequence = nextSequence++;
@@ -565,4 +560,4 @@ std::size_t Transport::pendingOutgoingCount() const {
     return reliable.readyFragmentCount() + unreliable.outgoingFragmentCount();
 }
 
-} // namespace vf
+}

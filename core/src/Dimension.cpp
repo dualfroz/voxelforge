@@ -10,9 +10,6 @@ namespace {
 
 constexpr long long ticksPerDay = 24000;
 
-// A destination portal site is only worth taking if it sits within this many
-// blocks of the scaled arrival height; otherwise a platform is cheaper than a
-// long fall or a climb to the roof.
 constexpr int safeSpotVerticalBand = 32;
 
 uint32_t deriveSeed(uint32_t baseSeed, uint32_t salt) {
@@ -22,7 +19,7 @@ uint32_t deriveSeed(uint32_t baseSeed, uint32_t salt) {
     return static_cast<uint32_t>(h ^ (h >> 32));
 }
 
-} // namespace
+}
 
 DimensionConfig DimensionConfig::forDimension(DimensionId id) {
     DimensionConfig cfg;
@@ -296,4 +293,4 @@ void DimensionTravel::carvePlatform(DimensionId to, const Vec3i& spot, int halfW
     }
 }
 
-} // namespace vf
+}

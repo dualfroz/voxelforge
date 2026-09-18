@@ -4,7 +4,7 @@ namespace vf {
 
 namespace {
 
-constexpr uint32_t magic = 0x31465856;  // "VXF1" little-endian
+constexpr uint32_t magic = 0x31465856;
 constexpr uint32_t formatVersion = 1;
 
 void putU32(std::vector<uint8_t>& out, uint32_t value) {
@@ -55,7 +55,7 @@ struct Reader {
     }
 };
 
-} // namespace
+}
 
 std::vector<uint8_t> serializeWorld(const World& world) {
     std::vector<uint8_t> out;
@@ -111,4 +111,4 @@ bool deserializeWorld(const uint8_t* data, std::size_t size, World& out) {
     return true;
 }
 
-} // namespace vf
+}

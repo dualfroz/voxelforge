@@ -36,4 +36,4 @@ private:
     std::array<Block, chunkVolume> blocks;
 };
 
-} // namespace vf
+}

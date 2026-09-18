@@ -38,8 +38,6 @@ void eraseLive(std::vector<LiveChunk>& live, const Vec3i& coord) {
     if (at != live.size()) live.erase(live.begin() + static_cast<std::ptrdiff_t>(at));
 }
 
-// Pulls every chunk of a container out as (coordinate, checksum, payload
-// bytes), in canonical order.
 bool sliceContainer(const ByteBuffer& save, SaveHeader& header, std::vector<LiveChunk>& out) {
     if (!readSaveHeader(save.data(), save.size(), header)) return false;
     if (header.magic != saveMagic || !isKnownSaveVersion(header.version)) return false;
@@ -64,7 +62,7 @@ bool sliceContainer(const ByteBuffer& save, SaveHeader& header, std::vector<Live
 
 std::string idText(uint32_t id) { return "#" + std::to_string(id); }
 
-} // namespace
+}
 
 const char* backupKindName(BackupKind kind) {
     switch (kind) {
@@ -402,4 +400,4 @@ std::vector<uint32_t> BackupStore::prune(uint64_t nowTick) {
     return removed;
 }
 
-} // namespace vf
+}

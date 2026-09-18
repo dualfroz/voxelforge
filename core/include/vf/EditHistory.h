@@ -13,17 +13,12 @@
 
 namespace vf {
 
-// One block changed by one edit. `before` is what the world held when the op was
-// recorded, which is what undo writes back.
 struct EditOp {
     Vec3i position{0, 0, 0};
     Block before = Block::Air;
     Block after = Block::Air;
 };
 
-// Every op belonging to a single user action. One brush stroke, one paste and
-// one fill are each exactly one batch, so undo takes back the whole action
-// instead of a block at a time. Positions inside a batch are unique.
 struct EditBatch {
     std::string label;
     uint64_t tick = 0;
@@ -44,13 +39,6 @@ struct HistoryStats {
     std::size_t mergedBatches = 0;
 };
 
-// Undo/redo over a World, with a hard byte budget.
-//
-// Writes go through recordSet so the previous value is captured at the moment
-// of the write; the world is never scanned afterwards to guess what changed.
-// The budget covers both stacks, and is enforced by dropping the oldest undo
-// batches - history is the first thing that should give way under memory
-// pressure, and the newest edits are the ones a user actually wants back.
 class EditHistory {
 public:
     explicit EditHistory(std::size_t memoryBudgetBytes = 1u << 20);
@@ -58,9 +46,6 @@ public:
     void setMemoryBudget(std::size_t bytes);
     std::size_t memoryBudget() const { return budget; }
 
-    // Two batches merge into one when they overlap on at least one block and
-    // their ticks are within this window, so a burst of small strokes on the
-    // same spot undoes as one action. Zero disables merging.
     void setMergeWindow(uint64_t ticks) { mergeWindow = ticks; }
     uint64_t mergeWindowTicks() const { return mergeWindow; }
 
@@ -105,4 +90,4 @@ private:
     std::size_t mergedBatches = 0;
 };
 
-} // namespace vf
+}

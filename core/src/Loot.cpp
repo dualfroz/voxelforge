@@ -156,8 +156,6 @@ LootTable leavesTable() {
     LootEntry silk = fixedDrop(ItemId::Leaves);
     silk.conditions = LootEntry::SilkTouched;
 
-    // The item palette has no sapling, so a wood cutting stands in as the
-    // replantable drop; Fortune improves its odds the way vanilla does.
     LootEntry cutting = chanceDrop(ItemId::Wood, 0.05f, 0.04f, LootEntry::ChanceFortune);
     cutting.conditions = LootEntry::NotSilkTouched;
 
@@ -298,7 +296,7 @@ const LootTable& emptyTable() {
     return table;
 }
 
-} // namespace
+}
 
 int LootRoll::countOf(ItemId item) const {
     int total = 0;
@@ -424,4 +422,4 @@ LootRoll rollChestContents(LootTable::ChestKind kind, const LootContext& context
     return rollLootTable(chestLootTable(kind), context);
 }
 
-} // namespace vf
+}

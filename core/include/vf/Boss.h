@@ -12,9 +12,6 @@
 
 namespace vf {
 
-// Two staged boss fights driven by the behaviour trees from Behavior.h. Both
-// are pure tick machines: feed the same seed and the same sequence of player
-// actions and the fight replays move for move.
 enum class BossKind : uint8_t {
     EnderDragon = 0,
     Wither = 1,
@@ -51,7 +48,6 @@ struct BossBar {
     bool visible = false;
 
     int notchCount() const;
-    // Whole segments currently lit; a partially drained segment reads as empty.
     int filledNotches() const;
     int percent() const;
     void setFromHealth(float health, float maxHealth);
@@ -81,8 +77,6 @@ struct BossState {
     float healthFraction() const;
 };
 
-// One end crystal on top of an obsidian pillar from EndGen.h. The taller
-// pillars carry a cage that has to come down before the crystal can be shot.
 struct CrystalNode {
     Vec3i pillarBase;
     Vec3i position;
@@ -136,8 +130,6 @@ struct DragonFightConfig {
     int deathTicks = 40;
 };
 
-// What the player did on one tick. `shootCrystal` indexes crystals(); a caged
-// crystal needs `breakCage` on an earlier tick before a shot lands.
 struct DragonPlayerInput {
     Vec3 position;
     bool present = true;
@@ -146,9 +138,6 @@ struct DragonPlayerInput {
     float meleeDamage = 0.0f;
 };
 
-// Crystals heal the dragon while they stand, so the fight cannot be won by
-// damage alone. Killing the last one drops it onto the portal, where melee
-// lands at full strength; the kill opens the exit portal and leaves the egg.
 class DragonFight {
 public:
     DragonFight(const EndGenerator& end, uint32_t seed, const DragonFightConfig& config = {});
@@ -164,8 +153,6 @@ public:
     const DragonFightConfig& settings() const { return cfg; }
     const std::vector<CrystalNode>& crystals() const { return pillarCrystals; }
     int aliveCrystalCount() const;
-    // Taken from the End generator: the fight orbits and perches on the real
-    // exit portal column, not on an invented origin.
     Vec3 portalCenter() const { return portal; }
 
     bool exitPortalOpen() const { return portalOpen; }
@@ -175,8 +162,6 @@ public:
     const BehaviorTree& brain() const { return tree; }
     const BehaviorContext& context() const { return ctx; }
 
-    // Writes the reward the fight earned: the real End exit portal from
-    // EndGen. Refuses while the dragon still lives.
     bool placeVictoryStructures(World& world, const EndGenerator& end) const;
 
 private:
@@ -233,17 +218,12 @@ struct WitherHit {
     bool projectile = false;
 };
 
-// The block pattern that calls the wither: a soul sand T topped with three
-// heads, readable along either horizontal axis.
 Block witherBaseBlock();
 Block witherHeadBlock();
 bool witherPatternAt(const World& world, const Vec3i& baseCell, bool alongX);
 bool findWitherPattern(const World& world, const Vec3i& baseCell, bool& outAlongX);
 void consumeWitherPattern(World& world, const Vec3i& baseCell, bool alongX);
 
-// Summons out of a block pattern, blasts everything around it on arrival, then
-// hunts the nearest living target. Below half health it armours up: projectiles
-// stop landing entirely and it starts regenerating and calling minions.
 class WitherFight {
 public:
     explicit WitherFight(uint32_t seed, const WitherFightConfig& config = {});
@@ -254,7 +234,6 @@ public:
     WitherFight& operator=(WitherFight&&) = delete;
 
     void begin(const Vec3& spawnPosition);
-    // Consumes the pattern in the world and starts the fight at its centre.
     bool summonFromWorld(World& world, const Vec3i& baseCell);
 
     BossTickReport tick(const std::vector<WitherHit>& incoming,
@@ -285,4 +264,4 @@ private:
     int minionsThisTick = 0;
 };
 
-} // namespace vf
+}

@@ -28,7 +28,7 @@ void successors(const World& world, const Vec3i& cell, const PathConfig& config,
             Vec3i cand{nx, cell.y + dy, nz};
             if (!isStandable(world, cand, config)) continue;
             if (dy > 0 && world.solidAt(cell.x, cell.y + config.mobHeight, cell.z))
-                continue;   // ceiling blocks the step up
+                continue;
             out.push_back(cand);
         }
     }
@@ -47,11 +47,11 @@ struct Frontier {
 struct FrontierGreater {
     bool operator()(const Frontier& a, const Frontier& b) const {
         if (a.f != b.f) return a.f > b.f;
-        return a.order > b.order;   // stable tie-break by insertion order
+        return a.order > b.order;
     }
 };
 
-} // namespace
+}
 
 std::vector<Vec3i> findPath(const World& world, const Vec3i& start, const Vec3i& goal,
                             const PathConfig& config) {
@@ -75,7 +75,7 @@ std::vector<Vec3i> findPath(const World& world, const Vec3i& start, const Vec3i&
 
         auto known = gScore.find(current.cell);
         if (known == gScore.end() || current.f - heuristic(current.cell, goal) > known->second)
-            continue;   // stale entry
+            continue;
 
         if (current.cell == goal) {
             std::vector<Vec3i> path;
@@ -105,4 +105,4 @@ std::vector<Vec3i> findPath(const World& world, const Vec3i& start, const Vec3i&
     return {};
 }
 
-} // namespace vf
+}

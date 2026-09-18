@@ -48,7 +48,7 @@ Vec3i witherOffset(const Vec3i& base, int along, int up, bool alongX) {
                   : Vec3i{base.x, base.y + up, base.z + along};
 }
 
-} // namespace
+}
 
 const char* bossKindName(BossKind kind) {
     switch (kind) {
@@ -677,4 +677,4 @@ BossTickReport WitherFight::tick(const std::vector<WitherHit>& incoming,
     return report;
 }
 
-} // namespace vf
+}

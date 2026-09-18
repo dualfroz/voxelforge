@@ -9,18 +9,10 @@
 
 namespace vf {
 
-// Datagram numbering is 16-bit and wraps, so every comparison between two
-// sequence numbers has to be modular rather than arithmetic.
 using SequenceNumber = uint16_t;
 
-// Bit i means "the datagram numbered ackLatest - 1 - i also arrived", so one
-// 32-bit word confirms 33 datagrams and a single surviving ack can recover the
-// whole window that came before it.
 using AckBitfield = uint32_t;
 
-// Everything a hostile link does to a datagram, as integer percents and tick
-// counts. The seed makes a run reproducible: the same sequence of sends always
-// produces the same sequence of arrivals.
 struct LinkQuality {
     uint32_t lossPercent = 0;
     uint32_t duplicatePercent = 0;
@@ -30,9 +22,6 @@ struct LinkQuality {
     uint64_t seed = 0x9e3779b97f4a7c15ull;
 };
 
-// A two-endpoint in-memory pipe: no sockets, no threads, no wall clock.
-// Delivery is a tick-stamped queue and every impairment is drawn from a seeded
-// stream, which is what makes the transport tests reproducible.
 class LoopbackLink {
 public:
     explicit LoopbackLink(LinkQuality quality = {});
@@ -40,11 +29,8 @@ public:
     void send(int fromEndpoint, const uint8_t* datagram, std::size_t size, uint64_t tick);
     void send(int fromEndpoint, const ByteBuffer& datagram, uint64_t tick);
 
-    // Every datagram addressed to `endpoint` whose delivery tick has arrived,
-    // oldest first. Same-tick arrivals keep their send order.
     void receive(int endpoint, uint64_t tick, std::vector<ByteBuffer>& out);
 
-    // Re-seeds the impairment stream, so a test can change the link mid-run.
     void setQuality(const LinkQuality& newQuality);
     const LinkQuality& settings() const { return quality; }
     void reset();
@@ -77,9 +63,6 @@ private:
     uint64_t delayed = 0;
 };
 
-// One unit on the wire: an ack header plus however many message fragments fit
-// under the MTU. A fragment carries its own message identity so a datagram can
-// be lost without losing track of what was in it.
 struct Datagram {
     struct Fragment {
         bool reliable = false;
@@ -92,8 +75,6 @@ struct Datagram {
     SequenceNumber sequence = 0;
     SequenceNumber ackLatest = 0;
     AckBitfield ackHistory = 0;
-    // Until the sender has itself received something, ackLatest is meaningless
-    // and must not be mistaken for an acknowledgement of sequence 0.
     bool ackValid = false;
     std::vector<Fragment> fragments;
 
@@ -125,9 +106,6 @@ struct TransportStats {
     double smoothedRttTicks = 0.0;
 };
 
-// Ordered, exactly-once message stream. Outgoing fragments live until acked;
-// incoming fragments are reassembled per message and then held back until
-// every earlier message id has been handed over.
 class ReliableChannel {
 public:
     struct OutgoingFragment {
@@ -149,8 +127,6 @@ public:
     std::size_t unackedFragmentCount() const { return outgoing.size(); }
     std::size_t readyFragmentCount() const;
 
-    // False when the fragment belongs to a message already handed over, which
-    // is what a retransmission of an already-delivered message looks like.
     bool accept(const Datagram::Fragment& fragment);
     bool popDelivered(ByteBuffer& out);
     std::size_t deliveredWaiting() const { return delivered.size(); }
@@ -178,9 +154,6 @@ private:
     std::deque<ByteBuffer> delivered;
 };
 
-// Unordered, send-once stream for state that ages badly. A message older than
-// the newest one already delivered is thrown away instead of queued, because a
-// stale entity position is worse than no update at all.
 class UnreliableChannel {
 public:
     void queueMessage(const uint8_t* payload, std::size_t size, std::size_t fragmentPayload);
@@ -213,10 +186,6 @@ private:
     uint64_t stale = 0;
 };
 
-// Reliability layered over the unreliable datagram link: sequencing, acks with
-// a 32-entry bitfield, timeout-driven retransmission, a bounded send window and
-// the two message channels. Time is the tick handed in from outside; the class
-// never reads a clock.
 class Transport {
 public:
     Transport(LoopbackLink& link, int endpoint, TransportConfig config = {});
@@ -226,9 +195,7 @@ public:
     void sendUnreliable(const uint8_t* payload, std::size_t size);
     void sendUnreliable(const ByteBuffer& payload);
 
-    // Reads arrivals and applies their acks.
     void pump(uint64_t tick);
-    // Expires unacked datagrams, then packs and sends whatever fits.
     void flush(uint64_t tick);
     void update(uint64_t tick);
 
@@ -276,4 +243,4 @@ private:
     TransportStats statistics;
 };
 
-} // namespace vf
+}

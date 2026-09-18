@@ -80,7 +80,7 @@ SpawnRule makePassiveRule(Species species, int packMin, int packMax,
     return rule;
 }
 
-} // namespace
+}
 
 const char* spawnCategoryName(SpawnCategory category) {
     switch (category) {
@@ -495,4 +495,4 @@ std::vector<BehaviorAgent> agentsFromSpawn(const SpawnResult& result, uint32_t s
     return agents;
 }
 
-} // namespace vf
+}

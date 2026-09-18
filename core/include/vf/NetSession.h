@@ -22,9 +22,6 @@ enum class SessionPhase : uint8_t {
     Disconnected = 3,
 };
 
-// Which chunks belong around a centre, and what changed the last time that
-// centre moved. The diff is what the server acts on: a client entering a chunk
-// costs a snapshot, a client leaving it costs nothing but a forget.
 class ViewTracker {
 public:
     explicit ViewTracker(int radius = 2);
@@ -32,8 +29,6 @@ public:
     void setRadius(int radius);
     int radius() const { return viewRadius; }
 
-    // `entered` comes back nearest first, so the chunk under the player is
-    // streamed before the rim of the sphere.
     void update(const Vec3i& newCentre, std::vector<Vec3i>& entered, std::vector<Vec3i>& left);
 
     bool contains(const Vec3i& coord) const { return resident.count(coord) != 0; }
@@ -50,8 +45,6 @@ private:
     std::unordered_set<Vec3i, Vec3iHash> resident;
 };
 
-// The server's picture of one client: where it is, which chunks it should
-// hold, which it has actually been sent, and which are still waiting to go out.
 struct ClientView {
     Vec3 position;
     Vec3i centreChunk;
@@ -102,9 +95,6 @@ struct SessionStats {
     uint64_t bytesFlushed = 0;
 };
 
-// One connection, seen from either end. The phase machine gates which packets
-// are legal; anything out of place ends the session with a reason instead of
-// being fed to a decoder that was never meant to see it.
 class NetSession {
 public:
     enum class Role : uint8_t { Client = 0, Server = 1 };
@@ -115,7 +105,6 @@ public:
     void attachChunkSync(ServerChunkSync& sync) { syncRef = &sync; }
     void setEntityId(int32_t id) { ownEntityId = id; }
 
-    // Client side: opens the handshake and moves straight into login.
     void beginHandshake(const std::string& playerName, uint64_t uuidHi, uint64_t uuidLo);
 
     void receive(uint64_t tick);
@@ -130,8 +119,6 @@ public:
     ClientView& view() { return clientView; }
     const ClientView& view() const { return clientView; }
 
-    // Server side: this chunk has entries in the shared ServerChunkSync that
-    // still have to be turned into packets for this particular client.
     void markChunkDirty(const Vec3i& coord);
     void sendEntityMove(int32_t movedEntityId, const Vec3& position, float yaw, float pitch,
                         bool onGround);
@@ -142,7 +129,6 @@ public:
     uint64_t uuidHigh() const { return uuidHi; }
     uint64_t uuidLow() const { return uuidLo; }
 
-    // Client side.
     void requestBlockEdit(int32_t x, int32_t y, int32_t z, Block block);
     const PlayerState& playerState() const { return latestPlayerState; }
     bool entityMove(int32_t movedEntityId, EntityMove& out) const;
@@ -206,4 +192,4 @@ private:
     SessionStats statistics;
 };
 
-} // namespace vf
+}

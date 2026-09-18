@@ -22,7 +22,7 @@ std::uint64_t meshBytes(const ChunkMesh& mesh) {
     return total;
 }
 
-} // namespace
+}
 
 ChunkCache::ChunkCache(std::uint64_t byteBudget, CachePolicy policy)
     : budget(byteBudget), replacement(policy) {}
@@ -337,4 +337,4 @@ std::vector<Vec3i> ChunkCache::residentCoords() const {
     return coords;
 }
 
-} // namespace vf
+}

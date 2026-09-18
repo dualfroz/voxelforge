@@ -21,7 +21,7 @@ int64_t squaredDistance(const Vec3i& a, const Vec3i& b) {
     return dx * dx + dy * dy + dz * dz;
 }
 
-}  // namespace
+}
 
 ViewTracker::ViewTracker(int radius) : viewRadius(radius < 0 ? 0 : radius) {}
 
@@ -239,8 +239,6 @@ void NetSession::sendPlayerState(const PlayerState& state) {
     if (currentPhase != SessionPhase::Play) return;
     PacketWriter body;
     state.encode(body);
-    // Upstream position reports age out instantly, an authoritative correction
-    // from the server must not.
     enqueue(PacketId::PlayerState, body, role == Role::Server);
 }
 
@@ -411,8 +409,6 @@ void NetSession::handleFrame(const Frame& frame, uint64_t tick) {
                 return;
             }
             if (role == Role::Server) {
-                // Only a token this server actually issued, and only the first
-                // time it comes back, counts as proof the client is alive.
                 if (beat.token > pendingKeepAliveToken) return;
                 if (beat.token <= acceptedKeepAliveToken) return;
                 acceptedKeepAliveToken = beat.token;
@@ -447,8 +443,6 @@ void NetSession::streamChunks() {
 void NetSession::flushBlockChanges() {
     for (const Vec3i& coord : dirtyChunks) {
         if (!clientView.hasChunk(coord)) {
-            // Nothing to patch yet: the pending full snapshot already carries
-            // the current contents, so the delta would be redundant.
             if (clientView.tracker.contains(coord)) clientView.queueChunk(coord);
             continue;
         }
@@ -508,8 +502,6 @@ void NetSession::flushOutbound() {
     std::size_t used = 0;
     while (!outbound.empty()) {
         const QueuedPacket& head = outbound.front();
-        // A packet bigger than the whole budget still goes out once nothing
-        // else has, otherwise it would block the queue forever.
         if (budget != 0 && used != 0 && used + head.frame.size() > budget) break;
         if (head.reliable)
             transport->sendReliable(head.frame);
@@ -548,4 +540,4 @@ void NetSession::update(uint64_t tick) {
     send(tick);
 }
 
-} // namespace vf
+}

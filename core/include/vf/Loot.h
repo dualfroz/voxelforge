@@ -9,11 +9,6 @@
 
 namespace vf {
 
-// A loot roll reads the kill exactly as combat reported it, so the two modules
-// share one description of "what hit this".
-
-// One candidate drop. `conditions` gate whether the entry is eligible at all,
-// `functions` shape the count and the item once it has been picked.
 struct LootEntry {
     static constexpr uint32_t PlayerKill = 1u << 0;
     static constexpr uint32_t Fiery = 1u << 1;
@@ -33,20 +28,15 @@ struct LootEntry {
     static constexpr uint32_t SmeltIfFiery = 1u << 5;
 
     ItemId item = ItemId::None;
-    // Relative pull inside its pool. A pool picks exactly one eligible entry per
-    // roll, weighted by this.
     int weight = 1;
     int minCount = 1;
     int maxCount = 1;
-    // A chance of one never touches the rng, which keeps single-entry pools from
-    // shifting the stream for everything behind them.
     float chance = 1.0f;
     float chancePerLevel = 0.0f;
     uint32_t conditions = 0;
     uint32_t functions = 0;
 };
 
-// One pool fires `minRolls`..`maxRolls` times and each fire picks one entry.
 struct LootPool {
     std::vector<LootEntry> entries;
     int minRolls = 1;
@@ -63,8 +53,6 @@ struct LootTable {
     bool empty() const { return pools.empty(); }
 };
 
-// Everything a roll needs to know about the circumstances of the drop. The
-// enchantment queries read the tool that broke the block or landed the kill.
 struct LootContext {
     uint32_t seed = 0;
     DamageType killedBy = DamageType::Melee;
@@ -86,29 +74,21 @@ struct LootRoll {
     bool empty() const { return items.empty(); }
 };
 
-// Falls back to a fixed non-zero seed, because the xorshift stream is dead at
-// zero and a caller that forgot to seed would otherwise silently get nothing.
 LootContext lootContextFor(const HurtSource& source, ItemId tool, const EnchantSet& toolEnchants,
                            uint32_t seed);
 
-// The cooked or smelted counterpart of a raw drop, or the input unchanged when
-// it has none.
 ItemId smeltedForm(ItemId raw);
 
-// Whether the held tool is good enough to make the block drop anything. Only
-// pickaxe blocks are gated; everything else drops for bare hands.
 bool toolQualifiesFor(Block block, ItemId tool);
 
 const LootTable& blockLootTable(Block block);
 const LootTable& mobLootTable(LootTable::MobKind kind);
 const LootTable& chestLootTable(LootTable::ChestKind kind);
 
-// Deterministic in context.seed: the same context against the same table always
-// produces the same roll.
 LootRoll rollLootTable(const LootTable& table, const LootContext& context);
 
 LootRoll rollBlockDrops(Block block, const LootContext& context);
 LootRoll rollMobDrops(LootTable::MobKind kind, const LootContext& context);
 LootRoll rollChestContents(LootTable::ChestKind kind, const LootContext& context);
 
-} // namespace vf
+}

@@ -22,9 +22,6 @@ enum class RaiderKind : uint8_t {
 
 const char* raiderKindName(RaiderKind kind);
 
-// One attacker in a raid wave. Movement reuses the shared A* from Pathfind.h:
-// the raider walks its route to the village centre and fights whatever stands
-// between it and the bell.
 struct Raider {
     struct Stats {
         float maxHealth = 24.0f;
@@ -49,8 +46,6 @@ struct Raider {
 
 const Raider::Stats& raiderStats(RaiderKind kind);
 
-// The composition of a single wave. Every count grows with the wave index, the
-// difficulty and the strength of the omen that triggered the raid.
 struct RaidWave {
     int index = 0;
     int raiders = 0;
@@ -73,8 +68,6 @@ constexpr int badOmenDurationTicks = 100 * ticksPerSecond;
 constexpr int heroDurationTicks = 40 * 60 * ticksPerSecond;
 constexpr int badOmenMaxLevel = 5;
 
-// The two player-side effects this module owns: the bad omen that arms a raid
-// and the hero of the village discount handed out for winning one.
 struct OmenState {
     int level = 0;
     int ticksRemaining = 0;
@@ -101,9 +94,6 @@ enum class RaidState : uint8_t {
 
 const char* raidStateName(RaidState state);
 
-// Iron golem production during a raid. The village fields more golems the more
-// villagers it still has, and turns them on the player once the village-wide
-// reputation drops far enough.
 struct GolemSpawner {
     int intervalTicks = 120;
     int cooldownTicks = 0;
@@ -116,12 +106,10 @@ struct GolemSpawner {
     bool hostileToPlayer = false;
 };
 
-// A hamlet too small to be worth defending fields no golems at all.
 constexpr int golemMinimumVillagers = 3;
 
 int golemCapFor(int villagerCount);
 
-// Counts the cooldown down and reports the ticks on which a golem is due.
 bool tickGolemSpawner(GolemSpawner& spawner, int villagerCount, int ticks);
 void updateGolemHostility(GolemSpawner& spawner, const ReputationView& reputation);
 
@@ -130,20 +118,13 @@ constexpr int raidWaveTimeoutTicks = 2400;
 constexpr float raidSpawnRadius = 24.0f;
 constexpr float raidGolemEngageRadius = 7.0f;
 
-// Drives a whole raid: wave planning, deterministic raider spawning, the walk
-// to the village centre, golem production, villager panic and the gossip the
-// outcome leaves behind. Every decision is a function of the seed.
 class RaidManager {
 public:
     explicit RaidManager(const Vec3i& center = {}, uint32_t seed = 1u,
                          int difficulty = raidDifficultyNormal);
 
-    // Arms the raid when the player carries a bad omen into the village. The
-    // omen is consumed.
     bool tryStart(OmenState& omen, const Vec3& playerPos, float villageRadius);
 
-    // Advances `ticks` whole game ticks: raiders, golems, villagers and wave
-    // progression.
     void tick(const World& world, std::vector<Villager>& villagers, PoiRegistry& pois,
               OmenState& omen, const VillagerSchedule& schedule, const TimeOfDay& clock, int ticks,
               const PathConfig& config = {});
@@ -165,7 +146,6 @@ public:
     const GolemSpawner& golems() const { return spawner; }
     const Vec3i& center() const { return villageCenter; }
 
-    // Returns true when the hit killed the raider.
     bool damageRaider(int index, float amount);
 
 private:
@@ -197,4 +177,4 @@ private:
     int omenLevel = 0;
 };
 
-} // namespace vf
+}

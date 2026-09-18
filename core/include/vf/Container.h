@@ -22,9 +22,6 @@ inline Vec3i faceDelta(Face face) {
     return {0, 0, 0};
 }
 
-// Generic multi-slot inventory holding ItemSlot values. Backs chests, hoppers,
-// droppers, dispensers and container minecarts. Merging respects each item's
-// own max stack (tools do not stack, blocks stack to 64).
 class Container {
 public:
     Container() = default;
@@ -43,31 +40,20 @@ public:
     int usedSlots() const;
     int totalItems() const;
 
-    // Inserts as much of `incoming` as fits, merging into matching stacks first
-    // then filling empty slots (each capped at the item's max stack). Reduces
-    // `incoming.count` by what was taken. Returns the amount inserted.
     int insert(ItemSlot& incoming);
     int insert(ItemId item, int count, int durability = 0);
 
-    // Pulls up to `amount` of `item` from any slots (first-fit, matching
-    // durability). Returns the removed stack (empty when nothing matched).
     ItemSlot extract(ItemId item, int amount);
     ItemSlot extractSlot(int index, int amount);
 
-    // Moves up to `maxItems` items from this container into `dest`, walking
-    // slots in order. Returns how many items actually moved.
     int transferTo(Container& dest, int maxItems);
 
-    // Redstone comparator reading 0..15 from average fill fraction, matching the
-    // vanilla formula: 0 when empty, 15 when every slot is at its max stack.
     int comparatorSignal() const;
 
 private:
     std::vector<ItemSlot> slots;
 };
 
-// Position keyed registry of block-entity inventories. Chests, hoppers,
-// droppers and dispensers each own a Container addressed by their world cell.
 class ContainerStore {
 public:
     Container& ensure(const Vec3i& pos, int slotCount);
@@ -81,4 +67,4 @@ private:
     std::unordered_map<Vec3i, Container, Vec3iHash> containers;
 };
 
-} // namespace vf
+}

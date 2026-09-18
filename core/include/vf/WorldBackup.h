@@ -12,23 +12,6 @@
 
 namespace vf {
 
-// In-memory backup chain for a region save container.
-//
-// A full backup keeps every chunk payload. An incremental keeps only the
-// payloads whose checksum moved since the entry before it, plus the list of
-// chunks that disappeared, so a long series of small edits costs a handful of
-// records rather than a copy of the world. Every entry also records the
-// checksum of every chunk that was live at that moment, which is what makes a
-// restore verifiable rather than hopeful.
-//
-// Time is always a tick handed in by the caller. Nothing here reads a clock, so
-// the same sequence of captures and prunes gives the same chain every run.
-//
-// Restores go back through the shared canonical packer, so a restored buffer is
-// byte for byte the buffer that was captured. That only holds for a canonical
-// layout, which is why capture refuses a fragmented container and points at the
-// compactor instead.
-
 enum class BackupKind : uint8_t {
     Full = 0,
     Incremental = 1,
@@ -36,9 +19,6 @@ enum class BackupKind : uint8_t {
 
 const char* backupKindName(BackupKind kind);
 
-// One chunk inside an entry. In `stored` the payload is present and the
-// checksum describes it; in `state` the payload is left empty and only the
-// checksum is carried, because the state list covers the whole world.
 struct BackupChunk {
     Vec3i coord;
     uint32_t checksum = 0;
@@ -64,9 +44,6 @@ struct BackupEntry {
     const BackupChunk* findState(const Vec3i& coord) const;
 };
 
-// The chain itself: one full backup followed by the incrementals hanging off
-// it. Walking a chain is the only supported way to reach an entry, and a walk
-// that cannot reach a full backup is reported instead of guessed around.
 class BackupIndex {
 public:
     std::vector<BackupEntry> entries;
@@ -77,8 +54,6 @@ public:
     std::size_t count() const { return entries.size(); }
     std::size_t storedBytes() const;
 
-    // Ancestors first, `id` last. On a break `complete` is false and `failure`
-    // says which link is missing.
     std::vector<uint32_t> chainTo(uint32_t id, bool& complete, std::string& failure) const;
 };
 
@@ -95,10 +70,6 @@ struct RestoreResult {
     std::string failure;
 };
 
-// Keep the newest `keepLatest` entries, plus the newest entry of each of the
-// last `dailyBuckets` days and `weeklyBuckets` weeks, plus every ancestor those
-// entries need. Days and weeks are measured in ticks against the tick passed to
-// prune, never against a system clock.
 struct RetentionPolicy {
     std::size_t keepLatest = 3;
     std::size_t dailyBuckets = 1;
@@ -114,15 +85,11 @@ public:
 
     uint32_t capture(BackupKind kind, const ByteBuffer& save, uint64_t tick);
 
-    // Lifts an older container to the current version first, so a chain never
-    // mixes formats. Returns 0 and sets lastFailure if the migration refuses.
     uint32_t captureMigrated(BackupKind kind, const ByteBuffer& save, uint64_t tick);
 
     RestoreResult restore(uint32_t id) const;
     RestoreResult restoreLatest() const;
 
-    // Deletes an entry without touching the rest, the way a stray file removal
-    // would. Chains that depended on it become detectably broken.
     bool drop(uint32_t id);
 
     std::vector<uint32_t> prune(uint64_t nowTick);
@@ -137,4 +104,4 @@ private:
     std::string failure;
 };
 
-} // namespace vf
+}

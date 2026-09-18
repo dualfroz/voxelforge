@@ -74,7 +74,7 @@ BiomeKind BiomeGen::biomeAt(int gx, int gz) const {
 
 bool BiomeGen::isRiver(int gx, int gz) const {
     ClimateSample climate = climateAt(gx, gz);
-    if (climate.continentalness < -0.35f) return false;  // no rivers carved into open ocean
+    if (climate.continentalness < -0.35f) return false;
     return std::fabs(climate.weirdness) < params.riverWidth;
 }
 
@@ -137,4 +137,4 @@ BiomeWeights BiomeGen::biomeBlend(int gx, int gz, int radius) const {
     return weights;
 }
 
-} // namespace vf
+}

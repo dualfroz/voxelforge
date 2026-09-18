@@ -14,7 +14,7 @@ struct Node {
 const int neighbourOffset[6][3] = {{1, 0, 0},  {-1, 0, 0}, {0, 1, 0},
                                    {0, -1, 0}, {0, 0, 1},  {0, 0, -1}};
 
-} // namespace
+}
 
 LightField computeLight(const World& world, const Vec3i& origin, const Vec3i& dims) {
     LightField field;
@@ -95,4 +95,4 @@ LightField computeLight(const World& world, const Vec3i& origin, const Vec3i& di
     return field;
 }
 
-} // namespace vf
+}

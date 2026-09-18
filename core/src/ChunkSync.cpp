@@ -68,4 +68,4 @@ void ClientChunkSync::applyBlockChange(const BlockChange& packet, World& world) 
     world.setBlock(packet.x, packet.y, packet.z, packet.block);
 }
 
-} // namespace vf
+}

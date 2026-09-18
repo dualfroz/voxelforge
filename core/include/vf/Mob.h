@@ -21,23 +21,20 @@ struct SpeciesStats {
     float width = 0.6f;
     float height = 1.8f;
     float walkSpeed = 2.0f;
-    float sprintMultiplier = 1.5f;   // chase (hostile) or flee (passive) speed factor
+    float sprintMultiplier = 1.5f;
     float attackDamage = 0.0f;
     float attackRange = 1.4f;
     float attackCooldown = 1.0f;
-    float alertRadius = 12.0f;       // hostile: aggro distance; passive: flee-trigger distance
-    float disengageRadius = 16.0f;   // hysteresis give-up radius once engaged
-    int spawnLightMax = 7;           // hostile: spawns only at or below this light
-    int spawnLightMin = 9;           // passive: spawns only at or above this light
+    float alertRadius = 12.0f;
+    float disengageRadius = 16.0f;
+    int spawnLightMax = 7;
+    int spawnLightMin = 9;
 };
 
 const SpeciesStats& speciesStats(Species species);
 
 enum class CreatureState : uint8_t { Idle, Wander, Flee, Chase, Attack };
 
-// A gameplay mob: species identity, health and an AI state machine layered on
-// top of the physics body from Entity.h. `body.wanderDir` is reused as the
-// creature's persistent wander/flee heading between ticks.
 struct Creature {
     Mob body;
     Species species = Species::Sheep;
@@ -55,9 +52,6 @@ struct CreatureConfig {
     MobConfig physics;
 };
 
-// One AI+physics tick. `hasThreat` false means no relevant target this tick
-// (out of range, dead, or none nearby); the creature then wanders or idles.
-// Hostile species chase and attack a present threat; passive species flee it.
 void updateCreature(const World& world, Creature& creature, const Vec3& threatPos, bool hasThreat,
                     const CreatureConfig& config, float dt);
 
@@ -74,8 +68,6 @@ struct DropEntry {
 
 std::vector<DropEntry> dropsFor(Species species);
 
-// Rolls the drop table for `species`, advancing `rng`. Deterministic given the
-// same rng state.
 std::vector<ItemSlot> rollDrops(Species species, uint32_t& rng);
 
 struct SpawnConfig {
@@ -85,9 +77,6 @@ struct SpawnConfig {
     float maxPlayerDistance = 40.0f;
 };
 
-// Approximate ambient light at a cell for spawn checks: full skylight when the
-// column above is unobstructed, combined with the strongest nearby block
-// emitter attenuated per Manhattan step.
 int mobSpawnLightLevel(const World& world, const Vec3i& cell, int searchRadius = 6);
 
 bool speciesAllowsBiome(Species species, Biome biome);
@@ -101,8 +90,6 @@ struct SpawnAttempt {
     Vec3 position;
 };
 
-// Tests every species against canSpawnAt and, if at least one qualifies, picks
-// one deterministically from `rng`.
 SpawnAttempt trySpawn(const World& world, const Vec3i& cell, Biome biome, const Vec3& playerPos,
                       int currentPopulationInArea, uint32_t& rng, const SpawnConfig& config = {});
 
@@ -111,8 +98,6 @@ struct SpawnCycle {
     float timer = 0.0f;
 };
 
-// Advances the cycle timer; returns true on ticks where a spawn attempt should
-// run. Catches up at most once per call even after a large dt.
 bool advanceSpawnCycle(SpawnCycle& cycle, float dt);
 
-} // namespace vf
+}

@@ -11,9 +11,6 @@
 
 namespace vf {
 
-// How a selection was built. Every shape collapses into a SelectionMask, so the
-// tag is informational: it survives shifting but any set operation produces a
-// free-form Mask, because the result no longer has a closed form.
 enum class SelectionShape : uint8_t {
     Box = 0,
     Sphere = 1,
@@ -24,10 +21,6 @@ enum class SelectionShape : uint8_t {
     Mask = 6,
 };
 
-// One bit per cell of an axis-aligned bounding box, indexed in the same
-// (y, z, x) order the chunk storage uses. Storing the box explicitly is what
-// makes union/difference/intersection and in-box negation exact rather than
-// approximations over a list of positions.
 class SelectionMask {
 public:
     SelectionMask() = default;
@@ -55,16 +48,11 @@ public:
     SelectionMask differenceWith(const SelectionMask& other) const;
     SelectionMask inverted() const;
 
-    // Dilation and erosion over the 6-connected neighbourhood, applied `radius`
-    // times. Dilation grows the bounding box; erosion keeps it and treats
-    // everything outside as unset, so eroding a solid box peels its shell.
     SelectionMask dilated(int radius) const;
     SelectionMask eroded(int radius) const;
 
-    // Cells that have at least one 6-neighbour outside the selection.
     SelectionMask outline() const;
 
-    // Same cells, bounding box shrunk to fit them.
     SelectionMask trimmed() const;
     SelectionMask shifted(const Vec3i& delta) const;
 
@@ -83,7 +71,6 @@ private:
     std::size_t setCells = 0;
 };
 
-// Aggregate view of what a selection covers in a given world.
 struct SelectionStats {
     std::size_t blockCount = 0;
     std::size_t solidCount = 0;
@@ -97,9 +84,6 @@ struct SelectionStats {
     std::size_t distinctBlocks() const;
 };
 
-// A world-space selection: a shape tag plus the mask it rasterized into.
-// Every operation returns a new selection; nothing mutates in place, so a
-// selection handed to a brush cannot change under it.
 class Selection {
 public:
     Selection() = default;
@@ -111,9 +95,6 @@ public:
     static Selection hollowBox(const Vec3i& cornerA, const Vec3i& cornerB, int thickness);
     static Selection fromMask(const SelectionMask& mask);
 
-    // Flood fill over blocks equal to the one at `seed`, 6-connected, stopping
-    // at `maxCells`. The limit is what keeps a wand on an ocean of air finite,
-    // so hitting it is a normal outcome reported by truncated().
     static Selection magicWand(const World& world, const Vec3i& seed, std::size_t maxCells);
     static Selection magicWandWithin(const World& world, const Vec3i& seed, std::size_t maxCells,
                                      const Vec3i& limitMin, const Vec3i& limitMax);
@@ -150,4 +131,4 @@ private:
     bool hitLimit = false;
 };
 
-} // namespace vf
+}

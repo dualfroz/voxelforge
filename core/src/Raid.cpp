@@ -28,15 +28,12 @@ float horizontalDistance(const Vec3& a, const Vec3& b) {
 }
 
 const Raider::Stats statsTable[static_cast<int>(RaiderKind::Count)] = {
-    // maxHealth, damage, speed, attackRange, attackIntervalTicks
     {24.0f, 3.0f, 2.6f, 1.8f, 20},
     {24.0f, 6.0f, 2.9f, 1.8f, 18},
     {26.0f, 4.0f, 2.4f, 6.0f, 30},
     {100.0f, 12.0f, 3.1f, 2.4f, 30},
 };
 
-// Walks a body along a cell path, returning true once the final cell is under
-// its feet.
 bool advanceAlong(Vec3& position, const std::vector<Vec3i>& path, int& cursor, float speed,
                   float dt) {
     if (path.empty()) return false;
@@ -59,8 +56,6 @@ bool advanceAlong(Vec3& position, const std::vector<Vec3i>& path, int& cursor, f
     return false;
 }
 
-// Nearest cell at or around `y` that a walker can stand on, searched outward so
-// the result does not depend on world height.
 bool standableNear(const World& world, const Vec3i& column, int verticalSearch,
                    const PathConfig& config, Vec3i& outCell) {
     for (int offset = 0; offset <= verticalSearch; ++offset) {
@@ -89,7 +84,7 @@ RaiderKind kindForSlot(const RaidWave& plan, int slot) {
     return RaiderKind::Ravager;
 }
 
-} // namespace
+}
 
 const char* raiderKindName(RaiderKind kind) {
     switch (kind) {
@@ -287,7 +282,6 @@ void RaidManager::spawnWave(const World& world, const PathConfig& config) {
     }
 }
 
-// Raiders follow their route to the bell, then hunt down whoever is left.
 void RaidManager::moveRaiders(const std::vector<Villager>& villagers) {
     for (Raider& attacker : attackers) {
         if (!attacker.alive) continue;
@@ -463,4 +457,4 @@ void RaidManager::tick(const World& world, std::vector<Villager>& villagers, Poi
         stepOnce(world, villagers, pois, omen, schedule, clock, config);
 }
 
-} // namespace vf
+}

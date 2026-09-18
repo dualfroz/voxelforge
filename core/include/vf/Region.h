@@ -7,7 +7,7 @@
 
 namespace vf {
 
-constexpr int regionSize = 16;  // chunk columns per region side (X and Z)
+constexpr int regionSize = 16;
 
 struct RegionCoord {
     int x = 0;
@@ -26,9 +26,6 @@ struct RegionCoordHash {
 
 RegionCoord regionForChunk(const Vec3i& chunkCoord);
 
-// One region file: the chunks whose columns fall inside a regionSize x regionSize
-// tile, across all Y. Each chunk is stored run-length encoded; the header carries
-// an index so a single chunk can be pulled back without decoding the rest.
 class Region {
 public:
     explicit Region(RegionCoord coord = {}) : coord(coord) {}
@@ -50,11 +47,9 @@ private:
     std::unordered_map<Vec3i, Chunk, Vec3iHash> chunks;
 };
 
-// Splits a whole world into its regions.
 std::unordered_map<RegionCoord, Region, RegionCoordHash> splitWorldIntoRegions(const World& world);
 
-// Convenience for the browser demo: one blob holding every non-empty region.
 std::vector<uint8_t> serializeRegions(const World& world);
 bool deserializeRegions(const uint8_t* data, std::size_t size, World& out);
 
-} // namespace vf
+}

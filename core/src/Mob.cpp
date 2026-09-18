@@ -33,9 +33,6 @@ Vec3 randomHeading(uint32_t& rng) {
     return {std::cos(angle), 0.0f, std::sin(angle)};
 }
 
-// Follows an A* path toward `goalPos` for one step, returning the heading to
-// the next path cell. Falls back to `fallbackDir` when no multi-step path
-// exists (adjacent goal or unreachable target).
 Vec3 pathTowardWishDir(const World& world, const Mob& body, const Vec3& goalPos,
                        const PathConfig& pathConfig, const Vec3& fallbackDir) {
     Vec3i start = mobFeetCell(body);
@@ -90,7 +87,7 @@ std::array<SpeciesStats, static_cast<std::size_t>(Species::Count)> buildSpeciesT
 
 constexpr int fullSkyLight = 15;
 
-} // namespace
+}
 
 bool isHostile(Species species) {
     switch (species) {
@@ -332,4 +329,4 @@ bool advanceSpawnCycle(SpawnCycle& cycle, float dt) {
     return true;
 }
 
-} // namespace vf
+}

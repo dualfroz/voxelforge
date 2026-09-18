@@ -17,7 +17,7 @@ std::size_t dimensionIndex(DimensionId id) {
     return static_cast<std::size_t>(id);
 }
 
-} // namespace
+}
 
 Vec3i PortalFrame::interiorBlock(int across, int up) const {
     if (alongX) return {origin.x + across, origin.y + up, origin.z};
@@ -460,4 +460,4 @@ bool PortalNetwork::activateEndPortal(DimensionId dimension, const Vec3i& center
     return true;
 }
 
-} // namespace vf
+}

@@ -6,9 +6,6 @@
 
 namespace vf {
 
-// The generator itself lives in core/ so it can be tested without a GL context.
-// What is left here is the one thing that genuinely belongs to the renderer:
-// laying the tiles out the way glTexImage3D wants to read them.
 Atlas buildAtlas(int tileSize) {
     Atlas atlas;
     atlas.tileSize = tileSize;
@@ -26,4 +23,4 @@ Atlas buildAtlas(int tileSize) {
     return atlas;
 }
 
-} // namespace vf
+}

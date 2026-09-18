@@ -32,7 +32,7 @@ WorldTick countBoundaryCrossings(WorldTick previous, WorldTick current,
     return after - before;
 }
 
-} // namespace
+}
 
 const char* dayPhaseName(DayPhase phase) {
     switch (phase) {
@@ -156,4 +156,4 @@ double TimeOfDay::moonBrightness() const {
     return 1.0 - static_cast<double>(distance) / static_cast<double>(half);
 }
 
-} // namespace vf
+}

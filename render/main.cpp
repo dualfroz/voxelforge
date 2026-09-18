@@ -4,509 +4,217 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstdio>
-#include <deque>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
 
-#include "Atlas.h"
-#include "Base64.h"
-#include "Shaders.h"
-#include "vf/Frustum.h"
+#include "EntityRenderer.h"
+#include "Explorer.h"
+#include "Hands.h"
+#include "Hud.h"
+#include "Sky.h"
+#include "Storage.h"
+#include "Terrain.h"
+#include "Village.h"
+#include "WaterFlow.h"
+#include "Wildlife.h"
+#include "vf/Command.h"
 #include "vf/Inventory.h"
-#include "vf/Lighting.h"
-#include "vf/LitMesh.h"
-#include "vf/Physics.h"
-#include "vf/Raycast.h"
-#include "vf/Region.h"
-#include "vf/Streaming.h"
-#include "vf/WorldGen.h"
 
 using namespace vf;
 
 namespace {
-
-struct GpuMesh {
-    GLuint vao = 0;
-    GLuint vbo = 0;
-    GLuint ibo = 0;
-    GLsizei indexCount = 0;
-};
-
-struct GpuChunk {
-    GpuMesh opaque;
-    GpuMesh transparent;
-    Aabb bounds;
-    Vec3 center;
-};
 
 struct KeyState {
     bool forward = false, back = false, left = false, right = false;
     bool jump = false, sink = false;
 };
 
+constexpr float tickSeconds = 1.0f / 20.0f;
+constexpr int timeScales[3] = {1, 30, 240};
+constexpr WorldTick morningTick = 7200;
+
 WorldGenParams genParams;
 WorldGen worldGen{genParams};
 World world;
-StreamingConfig streamConfig{6, 8};
-ChunkStreamer streamer{streamConfig};
-Player player;
-KeyState keys;
-PhysicsConfig physics;
+TerrainView terrain{world, worldGen, StreamingConfig{6, 8}};
+WaterFlow water{world, terrain};
+Wildlife wildlife{world, terrain, worldGen, genParams.seed};
+Village village{world, terrain};
+EntityRenderer entityRenderer;
+Explorer explorer;
 Hotbar hotbar;
+TimeOfDay worldClock{morningTick};
+Weather weather{genParams.seed};
+Hands hands{world, terrain, water, wildlife, village, explorer, hotbar};
+KeyState keys;
+Vec3 spawnPoint;
 
-std::deque<ColumnCoord> genQueue;
-std::deque<Vec3i> meshQueue;
-std::unordered_map<Vec3i, GpuChunk, Vec3iHash> gpuChunks;
+int timeScaleIndex = 0;
+float tickAccumulator = 0.0f;
+int tickCounter = 0;
+bool populated = false;
+float flash = 0.0f;
+std::string message;
+float messageSeconds = 0.0f;
 
-bool haveLightCache = false;
-ColumnCoord lightCacheColumn{};
-LightField lightCache;
-constexpr int lightMargin = 2;
-
-GLuint program = 0;
-GLint uViewProj = -1, uAtlas = -1, uLightDir = -1, uFogColor = -1;
-GLuint atlasTexture = 0;
-
-ColumnCoord lastCentre{2147483647, 2147483647};
 double lastTime = 0.0;
 int canvasWidth = 1280;
 int canvasHeight = 720;
+int framesThisSecond = 0;
+double fpsWindowStart = 0.0;
+int fps = 0;
+float hudTimer = 0.0f;
 
-GLuint compileShader(GLenum type, const char* source) {
-    GLuint shader = glCreateShader(type);
-    glShaderSource(shader, 1, &source, nullptr);
-    glCompileShader(shader);
-    GLint ok = 0;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
-    if (!ok) {
-        char log[1024];
-        glGetShaderInfoLog(shader, sizeof(log), nullptr, log);
-        std::printf("shader compile error: %s\n", log);
-    }
-    return shader;
+void say(const std::string& text) {
+    message = text;
+    messageSeconds = 3.0f;
 }
 
-void buildProgram() {
-    GLuint vs = compileShader(GL_VERTEX_SHADER, vertexShaderSource());
-    GLuint fs = compileShader(GL_FRAGMENT_SHADER, fragmentShaderSource());
-    program = glCreateProgram();
-    glAttachShader(program, vs);
-    glAttachShader(program, fs);
-    glLinkProgram(program);
-    glDeleteShader(vs);
-    glDeleteShader(fs);
-    uViewProj = glGetUniformLocation(program, "uViewProj");
-    uAtlas = glGetUniformLocation(program, "uAtlas");
-    uLightDir = glGetUniformLocation(program, "uLightDir");
-    uFogColor = glGetUniformLocation(program, "uFogColor");
+ColumnCoord columnOf(const Vec3& position) {
+    return {floorDiv(static_cast<int>(std::floor(position.x)), chunkSize),
+            floorDiv(static_cast<int>(std::floor(position.z)), chunkSize)};
 }
 
-void uploadAtlas() {
-    Atlas atlas = buildAtlas(16);
-    glGenTextures(1, &atlasTexture);
-    glBindTexture(GL_TEXTURE_2D_ARRAY, atlasTexture);
-    glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA8, atlas.tileSize, atlas.tileSize, atlas.layers, 0,
-                 GL_RGBA, GL_UNSIGNED_BYTE, atlas.pixels.data());
-    glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
+float surfaceTop(int gx, int gz) {
+    for (int y = genParams.maxY - 1; y >= 0; --y)
+        if (world.solidAt(gx, y, gz)) return static_cast<float>(y + 1);
+    return static_cast<float>(genParams.maxY);
 }
 
-void freeGpuMesh(GpuMesh& mesh) {
-    if (mesh.vao) glDeleteVertexArrays(1, &mesh.vao);
-    if (mesh.vbo) glDeleteBuffers(1, &mesh.vbo);
-    if (mesh.ibo) glDeleteBuffers(1, &mesh.ibo);
-    mesh = GpuMesh{};
-}
-
-void uploadGpuMesh(GpuMesh& gpu, const Mesh& mesh) {
-    if (mesh.empty()) {
-        freeGpuMesh(gpu);
+void foundSettlement() {
+    if (village.settleNear(worldGen, {0, 0}, 48)) {
+        Vec3 entrance = village.entrance();
+        spawnPoint = {entrance.x, surfaceTop(static_cast<int>(std::floor(entrance.x)),
+                                             static_cast<int>(std::floor(entrance.z))),
+                      entrance.z};
         return;
     }
-    if (gpu.vao == 0) {
-        glGenVertexArrays(1, &gpu.vao);
-        glGenBuffers(1, &gpu.vbo);
-        glGenBuffers(1, &gpu.ibo);
+    terrain.generateNow({0, 0});
+    spawnPoint = {8.5f, surfaceTop(8, 8) + 1.0f, 8.5f};
+}
+
+int effectiveSkyLevel() {
+    int dimming = static_cast<int>(std::lround(weather.rainGradient() * 3.0));
+    return std::max(worldClock.settings().nightSkyLight, worldClock.skyLightLevel() - dimming);
+}
+
+bool villageThreatened() {
+    if (!village.founded() || worldClock.isDaylight()) return false;
+    Vec3i centre = village.centre();
+    for (const WildCreature& wild : wildlife.creatures()) {
+        if (!wild.creature.alive || !isHostile(wild.creature.species)) continue;
+        float dx = wild.creature.body.position.x - centre.x;
+        float dz = wild.creature.body.position.z - centre.z;
+        if (dx * dx + dz * dz < 24.0f * 24.0f) return true;
     }
-    glBindVertexArray(gpu.vao);
-    glBindBuffer(GL_ARRAY_BUFFER, gpu.vbo);
-    glBufferData(GL_ARRAY_BUFFER, mesh.vertices.size() * sizeof(Vertex), mesh.vertices.data(),
-                 GL_STATIC_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gpu.ibo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh.indices.size() * sizeof(uint32_t),
-                 mesh.indices.data(), GL_STATIC_DRAW);
-
-    GLsizei stride = sizeof(Vertex);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(6 * sizeof(float)));
-    glEnableVertexAttribArray(3);
-    glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, stride, (void*)(8 * sizeof(float)));
-    glEnableVertexAttribArray(4);
-    glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, stride, (void*)(9 * sizeof(float)));
-    glEnableVertexAttribArray(5);
-    glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, stride, (void*)(10 * sizeof(float)));
-
-    gpu.indexCount = static_cast<GLsizei>(mesh.indices.size());
+    return false;
 }
 
-void removeChunkGpu(const Vec3i& coord) {
-    auto it = gpuChunks.find(coord);
-    if (it == gpuChunks.end()) return;
-    freeGpuMesh(it->second.opaque);
-    freeGpuMesh(it->second.transparent);
-    gpuChunks.erase(it);
-}
+void gameTick() {
+    int scale = timeScales[timeScaleIndex];
+    worldClock.advance(scale);
+    weather.advance(scale);
+    if (!weather.strikesThisTick().empty()) flash = 1.0f;
+    terrain.setSkyLevel(effectiveSkyLevel());
 
-const LightField& columnLight(ColumnCoord column) {
-    if (haveLightCache && lightCacheColumn == column) return lightCache;
-    int top = worldGen.stackChunkCount() * chunkSize;
-    Vec3i origin{column.x * chunkSize - lightMargin, 0, column.z * chunkSize - lightMargin};
-    Vec3i dims{chunkSize + 2 * lightMargin, top, chunkSize + 2 * lightMargin};
-    lightCache = computeLight(world, origin, dims);
-    lightCacheColumn = column;
-    haveLightCache = true;
-    return lightCache;
-}
-
-void meshChunk(const Vec3i& coord) {
-    ChunkMesh mesh = meshChunkLit(world, coord, columnLight({coord.x, coord.z}));
-    if (mesh.empty()) {
-        removeChunkGpu(coord);
-        return;
+    Player& body = explorer.body();
+    WildlifeImpact impact = wildlife.tick(body.position, worldClock.isDaylight(), tickSeconds);
+    if (impact.damage > 0.0f) {
+        explorer.hurt(DamageSource::MobAttack, impact.damage);
+        body.velocity.y += 4.0f + std::max(0.0f, impact.knockback.y);
     }
-    GpuChunk& gpu = gpuChunks[coord];
-    uploadGpuMesh(gpu.opaque, mesh.opaque);
-    uploadGpuMesh(gpu.transparent, mesh.transparent);
-    float ox = static_cast<float>(coord.x * chunkSize);
-    float oy = static_cast<float>(coord.y * chunkSize);
-    float oz = static_cast<float>(coord.z * chunkSize);
-    gpu.bounds = Aabb{{ox, oy, oz}, {ox + chunkSize, oy + chunkSize, oz + chunkSize}};
-    gpu.center = Vec3{ox + chunkSize * 0.5f, oy + chunkSize * 0.5f, oz + chunkSize * 0.5f};
-}
+    if (impact.exploded) say("A creeper exploded");
 
-void enqueueMesh(const Vec3i& coord) {
-    for (const Vec3i& pending : meshQueue)
-        if (pending == coord) return;
-    meshQueue.push_back(coord);
-}
+    village.tick(worldClock, villageThreatened(), tickSeconds);
+    if (++tickCounter % 4 == 0) water.tick(body.position);
 
-void enqueueColumnMeshes(ColumnCoord column) {
-    for (int cy = 0; cy < worldGen.stackChunkCount(); ++cy)
-        enqueueMesh({column.x, cy, column.z});
-}
-
-bool columnGenerated(ColumnCoord column) {
-    return world.chunkAt({column.x, 0, column.z}) != nullptr;
-}
-
-void generateColumnNow(ColumnCoord column) {
-    if (!columnGenerated(column)) worldGen.generateColumn(world, column.x, column.z);
-    haveLightCache = false;
-    enqueueColumnMeshes(column);
-    const ColumnCoord neighbours[4] = {{column.x + 1, column.z}, {column.x - 1, column.z},
-                                       {column.x, column.z + 1}, {column.x, column.z - 1}};
-    for (ColumnCoord n : neighbours)
-        if (columnGenerated(n)) enqueueColumnMeshes(n);
-}
-
-void unloadColumn(ColumnCoord column) {
-    for (int cy = 0; cy < worldGen.stackChunkCount(); ++cy) {
-        Vec3i coord{column.x, cy, column.z};
-        removeChunkGpu(coord);
-        world.removeChunk(coord);
-    }
-    haveLightCache = false;
-}
-
-ColumnCoord playerColumn() {
-    return {floorDiv(static_cast<int>(std::floor(player.position.x)), chunkSize),
-            floorDiv(static_cast<int>(std::floor(player.position.z)), chunkSize)};
-}
-
-MoveInput sampleInput() {
-    MoveInput input;
-    input.forward = (keys.forward ? 1.0f : 0.0f) - (keys.back ? 1.0f : 0.0f);
-    input.strafe = (keys.right ? 1.0f : 0.0f) - (keys.left ? 1.0f : 0.0f);
-    if (player.flying) {
-        input.up = keys.jump;
-        input.down = keys.sink;
-    } else {
-        input.jump = keys.jump;
-    }
-    return input;
-}
-
-const char* blockName(Block block) {
-    switch (block) {
-        case Block::Grass: return "Grass";
-        case Block::Dirt: return "Dirt";
-        case Block::Stone: return "Stone";
-        case Block::Sand: return "Sand";
-        case Block::Wood: return "Wood";
-        case Block::Leaves: return "Leaves";
-        case Block::Water: return "Water";
-        case Block::Snow: return "Snow";
-        case Block::CoalOre: return "Coal";
-        case Block::IronOre: return "Iron";
-        case Block::GoldOre: return "Gold";
-        case Block::Gravel: return "Gravel";
-        case Block::Glowstone: return "Glow";
-        default: return "?";
+    explorer.tick(tickSeconds);
+    if (!explorer.vitals().alive) {
+        explorer.respawn(spawnPoint);
+        say("You died and respawned at the village");
     }
 }
-
-EM_JS(void, pushHotbar, (int selected, const char* payload), {
-    if (typeof window.renderHotbar === 'function')
-        window.renderHotbar(selected, UTF8ToString(payload));
-});
-
-void refreshHud() {
-    std::string payload;
-    for (int i = 0; i < hotbarSize; ++i) {
-        const ItemStack& stack = hotbar.slot(i);
-        payload += blockName(stack.block);
-        payload += ",";
-        payload += std::to_string(stack.count);
-        if (i + 1 < hotbarSize) payload += ";";
-    }
-    pushHotbar(hotbar.selectedIndex(), payload.c_str());
-}
-
-void editBlock(int gx, int gy, int gz, Block block) {
-    world.setBlock(gx, gy, gz, block);
-    haveLightCache = false;
-    static const int offsets[7][3] = {{0, 0, 0},  {1, 0, 0},  {-1, 0, 0}, {0, 1, 0},
-                                      {0, -1, 0}, {0, 0, 1},  {0, 0, -1}};
-    for (auto& o : offsets) {
-        Vec3i coord{floorDiv(gx + o[0], chunkSize), floorDiv(gy + o[1], chunkSize),
-                    floorDiv(gz + o[2], chunkSize)};
-        world.ensureChunk(coord);
-        enqueueMesh(coord);
-    }
-}
-
-void interact(bool destroy) {
-    Vec3 eye = eyePosition(player);
-    Vec3 dir = directionFromYawPitch(player.yaw, player.pitch);
-    RaycastHit hit = raycastVoxels(world, eye, dir, 8.0f);
-    if (!hit.hit) return;
-    if (destroy) {
-        Block broken = world.blockAt(hit.block.x, hit.block.y, hit.block.z);
-        editBlock(hit.block.x, hit.block.y, hit.block.z, Block::Air);
-        hotbar.add(broken, 1);
-        refreshHud();
-    } else {
-        if (hotbar.slot(hotbar.selectedIndex()).empty()) return;
-        Vec3i target = hit.block + hit.normal;
-        Aabb box = playerBox(player);
-        Aabb cell{{(float)target.x, (float)target.y, (float)target.z},
-                  {(float)target.x + 1.0f, (float)target.y + 1.0f, (float)target.z + 1.0f}};
-        bool overlaps = box.min.x < cell.max.x && box.max.x > cell.min.x &&
-                        box.min.y < cell.max.y && box.max.y > cell.min.y &&
-                        box.min.z < cell.max.z && box.max.z > cell.min.z;
-        if (!overlaps) {
-            editBlock(target.x, target.y, target.z, hotbar.selectedBlock());
-            hotbar.consumeSelected();
-            refreshHud();
-        }
-    }
-}
-
-EM_JS(void, storeWorld, (const char* text), {
-    try { localStorage.setItem('voxelforgeRegions', UTF8ToString(text)); } catch (e) {}
-});
-
-EM_JS(char*, readWorld, (), {
-    var text = String.fromCharCode();
-    try {
-        var stored = localStorage.getItem('voxelforgeRegions');
-        if (stored) text = stored;
-    } catch (e) {}
-    var size = lengthBytesUTF8(text) + 1;
-    var ptr = _malloc(size);
-    stringToUTF8(text, ptr, size);
-    return ptr;
-});
 
 void saveWorld() {
-    std::vector<uint8_t> bytes = serializeRegions(world);
-    storeWorld(base64Encode(bytes).c_str());
-    std::printf("world saved (%zu region bytes)\n", bytes.size());
+    say("World saved (" + std::to_string(saveTerrain(world)) + " region bytes)");
 }
 
 void loadWorld() {
-    char* text = readWorld();
-    std::string encoded(text);
-    free(text);
-    if (encoded.empty()) return;
-    std::vector<uint8_t> bytes = base64Decode(encoded);
-    if (!deserializeRegions(bytes.data(), bytes.size(), world)) return;
-    for (auto& entry : gpuChunks) {
-        freeGpuMesh(entry.second.opaque);
-        freeGpuMesh(entry.second.transparent);
+    switch (loadTerrain(world)) {
+        case LoadOutcome::NothingSaved: say("Nothing saved yet"); break;
+        case LoadOutcome::Damaged: say("Saved world is damaged"); break;
+        case LoadOutcome::Loaded:
+            terrain.reloadAll();
+            say("World loaded");
+            break;
     }
-    gpuChunks.clear();
-    meshQueue.clear();
-    haveLightCache = false;
-    for (const auto& entry : world.allChunks()) enqueueMesh(entry.first);
-    std::printf("world loaded\n");
 }
 
 EM_BOOL onKey(int type, const EmscriptenKeyboardEvent* e, void*) {
     bool down = (type == EMSCRIPTEN_EVENT_KEYDOWN);
     std::string code = e->code;
+    Player& body = explorer.body();
     if (code == "KeyW") keys.forward = down;
     else if (code == "KeyS") keys.back = down;
     else if (code == "KeyA") keys.left = down;
     else if (code == "KeyD") keys.right = down;
     else if (code == "Space") keys.jump = down;
     else if (code == "ShiftLeft") keys.sink = down;
-    else if (down && code == "KeyF") player.flying = !player.flying;
-    else if (down && code == "KeyK") saveWorld();
+    else if (down && code == "KeyF") {
+        body.flying = !body.flying;
+        say(body.flying ? "Flying: no damage, instant mining" : "Walking: survival rules apply");
+    } else if (down && code == "KeyT") {
+        timeScaleIndex = (timeScaleIndex + 1) % 3;
+        say("Time runs " + std::to_string(timeScales[timeScaleIndex]) + "x");
+    } else if (down && code == "KeyQ") {
+        ItemId eaten = explorer.eatBest();
+        say(eaten == ItemId::None ? "No food - hunt animals for it"
+                                  : std::string("Ate ") + itemDisplayName(eaten));
+    } else if (down && code == "KeyK") saveWorld();
     else if (down && code == "KeyL") loadWorld();
     else if (down && code.rfind("Digit", 0) == 0) {
         int digit = code[5] - '1';
-        if (digit >= 0 && digit < hotbarSize) { hotbar.select(digit); refreshHud(); }
+        if (digit >= 0 && digit < hotbarSize) {
+            hotbar.select(digit);
+            pushHotbar(hotbar);
+        }
     } else return EM_FALSE;
     return EM_TRUE;
 }
 
 EM_BOOL onWheel(int, const EmscriptenWheelEvent* e, void*) {
     hotbar.scroll(e->deltaY > 0 ? 1 : -1);
-    refreshHud();
+    pushHotbar(hotbar);
     return EM_TRUE;
 }
 
-EM_BOOL onMouseMove(int, const EmscriptenMouseEvent* e, void*) {
+bool pointerLocked() {
     EmscriptenPointerlockChangeEvent lock;
-    if (emscripten_get_pointerlock_status(&lock) == EMSCRIPTEN_RESULT_SUCCESS && !lock.isActive)
-        return EM_FALSE;
+    return emscripten_get_pointerlock_status(&lock) == EMSCRIPTEN_RESULT_SUCCESS && lock.isActive;
+}
+
+EM_BOOL onMouseMove(int, const EmscriptenMouseEvent* e, void*) {
+    if (!pointerLocked()) return EM_FALSE;
+    Player& body = explorer.body();
     const float sensitivity = 0.0022f;
-    player.yaw += e->movementX * sensitivity;
-    player.pitch -= e->movementY * sensitivity;
     const float limit = 1.5533f;
-    if (player.pitch > limit) player.pitch = limit;
-    if (player.pitch < -limit) player.pitch = -limit;
+    body.yaw += e->movementX * sensitivity;
+    body.pitch = std::clamp(body.pitch - e->movementY * sensitivity, -limit, limit);
     return EM_TRUE;
 }
 
 EM_BOOL onMouseDown(int, const EmscriptenMouseEvent* e, void*) {
-    EmscriptenPointerlockChangeEvent lock;
-    if (emscripten_get_pointerlock_status(&lock) != EMSCRIPTEN_RESULT_SUCCESS || !lock.isActive) {
+    if (!pointerLocked()) {
         emscripten_request_pointerlock("#canvas", EM_TRUE);
         return EM_TRUE;
     }
-    if (e->button == 0) interact(true);
-    else if (e->button == 2) interact(false);
+    if (e->button == 0) hands.press();
+    else if (e->button == 2) hands.place();
     return EM_TRUE;
 }
 
-void updateStreaming() {
-    ColumnCoord centre = playerColumn();
-    if (!(centre == lastCentre)) {
-        lastCentre = centre;
-        StreamDelta delta = streamer.update(centre);
-        for (ColumnCoord column : delta.load) genQueue.push_back(column);
-        for (ColumnCoord column : delta.unload) unloadColumn(column);
-    }
-
-    int genBudget = 2;
-    while (genBudget-- > 0 && !genQueue.empty()) {
-        ColumnCoord column = genQueue.front();
-        genQueue.pop_front();
-        if (streamer.isLoaded(column)) generateColumnNow(column);
-    }
-
-    int meshBudget = 6;
-    while (meshBudget-- > 0 && !meshQueue.empty()) {
-        Vec3i coord = meshQueue.front();
-        meshQueue.pop_front();
-        if (world.chunkAt(coord)) meshChunk(coord);
-    }
-}
-
-Mat4 currentViewProj() {
-    Vec3 eye = eyePosition(player);
-    Vec3 forward = directionFromYawPitch(player.yaw, player.pitch);
-    Mat4 view = lookAt(eye, eye + forward, {0, 1, 0});
-    float aspect = static_cast<float>(canvasWidth) / static_cast<float>(canvasHeight);
-    Mat4 proj = perspective(1.2217f, aspect, 0.1f, 480.0f);
-    return proj * view;
-}
-
-void frame() {
-    double now = emscripten_get_now();
-    float dt = static_cast<float>((now - lastTime) / 1000.0);
-    lastTime = now;
-    if (dt > 0.1f) dt = 0.1f;
-
-    MoveInput input = sampleInput();
-    int substeps = 4;
-    float sub = dt / substeps;
-    for (int i = 0; i < substeps; ++i) stepPlayer(world, player, input, physics, sub);
-
-    updateStreaming();
-
-    Mat4 viewProj = currentViewProj();
-    Frustum frustum = Frustum::fromMatrix(viewProj);
-    Vec3 eye = eyePosition(player);
-
-    glViewport(0, 0, canvasWidth, canvasHeight);
-    glClearColor(0.55f, 0.71f, 0.92f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glEnable(GL_DEPTH_TEST);
-    glDepthMask(GL_TRUE);
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
-    glFrontFace(GL_CCW);
-    glDisable(GL_BLEND);
-
-    glUseProgram(program);
-    glUniformMatrix4fv(uViewProj, 1, GL_FALSE, viewProj.m);
-    glUniform3f(uLightDir, 0.45f, 0.85f, 0.28f);
-    glUniform3f(uFogColor, 0.55f, 0.71f, 0.92f);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D_ARRAY, atlasTexture);
-    glUniform1i(uAtlas, 0);
-
-    std::vector<const GpuChunk*> visibleTransparent;
-    for (const auto& entry : gpuChunks) {
-        const GpuChunk& gpu = entry.second;
-        if (!frustum.intersectsAabb(gpu.bounds)) continue;
-        if (gpu.opaque.indexCount > 0) {
-            glBindVertexArray(gpu.opaque.vao);
-            glDrawElements(GL_TRIANGLES, gpu.opaque.indexCount, GL_UNSIGNED_INT, nullptr);
-        }
-        if (gpu.transparent.indexCount > 0) visibleTransparent.push_back(&gpu);
-    }
-
-    std::sort(visibleTransparent.begin(), visibleTransparent.end(),
-              [&](const GpuChunk* a, const GpuChunk* b) {
-                  Vec3 da = a->center - eye;
-                  Vec3 db = b->center - eye;
-                  return dot(da, da) > dot(db, db);   // far first
-              });
-
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glDepthMask(GL_FALSE);
-    glDisable(GL_CULL_FACE);
-    for (const GpuChunk* gpu : visibleTransparent) {
-        glBindVertexArray(gpu->transparent.vao);
-        glDrawElements(GL_TRIANGLES, gpu->transparent.indexCount, GL_UNSIGNED_INT, nullptr);
-    }
-    glDepthMask(GL_TRUE);
-    glDisable(GL_BLEND);
+EM_BOOL onMouseUp(int, const EmscriptenMouseEvent* e, void*) {
+    if (e->button == 0) hands.release();
+    return EM_TRUE;
 }
 
 EM_BOOL onResize(int, const EmscriptenUiEvent*, void*) {
@@ -518,7 +226,125 @@ EM_BOOL onResize(int, const EmscriptenUiEvent*, void*) {
     return EM_TRUE;
 }
 
-} // namespace
+void drawScene() {
+    SkyInputs sky;
+    sky.clock = &worldClock;
+    sky.weather = &weather;
+    sky.viewer = &explorer.body();
+    sky.aspect = static_cast<float>(canvasWidth) / static_cast<float>(canvasHeight);
+    sky.viewDistance = static_cast<float>(terrain.loadRadius() * chunkSize);
+    sky.lightningFlash = flash;
+    sky.submerged = explorer.submerged();
+    SceneLook look = composeLook(sky);
+
+    glViewport(0, 0, canvasWidth, canvasHeight);
+    glClearColor(look.fogColor.x, look.fogColor.y, look.fogColor.z, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_TRUE);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
+    glDisable(GL_BLEND);
+
+    terrain.drawOpaque(look, eyePosition(explorer.body()));
+    entityRenderer.draw(look, terrain, wildlife, village);
+    terrain.drawTransparent();
+}
+
+void publishHud() {
+    const Player& body = explorer.body();
+    const SurvivalState& vitals = explorer.vitals();
+    HudFrame hud;
+    hud.fps = fps;
+    hud.position = body.position;
+    hud.biome = biomeDisplayName(worldGen.biomeAt(static_cast<int>(std::floor(body.position.x)),
+                                                  static_cast<int>(std::floor(body.position.z))));
+    hud.phase = dayPhaseName(worldClock.phase());
+    hud.day = worldClock.dayCount() + 1;
+    int minutes = static_cast<int>(worldClock.dayFraction() * 24.0 * 60.0);
+    hud.hour = minutes / 60;
+    hud.minute = minutes % 60;
+    hud.moonPhase = worldClock.moonPhase();
+    hud.skyLight = terrain.skyLevel();
+    hud.weather = weatherStateName(weather.state());
+    hud.timeScale = timeScales[timeScaleIndex];
+    hud.health = vitals.health;
+    hud.maxHealth = explorer.limits().maxHealth;
+    hud.hunger = vitals.hunger;
+    hud.maxHunger = explorer.limits().maxHunger;
+    hud.air = vitals.airRemaining;
+    hud.maxAir = explorer.limits().breathHoldSeconds;
+    hud.food = explorer.foodCount();
+    hud.flying = body.flying;
+    hud.swimming = explorer.swimming();
+    hud.underwater = explorer.submerged();
+    hud.passive = wildlife.livingIn(SpawnCategory::Passive);
+    hud.hostile = wildlife.livingIn(SpawnCategory::Hostile);
+    VillageCensus census = village.census();
+    hud.villagers = census.living;
+    hud.employed = census.employed;
+    hud.beds = census.beds;
+    hud.workstations = census.workstations;
+    hud.waterSites = water.activeSites();
+    hud.flowingCells = water.flowingCells();
+    hud.columns = static_cast<int>(terrain.residentColumns());
+    hud.meshes = static_cast<int>(terrain.meshedChunks());
+    hud.pending = static_cast<int>(terrain.pendingMeshes());
+    hud.target = hands.describeTarget();
+    hud.mining = hands.miningFraction();
+    hud.message = messageSeconds > 0.0f ? message : "";
+    pushHud(hud);
+}
+
+void frame() {
+    double now = emscripten_get_now();
+    float dt = std::min(static_cast<float>((now - lastTime) / 1000.0), 0.1f);
+    lastTime = now;
+    ++framesThisSecond;
+    if (now - fpsWindowStart >= 1000.0) {
+        fps = framesThisSecond;
+        framesThisSecond = 0;
+        fpsWindowStart = now;
+    }
+
+    ExplorerControls controls;
+    controls.forward = (keys.forward ? 1.0f : 0.0f) - (keys.back ? 1.0f : 0.0f);
+    controls.strafe = (keys.right ? 1.0f : 0.0f) - (keys.left ? 1.0f : 0.0f);
+    controls.jump = keys.jump;
+    controls.sink = keys.sink;
+    explorer.move(world, controls, dt);
+
+    terrain.update(columnOf(explorer.body().position));
+    if (!populated && terrain.pendingMeshes() == 0) {
+        wildlife.populate(explorer.body().position, worldClock.isDaylight());
+        populated = true;
+    }
+
+    tickAccumulator += dt;
+    int ticks = 0;
+    while (tickAccumulator >= tickSeconds && ticks++ < 4) {
+        tickAccumulator -= tickSeconds;
+        gameTick();
+    }
+    if (tickAccumulator > tickSeconds) tickAccumulator = 0.0f;
+
+    hands.aim();
+    std::string report = hands.work(dt);
+    if (!report.empty()) say(report);
+    flash = std::max(0.0f, flash - dt * 3.0f);
+    messageSeconds = std::max(0.0f, messageSeconds - dt);
+
+    drawScene();
+
+    hudTimer -= dt;
+    if (hudTimer <= 0.0f) {
+        hudTimer = 0.15f;
+        publishHud();
+    }
+}
+
+}
 
 int main() {
     EmscriptenWebGLContextAttributes attrs;
@@ -531,31 +357,27 @@ int main() {
     emscripten_webgl_make_context_current(ctx);
 
     onResize(0, nullptr, nullptr);
-    buildProgram();
-    uploadAtlas();
+    terrain.initGpu();
+    entityRenderer.init();
 
-    ColumnCoord spawnColumn{0, 0};
-    StreamDelta initial = streamer.update(spawnColumn);
-    for (int dx = -1; dx <= 1; ++dx)
-        for (int dz = -1; dz <= 1; ++dz)
-            worldGen.generateColumn(world, spawnColumn.x + dx, spawnColumn.z + dz);
-    for (ColumnCoord column : initial.load) genQueue.push_back(column);
-    lastCentre = spawnColumn;
-
-    int spawnX = 8, spawnZ = 8;
-    int spawnY = worldGen.surfaceHeight(spawnX, spawnZ) + 3;
-    player.position = {static_cast<float>(spawnX) + 0.5f, static_cast<float>(spawnY),
-                       static_cast<float>(spawnZ) + 0.5f};
-    refreshHud();
+    foundSettlement();
+    explorer.respawn(spawnPoint);
+    explorer.body().yaw = 3.14159265f;
+    terrain.recentre(columnOf(spawnPoint));
+    terrain.setSkyLevel(effectiveSkyLevel());
+    pushHotbar(hotbar);
+    say(village.founded() ? "Welcome to the village" : "No village site found nearby");
 
     emscripten_set_keydown_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, nullptr, EM_TRUE, onKey);
     emscripten_set_keyup_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, nullptr, EM_TRUE, onKey);
     emscripten_set_wheel_callback("#canvas", nullptr, EM_TRUE, onWheel);
     emscripten_set_mousemove_callback("#canvas", nullptr, EM_TRUE, onMouseMove);
     emscripten_set_mousedown_callback("#canvas", nullptr, EM_TRUE, onMouseDown);
+    emscripten_set_mouseup_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, nullptr, EM_TRUE, onMouseUp);
     emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, nullptr, EM_TRUE, onResize);
 
     lastTime = emscripten_get_now();
+    fpsWindowStart = lastTime;
     emscripten_set_main_loop(frame, 0, EM_TRUE);
     return 0;
 }

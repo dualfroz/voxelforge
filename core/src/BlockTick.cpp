@@ -60,7 +60,7 @@ std::vector<Vec3i> sortedChunkCoords(const World& world) {
     return coords;
 }
 
-} // namespace
+}
 
 void BlockTickScheduler::sampleRandomTicks(World& world) {
     randomTickPositions.clear();
@@ -109,4 +109,4 @@ std::vector<Vec3i> BlockTickScheduler::tick(World& world) {
     return fired;
 }
 
-} // namespace vf
+}

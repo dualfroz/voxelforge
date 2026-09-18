@@ -18,7 +18,7 @@ bool pullOne(ContainerStore& store, const Vec3i& source, Container& sink) {
     return src->transferTo(sink, 1) > 0;
 }
 
-} // namespace
+}
 
 bool hopperCanTransfer(const Vec3i& pos, const HopperState& state, ContainerStore& store) {
     Container* self = store.at(pos);
@@ -61,4 +61,4 @@ bool tickHopper(const World& world, const Vec3i& pos, HopperState& state, Contai
     return moved;
 }
 
-} // namespace vf
+}

@@ -40,8 +40,6 @@ struct HarvestDrop {
 struct FarmingConfig {
     int hydrationRadius = 4;
     int minGrowthLight = 9;
-    // Growth attempt succeeds when rng % denominator < points; dry farmland
-    // scores 1 point, moist farmland 3, so hydration roughly triples the rate.
     uint32_t growthDenominator = 6;
     uint32_t saplingDenominator = 8;
     uint32_t verticalDenominator = 6;
@@ -50,20 +48,11 @@ struct FarmingConfig {
     int vineMaxLength = 4;
     int treeTrunkMin = 4;
     int treeTrunkMax = 6;
-    // Bonemeal shoves a crop this many stages forward per application.
     int bonemealMinStages = 2;
     int bonemealMaxStages = 5;
-    // Odds (in 100ths) a bonemealed sapling grows into a tree at once.
     uint32_t bonemealSaplingChance = 45;
 };
 
-// Deterministic crop simulation with its own position->state registry, kept
-// separate from the block-tick scheduler. Ground crops (wheat, carrot, potato)
-// advance on random ticks gated by sky light and accelerated by farmland
-// hydration; stems mature and set fruit on a free neighbour; sugar cane grows
-// beside water and cactus only where it has no solid neighbours; a mature
-// sapling stamps a tree. Harvesting removes the crop and yields drops. A given
-// seed and tick order always produce the same growth history.
 class Farming {
 public:
     explicit Farming(uint32_t seed = 1u, const FarmingConfig& config = {});
@@ -103,4 +92,4 @@ private:
     std::unordered_map<Vec3i, CropState, Vec3iHash> crops;
 };
 
-} // namespace vf
+}

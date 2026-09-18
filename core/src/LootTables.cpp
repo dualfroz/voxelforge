@@ -63,16 +63,12 @@ BlockDropRule oreRule(Block block, ItemId raw, int minCount, int maxCount, ToolT
     return rule;
 }
 
-// Blocks the palette has no item for still carry a rule: it names the tool class
-// and harvest level, and records that the block yields nothing rather than
-// inventing an item that Item.h does not have.
 BlockDropRule barrenRule(Block block, ToolType tool) { return plainRule(block, ItemId::None, tool); }
 
 BlockDropRule barrenGatedRule(Block block, ToolType tool, ToolTier tier) {
     return gatedRule(block, ItemId::None, tool, tier);
 }
 
-// Wooden crafted blocks salvage back to the planks they were built from.
 BlockDropRule plankSalvage(Block block, int count = 1) {
     BlockDropRule rule = plainRule(block, ItemId::Planks, ToolType::Axe);
     rule.minCount = count;
@@ -80,8 +76,6 @@ BlockDropRule plankSalvage(Block block, int count = 1) {
     return rule;
 }
 
-// The palette carries exactly one broken stone item, so the overworld stone
-// family salvages to cobblestone.
 BlockDropRule stoneSalvage(Block block) {
     return gatedRule(block, ItemId::Cobblestone, ToolType::Pickaxe, ToolTier::Wood);
 }
@@ -108,8 +102,6 @@ std::vector<BlockDropRule> buildBlockRules() {
     add(selfRule(Block::Sand, ToolType::Shovel));
     add(selfRule(Block::Wood, ToolType::Axe));
 
-    // No sapling in the palette, so a wood cutting stands in as the replantable
-    // drop, the way the salvaged leaf table already does.
     BlockDropRule leaves = plainRule(Block::Leaves, ItemId::Wood, shearToolType);
     leaves.dropChance = 0.05f;
     leaves.chancePerFortune = 0.04f;
@@ -145,7 +137,6 @@ std::vector<BlockDropRule> buildBlockRules() {
     add(selfRule(Block::Planks, ToolType::Axe));
     add(selfGatedRule(Block::Sandstone, ToolType::Pickaxe, ToolTier::Wood));
 
-    // Ice melts away unless it is taken whole.
     BlockDropRule ice = barrenRule(Block::Ice, ToolType::Pickaxe);
     ice.silkDrop = ItemId::Ice;
     add(ice);
@@ -173,13 +164,10 @@ std::vector<BlockDropRule> buildBlockRules() {
     add(selfRule(Block::Comparator, ToolType::None));
     add(selfGatedRule(Block::Piston, ToolType::Pickaxe, ToolTier::Wood));
     add(selfGatedRule(Block::PistonSticky, ToolType::Pickaxe, ToolTier::Wood));
-    // The head is part of the body; breaking it drops the body, not itself.
     add(barrenGatedRule(Block::PistonHead, ToolType::Pickaxe, ToolTier::Wood));
     add(selfRule(Block::Tnt, ToolType::None));
     add(selfRule(Block::Ladder, ToolType::Axe));
 
-    // Automation and logistics: crafted from iron and planks, neither of which
-    // the palette can hand back as a block item.
     add(barrenRule(Block::Rail, ToolType::Pickaxe));
     add(barrenRule(Block::PoweredRail, ToolType::Pickaxe));
     add(barrenRule(Block::DetectorRail, ToolType::Pickaxe));
@@ -192,7 +180,6 @@ std::vector<BlockDropRule> buildBlockRules() {
     add(barrenRule(Block::SlimeBlock, ToolType::None));
     add(plankSalvage(Block::NoteBlock));
 
-    // Farming: tilled soil goes back to dirt, crops have no seed item to give.
     add(plainRule(Block::Farmland, ItemId::Dirt, ToolType::Shovel));
     add(barrenRule(Block::Wheat, ToolType::None));
     add(barrenRule(Block::Carrot, ToolType::None));
@@ -212,19 +199,16 @@ std::vector<BlockDropRule> buildBlockRules() {
     add(plainRule(Block::SnowLayer, ItemId::Snow, ToolType::Shovel));
     add(barrenGatedRule(Block::PackedIce, ToolType::Pickaxe, ToolTier::Wood));
 
-    // Brewing, enchanting and combat fixtures.
     add(barrenGatedRule(Block::BrewingStand, ToolType::Pickaxe, ToolTier::Wood));
     add(barrenGatedRule(Block::EnchantingTable, ToolType::Pickaxe, ToolTier::Wood));
     add(barrenGatedRule(Block::Cauldron, ToolType::Pickaxe, ToolTier::Wood));
     add(barrenGatedRule(Block::AnvilBlock, ToolType::Pickaxe, ToolTier::Wood));
-    // No book in the palette, so a shelf salvages the planks of its frame.
     add(plankSalvage(Block::Bookshelf, 3));
 
     BlockDropRule cobweb = barrenRule(Block::Cobweb, shearToolType);
     cobweb.shearHarvest = true;
     add(cobweb);
 
-    // Nether and End.
     add(barrenGatedRule(Block::Netherrack, ToolType::Pickaxe, ToolTier::Wood));
     add(barrenRule(Block::SoulSand, ToolType::Shovel));
     add(barrenRule(Block::SoulSoil, ToolType::Shovel));
@@ -241,7 +225,6 @@ std::vector<BlockDropRule> buildBlockRules() {
     add(barrenRule(Block::ChorusPlant, ToolType::Axe));
     add(barrenRule(Block::ChorusFlower, ToolType::Axe));
 
-    // Village and construction.
     BlockDropRule glass = barrenRule(Block::Glass, ToolType::Pickaxe);
     glass.shearHarvest = false;
     add(glass);
@@ -266,7 +249,6 @@ std::vector<BlockDropRule> buildBlockRules() {
     add(plankSalvage(Block::Lectern));
     add(barrenRule(Block::HayBale, ToolType::Hoe));
 
-    // Geology and decoration.
     add(barrenRule(Block::Clay, ToolType::Shovel));
     add(barrenGatedRule(Block::Terracotta, ToolType::Pickaxe, ToolTier::Wood));
 
@@ -349,8 +331,6 @@ std::vector<MobDropRule> buildMobRules() {
                                     5),
                             ItemId::GoldIngot, 0.025f, 0.01f)));
 
-    // No bone or arrow item in the palette, so a skeleton leaves shafts behind,
-    // the same substitution the salvaged mob table already makes.
     add(undeadRule(withRare(mobRule(Species::Skeleton, "skeleton", ItemId::Stick, 0, 2, 5),
                             ItemId::CoalLump, 0.05f, 0.01f)));
     add(undeadRule(withRare(mobRule(Species::Stray, "stray", ItemId::Stick, 0, 2, 5),
@@ -371,8 +351,6 @@ std::vector<MobDropRule> buildMobRules() {
     caveSpider.arthropod = true;
     add(caveSpider);
 
-    // Blaze rods only ever come off a player kill, and coal stands in for the
-    // rod the palette does not carry.
     MobDropRule blaze = mobRule(Species::Blaze, "blaze", ItemId::CoalLump, 0, 1, 10);
     blaze.dropNeedsPlayerKill = true;
     add(blaze);
@@ -513,7 +491,7 @@ const LootTable& emptyLootTable() {
     return table;
 }
 
-} // namespace
+}
 
 int toolHarvestLevel(ToolTier tier) {
     switch (tier) {
@@ -774,4 +752,4 @@ const LootRegistry& lootRegistry() {
     return registry;
 }
 
-} // namespace vf
+}

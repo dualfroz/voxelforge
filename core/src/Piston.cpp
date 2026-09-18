@@ -16,7 +16,7 @@ Vec3i faceOffset(Face f) {
     return {0, 0, 0};
 }
 
-} // namespace
+}
 
 bool isPistonImmovable(Block b) { return b == Block::Bedrock || b == Block::Obsidian; }
 
@@ -100,4 +100,4 @@ PistonMoveResult retractPiston(World& world, const Vec3i& pos, Face facing) {
     return result;
 }
 
-} // namespace vf
+}

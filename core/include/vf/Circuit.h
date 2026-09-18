@@ -81,4 +81,4 @@ private:
     std::unordered_map<Vec3i, ComparatorState, Vec3iHash> comparators;
 };
 
-} // namespace vf
+}

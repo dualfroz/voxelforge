@@ -16,8 +16,6 @@ enum class EndBiome : uint8_t {
     Count,
 };
 
-// A lens of end stone floating in the void. `thickness` is the half-depth at
-// the island centre; it tapers to nothing at the rim.
 struct EndIsland {
     Vec3i center;
     float radius = 0.0f;
@@ -34,10 +32,6 @@ struct ObsidianPillar {
     bool crowned = false;
 };
 
-// Deterministic End generator: one central end stone island ringed by void,
-// an outer island belt beyond a distance threshold, obsidian pillars on a
-// fixed ring around the origin, a bedrock exit portal at the centre and
-// recursive chorus growth on the outer islands.
 class EndGenerator {
 public:
     struct Params {
@@ -68,7 +62,6 @@ public:
     EndIsland islandAt(int gx, int gz) const;
 
     bool isVoid(int gx, int gz) const;
-    // Top end stone block of the column, or floorY - 1 when the column is void.
     int surfaceHeight(int gx, int gz) const;
     bool isStone(int gx, int gy, int gz) const;
 
@@ -78,9 +71,6 @@ public:
     void generateColumn(World& world, int columnX, int columnZ) const;
     void decorateColumn(World& world, int columnX, int columnZ) const;
 
-    // Recursive chorus stem. Each level grows one to three vertical segments,
-    // sprouts up to two side branches that recurse on their own, and caps
-    // every dead end with a flower. Returns the number of blocks written.
     int growChorus(World& world, const Vec3i& base, uint32_t roll, int maxDepth) const;
 
     void placePillars(World& world) const;
@@ -102,4 +92,4 @@ private:
     NoiseAdv outerNoise;
 };
 
-} // namespace vf
+}

@@ -48,10 +48,6 @@ private:
     std::vector<std::string> order;
 };
 
-// Everything a command may read or mutate. References point at state owned by the
-// caller so command effects outlive a single dispatch. The Weather state machine
-// exposes no public setter, so a forced weather target is recorded on the context
-// for the world simulation to honour instead of being written into Weather.
 struct CommandContext {
     World& world;
     TimeOfDay& time;
@@ -112,4 +108,4 @@ const char* itemDisplayName(ItemId item);
 const char* speciesDisplayName(Species species);
 const char* structureDisplayName(StructureGenKind kind);
 
-} // namespace vf
+}

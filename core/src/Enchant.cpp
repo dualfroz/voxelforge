@@ -43,7 +43,7 @@ bool isDiggerTarget(Enchantment::Target target) {
 
 int levelSpan(int base, int step, int level) { return base + (level - 1) * step; }
 
-} // namespace
+}
 
 int maxEnchantLevel(EnchantKind kind) {
     switch (kind) {
@@ -407,4 +407,4 @@ EnchantOffer anvilCombine(const EnchantSet& target, int targetPriorWork, const E
     return merged;
 }
 
-} // namespace vf
+}

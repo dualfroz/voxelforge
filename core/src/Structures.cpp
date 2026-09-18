@@ -33,15 +33,15 @@ std::vector<StructureEdit> buildOak(Rng& rng) {
         int y = canopyBottom + dy;
         for (int dx = -radius; dx <= radius; ++dx) {
             for (int dz = -radius; dz <= radius; ++dz) {
-                if (dx == 0 && dz == 0 && y < trunk) continue;   // trunk occupies the core
+                if (dx == 0 && dz == 0 && y < trunk) continue;
                 int manhattan = std::abs(dx) + std::abs(dz);
                 if (manhattan > radius + (dy == 0 ? 1 : 0)) continue;
-                if (manhattan == radius + 1 && rng.chance(50)) continue;   // ragged edge
+                if (manhattan == radius + 1 && rng.chance(50)) continue;
                 edits.push_back({{dx, y, dz}, Block::Leaves});
             }
         }
     }
-    edits.push_back({{0, trunk, 0}, Block::Leaves});   // crown
+    edits.push_back({{0, trunk, 0}, Block::Leaves});
     return edits;
 }
 
@@ -60,7 +60,7 @@ std::vector<StructureEdit> buildPine(Rng& rng) {
                 edits.push_back({{dx, y, dz}, Block::Leaves});
             }
     }
-    edits.push_back({{0, trunk + 1, 0}, Block::Leaves});   // tip
+    edits.push_back({{0, trunk + 1, 0}, Block::Leaves});
     return edits;
 }
 
@@ -71,28 +71,28 @@ std::vector<StructureEdit> buildHut(Rng& rng) {
 
     for (int dx = -half; dx <= half; ++dx)
         for (int dz = -half; dz <= half; ++dz)
-            edits.push_back({{dx, 0, dz}, Block::Wood});   // floor
+            edits.push_back({{dx, 0, dz}, Block::Wood});
 
     for (int y = 1; y <= height; ++y)
         for (int dx = -half; dx <= half; ++dx)
             for (int dz = -half; dz <= half; ++dz) {
                 bool perimeter = std::abs(dx) == half || std::abs(dz) == half;
                 if (!perimeter) continue;
-                bool door = dx == 0 && dz == -half && y <= 2;   // doorway on the -z wall
+                bool door = dx == 0 && dz == -half && y <= 2;
                 if (door) continue;
                 edits.push_back({{dx, y, dz}, Block::Wood});
             }
 
     for (int dx = -half; dx <= half; ++dx)
         for (int dz = -half; dz <= half; ++dz)
-            edits.push_back({{dx, height + 1, dz}, Block::Leaves});   // thatched roof
+            edits.push_back({{dx, height + 1, dz}, Block::Leaves});
 
-    edits.push_back({{0, height, 0}, Block::Glowstone});   // lantern (distinct marker)
+    edits.push_back({{0, height, 0}, Block::Glowstone});
     (void)rng;
     return edits;
 }
 
-} // namespace
+}
 
 uint32_t structureHash(uint32_t seed, int x, int y, int z) {
     uint32_t h = seed * 2654435761u;
@@ -129,4 +129,4 @@ void stampStructure(World& world, const Vec3i& base, const std::vector<Structure
     }
 }
 
-} // namespace vf
+}

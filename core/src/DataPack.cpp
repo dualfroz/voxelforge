@@ -155,7 +155,7 @@ bool readCountRange(const JsonValue& owner, const std::string& key, int& minOut,
     return true;
 }
 
-} // namespace
+}
 
 ResourceId::ResourceId(std::string space, std::string path)
     : space(std::move(space)), path(std::move(path)) {}
@@ -363,7 +363,7 @@ bool expandTag(const TagRegistry& registry, const ResourceId& id, std::vector<Re
     return true;
 }
 
-} // namespace
+}
 
 bool TagRegistry::resolve(const ResourceId& id, std::vector<ResourceId>& out,
                           std::string& problem) const {
@@ -466,8 +466,6 @@ bool parseRecipeJson(const JsonValue& root, const std::string& defaultSpace, Rec
                     problem = "pattern character '" + std::string(1, symbol) + "': " + problem;
                     return false;
                 }
-                // Packed by the recipe's own width, which is how matchesShaped
-                // in Crafting.cpp indexes a pattern.
                 parsed.pattern[static_cast<std::size_t>(row * parsed.width + column)] = ingredient;
             }
         }
@@ -562,8 +560,6 @@ bool parseLootTableJson(const JsonValue& root, const std::string& defaultSpace, 
             }
             if (!readCountRange(entryJson, "count", entry.minCount, entry.maxCount, problem))
                 return false;
-            // An authored range is meant to be rolled; the roller only does that
-            // when the CountRange function is on the entry.
             if (entry.maxCount > entry.minCount) entry.functions |= LootEntry::CountRange;
             entry.chance = static_cast<float>(entryJson.numberOr("chance", 1.0));
             entry.chancePerLevel = static_cast<float>(entryJson.numberOr("chancePerLevel", 0.0));
@@ -817,4 +813,4 @@ bool DataPackLoader::itemsInTag(const ResourceId& tag, std::vector<ItemId>& out)
     return true;
 }
 
-} // namespace vf
+}

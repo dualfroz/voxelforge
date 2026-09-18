@@ -49,7 +49,7 @@ void emitQuad(Mesh& mesh, const Vec3& base, const Vec3& du, const Vec3& dv, cons
     }
 }
 
-} // namespace
+}
 
 Mesh greedyMeshChunk(const World& world, const Vec3i& chunkCoord) {
     Mesh mesh;
@@ -181,4 +181,4 @@ int culledFaceCount(const World& world, const Vec3i& chunkCoord) {
     return faces;
 }
 
-} // namespace vf
+}

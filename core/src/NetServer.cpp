@@ -13,7 +13,7 @@ Vec3i chunkOfPosition(const Vec3& position) {
     return Vec3i{floorDiv(gx, chunkSize), floorDiv(gy, chunkSize), floorDiv(gz, chunkSize)};
 }
 
-}  // namespace
+}
 
 NetServer::NetServer(World& world, ServerConfig config) : worldRef(&world), config(config) {
     if (this->config.maxClients == 0) this->config.maxClients = 1;
@@ -113,8 +113,6 @@ void NetServer::moveEntity(int32_t entityId, const Vec3& position, float yaw, fl
     for (ClientSlot& slot : slots) {
         if (!slot.active) continue;
         if (slot.session->phase() != SessionPhase::Play) continue;
-        // An entity outside the client's view costs nothing to skip and cannot
-        // be drawn there anyway.
         if (!slot.session->view().tracker.contains(coord)) continue;
         slot.session->sendEntityMove(entityId, position, yaw, pitch, onGround);
     }
@@ -163,8 +161,6 @@ void NetServer::update(uint64_t tick) {
         slot.lastServicedTick = tick;
     }
 
-    // Upstream edits land in the world before any session builds its outgoing
-    // packets, so every client sees the same authoritative state this tick.
     for (ClientSlot& slot : slots) {
         if (!slot.active) continue;
         for (const BlockChange& change : slot.session->requestedEdits()) applyEdit(change);
@@ -182,4 +178,4 @@ void NetServer::update(uint64_t tick) {
     statistics.connectedClients = activeClients();
 }
 
-} // namespace vf
+}

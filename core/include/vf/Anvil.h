@@ -10,12 +10,9 @@
 
 namespace vf {
 
-constexpr int anvilRegionSpan = 32;  // chunk columns per region side (X and Z)
+constexpr int anvilRegionSpan = 32;
 constexpr int32_t heightNone = -2147483647 - 1;
 
-// Fixed-width index packer: N palette indices of `bitWidth` bits packed into
-// 64-bit words, LSB-first, padded so no index straddles a word boundary
-// (the modern Anvil layout). Round trips exactly for any width in 1..64.
 class BitPacker {
 public:
     static int bitWidthForPalette(std::size_t paletteSize);
@@ -24,8 +21,6 @@ public:
                                         std::size_t count);
 };
 
-// One 16^3 section: the distinct blocks it uses plus bit-packed indices into
-// that palette.
 struct AnvilSection {
     int sectionY = 0;
     std::vector<Block> palette;
@@ -36,8 +31,6 @@ struct AnvilSection {
     void decodeTo(Chunk& chunk) const;
 };
 
-// One chunk column inside a region: its stacked sections plus a heightmap of
-// the highest non-air world-Y per (x,z) column.
 struct AnvilColumn {
     int localX = 0;
     int localZ = 0;
@@ -47,8 +40,6 @@ struct AnvilColumn {
     const AnvilSection* section(int sectionY) const;
 };
 
-// A region v5 blob: a 32x32 tile of chunk columns, each column compressed via
-// the Codec. Chunks are stored by their world chunk coordinate.
 class AnvilRegion {
 public:
     AnvilRegion() = default;
@@ -79,11 +70,9 @@ private:
     std::vector<AnvilColumn> columns;
 };
 
-// Splits a world into region v5 tiles by chunk-column position.
 std::vector<AnvilRegion> anvilRegionsFromWorld(const World& world);
 
-// One blob holding every region of a world, and its inverse.
 ByteBuffer anvilSerializeWorld(const World& world);
 bool anvilDeserializeWorld(const uint8_t* data, std::size_t size, World& out);
 
-} // namespace vf
+}

@@ -6,9 +6,6 @@ namespace vf {
 
 namespace {
 
-// The half of a menu a shift-click aims at. Craft inputs and result slots are
-// deliberately not part of it: shift-clicking in a player inventory moves items
-// between the rows and the hotbar, it does not stuff the 2x2 grid.
 bool isTransferSection(MenuSlot::Role role) {
     switch (role) {
         case MenuSlot::Role::Storage:
@@ -43,9 +40,6 @@ std::vector<int> collectRoles(const ContainerMenu& menu, bool wantTransferSectio
     return found;
 }
 
-// Where a shift-click from `index` should land. Container half to player half
-// and back; in a menu that has no container half, the player's rows and the
-// hotbar swap roles instead.
 std::vector<int> transferTargetsFor(const ContainerMenu& menu, int index) {
     std::vector<int> container = collectRoles(menu, true);
     MenuSlot::Role role = menu.slot(index).role;
@@ -70,8 +64,6 @@ void touchCraftInput(ContainerMenu& menu, int index) {
     if (menu.slot(index).role == MenuSlot::Role::CraftInput) menu.refreshResult();
 }
 
-// Every removal from a slot goes through here so the crafting grid can never
-// hand out a result without paying for it.
 MetaStack takeFromSlot(ContainerMenu& menu, int index, int amount, SlotActionResult& out) {
     if (isResultSlot(menu, index)) {
         CraftingView view = menu.crafting();
@@ -196,7 +188,6 @@ SlotActionResult shiftClick(ContainerMenu& menu, const SlotAction& action) {
     MetaStack moving = menu.slot(index).cell.takeAll();
     int moved = menu.distributeInto(targets, moving);
     if (!moving.empty()) {
-        // Whatever did not fit goes straight back where it came from.
         menu.slot(index).cell.insert(moving);
     }
     touchCraftInput(menu, index);
@@ -263,8 +254,6 @@ SlotActionResult doubleClick(ContainerMenu& menu, CursorStack& cursor) {
     SlotActionResult out;
     if (cursor.empty() || cursor.held.room() == 0) return out;
 
-    // Partial stacks first: a double click is meant to tidy up leftovers before
-    // it starts breaking apart full stacks.
     for (int pass = 0; pass < 2; ++pass) {
         for (int i = 0; i < menu.slotCount(); ++i) {
             if (cursor.held.room() == 0) break;
@@ -364,8 +353,6 @@ SlotActionResult dropAction(ContainerMenu& menu, CursorStack& cursor, const Slot
     int index = action.slotIndex;
     if (menu.stackAt(index).empty()) return out;
     int amount = wholeStack ? menu.stackAt(index).count : 1;
-    // A result slot always hands over a whole craft: there is no such thing as
-    // crafting one third of a recipe, so Q on a result drops the whole batch.
     MetaStack thrown = takeFromSlot(menu, index, amount, out);
     if (thrown.empty()) return out;
     out.noteDrop(thrown);
@@ -373,7 +360,7 @@ SlotActionResult dropAction(ContainerMenu& menu, CursorStack& cursor, const Slot
     return out;
 }
 
-} // namespace
+}
 
 const char* clickKindName(ClickKind kind) {
     switch (kind) {
@@ -462,4 +449,4 @@ int totalItemsAcrossMenuAndCursor(const ContainerMenu& menu, const CursorStack& 
     return menu.totalItems() + cursor.held.count;
 }
 
-} // namespace vf
+}

@@ -13,9 +13,6 @@
 
 namespace vf {
 
-// Lru drops the entry untouched for the longest time. DistanceWeighted mixes
-// staleness with the squared chunk distance to the observer, so a chunk far
-// behind the player loses to a stale one still under his feet.
 enum class CachePolicy : std::uint8_t {
     Lru = 0,
     DistanceWeighted = 1,
@@ -48,12 +45,6 @@ struct CacheStats {
     }
 };
 
-// Resident chunks and their baked meshes under a hard byte budget. Entries are
-// evicted by policy once a store pushes the cache past the budget; pinned
-// entries are never candidates, which is how the pipeline keeps everything
-// inside the view radius alive. Every method is safe to call concurrently:
-// peek reads share the lock, everything that touches recency or the store takes
-// it exclusively.
 class ChunkCache {
 public:
     explicit ChunkCache(std::uint64_t byteBudget = 64ull * 1024ull * 1024ull,
@@ -74,12 +65,9 @@ public:
     void store(const Vec3i& coord, const Chunk& chunk);
     void store(const Vec3i& coord, const Chunk& chunk, const ChunkMesh& mesh);
 
-    // Counting lookups: they record a hit or a miss and refresh recency.
     bool fetchChunk(const Vec3i& coord, Chunk& out);
     bool fetchMesh(const Vec3i& coord, ChunkMesh& out);
 
-    // Silent lookups for the pipeline workers: no recency, no statistics, and
-    // only a shared lock, so many stages can read at once.
     bool peekChunk(const Vec3i& coord, Chunk& out) const;
     bool peekMesh(const Vec3i& coord, ChunkMesh& out) const;
     bool contains(const Vec3i& coord) const;
@@ -90,9 +78,6 @@ public:
     void unpin(const Vec3i& coord);
     bool isPinned(const Vec3i& coord) const;
 
-    // Drops the owning chunk entirely and the meshes of every neighbour whose
-    // ambient occlusion or light sampling can read the edited voxel across the
-    // chunk border. Returns the number of neighbour meshes dropped.
     std::size_t invalidateBlock(int gx, int gy, int gz);
     void invalidateChunk(const Vec3i& coord);
     void invalidateMesh(const Vec3i& coord);
@@ -103,7 +88,6 @@ public:
     CacheStats stats() const;
     void resetStats();
 
-    // Victims first. Pinned entries are excluded because they cannot be chosen.
     std::vector<Vec3i> evictionOrder() const;
     std::vector<Vec3i> residentCoords() const;
 
@@ -128,4 +112,4 @@ private:
     CachePolicy replacement;
 };
 
-} // namespace vf
+}

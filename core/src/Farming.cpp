@@ -51,7 +51,7 @@ bool waterAdjacent(const World& world, const Vec3i& pos) {
     return false;
 }
 
-} // namespace
+}
 
 const char* cropTypeName(CropType type) {
     switch (type) {
@@ -403,4 +403,4 @@ std::vector<HarvestDrop> Farming::harvest(World& world, const Vec3i& pos) {
     return drops;
 }
 
-} // namespace vf
+}

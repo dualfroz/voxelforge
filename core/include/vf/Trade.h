@@ -10,7 +10,6 @@
 
 namespace vf {
 
-// Trade unlock band. A villager of level N has tiers 0..N-1 unlocked.
 enum class TradeTier : uint8_t {
     Novice = 0,
     Apprentice,
@@ -27,15 +26,11 @@ int levelForTier(TradeTier tier);
 constexpr int heroDiscountPercentPerLevel = 30;
 constexpr int hitSurchargePercent = 20;
 
-// Everything outside the offer itself that bends its price: how the villager
-// feels about the customer, the hero of the village effect, and how many
-// unforgiven hits the customer landed on villagers.
 struct PriceModifier {
     int reputationPercent = 0;
     int heroLevel = 0;
     int hitCount = 0;
 
-    // Net discount in percent. Positive makes goods cheaper.
     int totalPercent() const;
 };
 
@@ -47,9 +42,6 @@ constexpr int tradeDemandPerUse = 1;
 constexpr int tradeDemandDecayPerRestock = 2;
 constexpr int tradeRestocksPerDay = 2;
 
-// One entry in a villager's trade list: up to two inputs for one output, a use
-// budget that a restock refills, and a demand counter that raises the price the
-// more the offer is taken.
 struct TradeOffer {
     ItemId inputA = ItemId::None;
     int inputACount = 1;
@@ -69,11 +61,8 @@ struct TradeOffer {
     bool hasSecondaryInput() const { return inputB != ItemId::None && inputBCount > 0; }
 };
 
-// Base price plus demand, then the modifier percentage. Never drops below one.
 int offerPrice(const TradeOffer& offer, const PriceModifier& modifier);
 
-// A villager's whole trade table across all five tiers. Which entries are
-// reachable depends on the villager's current level.
 struct TradeOfferList {
     std::vector<TradeOffer> offers;
     VillagerProfession profession = VillagerProfession::Unemployed;
@@ -87,15 +76,10 @@ struct TradeOfferList {
     bool allExhausted(int level) const;
 };
 
-// Deterministic per profession and seed: the same pair always yields the same
-// table, with per-offer count jitter drawn from the seed.
 TradeOfferList buildTradeOffers(VillagerProfession profession, uint32_t seed);
 
-// Refills use budgets and lets demand fade. Returns true when anything changed.
 bool restockOffers(TradeOfferList& offers);
 
-// Restocks at most twice per day, and only while the villager is standing at
-// its own workstation. Returns true on the tick a restock fires.
 bool tickVillagerRestock(Villager& villager, TradeOfferList& offers, const TimeOfDay& clock);
 
 struct TradeResult {
@@ -123,9 +107,6 @@ struct TradeResult {
 
 const char* tradeResultReasonName(TradeResult::Reason reason);
 
-// Binds a villager, its offer table and the customer's inventory for the
-// duration of a trading screen. Every completed trade moves items, raises
-// demand, feeds the villager experience and leaves a Trading gossip entry.
 class TradeSession {
 public:
     TradeSession(Villager& villager, TradeOfferList& offers, Container& customerInventory);
@@ -152,4 +133,4 @@ private:
     int spent = 0;
 };
 
-} // namespace vf
+}

@@ -65,7 +65,7 @@ bool railEndNeighbour(const World& world, const Vec3i& pos, RailShape shape,
     return false;
 }
 
-} // namespace
+}
 
 RailDir opposite(RailDir dir) {
     switch (dir) {
@@ -276,4 +276,4 @@ int RailGraph::distance(const Vec3i& a, const Vec3i& b) const {
     return -1;
 }
 
-} // namespace vf
+}

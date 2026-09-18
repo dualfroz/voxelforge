@@ -14,18 +14,33 @@
     background: rgba(255,255,255,0.85); box-shadow: 0 0 2px rgba(0,0,0,0.7); }
   #crosshair::before { left: 8px; top: 0; width: 2px; height: 18px; }
   #crosshair::after { top: 8px; left: 0; height: 2px; width: 18px; }
-  #hud { position: fixed; left: 14px; bottom: 12px; font-size: 12px; line-height: 1.5;
-    background: rgba(13,16,23,0.62); padding: 10px 12px; border: 1px solid #26304a;
-    border-radius: 8px; max-width: 360px; }
-  #hud b { color: #89b4fa; }
-  #hud .title { color: #a6e3a1; font-weight: 700; margin-bottom: 4px; display: block; }
+  .panel { position: fixed; font-size: 12px; line-height: 1.55; background: rgba(13,16,23,0.66);
+    padding: 10px 12px; border: 1px solid #26304a; border-radius: 8px; pointer-events: none; }
+  .panel b { color: #89b4fa; font-weight: 600; }
+  .panel .title { color: #a6e3a1; font-weight: 700; margin-bottom: 4px; display: block; }
+  .panel .dim { color: #7f8aa3; }
+  #status { left: 14px; top: 12px; min-width: 250px; }
+  #help { left: 14px; bottom: 12px; max-width: 360px; }
+  #vitals { right: 14px; top: 12px; width: 220px; }
+  .bar { height: 8px; background: #1b2131; border-radius: 4px; margin: 3px 0 7px; overflow: hidden; }
+  .bar span { display: block; height: 100%; border-radius: 4px; }
+  .health span { background: #f38ba8; }
+  .hunger span { background: #fab387; }
+  .air span { background: #89dceb; }
+  #target { position: fixed; left: 50%; top: calc(50% + 22px); transform: translateX(-50%);
+    font-size: 12px; color: #f5f5f5; text-shadow: 0 1px 2px #000; pointer-events: none; }
+  #mining { position: fixed; left: 50%; top: calc(50% + 42px); width: 80px; height: 4px;
+    transform: translateX(-50%); background: rgba(0,0,0,0.5); border-radius: 2px; display: none; }
+  #mining span { display: block; height: 100%; background: #f9e2af; border-radius: 2px; }
+  #message { position: fixed; left: 50%; top: 18%; transform: translateX(-50%); font-size: 14px;
+    color: #f9e2af; text-shadow: 0 1px 3px #000; pointer-events: none; }
   #hotbar { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
     display: flex; gap: 4px; pointer-events: none; }
-  .slot { width: 56px; height: 56px; border: 2px solid #26304a; border-radius: 8px;
+  .slot { width: 64px; height: 56px; border: 2px solid #26304a; border-radius: 8px;
     background: rgba(13,16,23,0.68); display: flex; flex-direction: column;
     align-items: center; justify-content: center; }
   .slot.active { border-color: #f9e2af; box-shadow: 0 0 10px rgba(249,226,175,0.4); }
-  .slot .name { font-size: 11px; color: #cdd6f4; }
+  .slot .name { font-size: 10px; color: #cdd6f4; text-align: center; }
   .slot .count { font-size: 10px; color: #7f8aa3; margin-top: 2px; }
   .slot .key { font-size: 9px; color: #45506b; }
 </style>
@@ -33,29 +48,70 @@
 <body>
 <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
 <div id="crosshair"></div>
+<div id="target"></div>
+<div id="mining"><span></span></div>
+<div id="message"></div>
+<div id="status" class="panel"></div>
+<div id="vitals" class="panel"></div>
 <div id="hotbar"></div>
-<div id="hud">
-  <span class="title">voxelforge - streamed infinite world</span>
-  Click canvas to lock the mouse. <b>WASD</b> move, mouse look,
-  <b>Space</b> jump, <b>F</b> toggle fly (<b>Space/Shift</b> up/down).<br>
-  <b>Left click</b> break, <b>Right click</b> place. <b>1-9</b> or <b>wheel</b> pick block.
-  <b>K</b> save, <b>L</b> load.
+<div id="help" class="panel">
+  <span class="title">voxelforge</span>
+  Click the canvas to lock the mouse. <b>WASD</b> move, <b>Space</b> jump or swim up,
+  <b>Shift</b> dive, <b>F</b> toggle fly.<br>
+  <b>Hold left</b> mine a block or hit a mob, <b>right</b> place the selected block
+  (water flows). <b>1-9</b> or <b>wheel</b> pick a slot.<br>
+  <b>Q</b> eat, <b>T</b> speed up time, <b>K</b> save, <b>L</b> load.
 </div>
 <script>
+  function prettyName(name) {
+    var spaced = name.replace(/([a-z])([A-Z])/g, '$1 $2');
+    return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+  }
+  function bar(kind, value, max) {
+    var width = Math.max(0, Math.min(100, 100 * value / max));
+    return '<div class="bar ' + kind + '"><span style="width:' + width + '%"></span></div>';
+  }
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
   window.renderHotbar = function(selected, payload) {
-    var bar = document.getElementById('hotbar');
-    if (!bar) return;
-    var slots = payload.split(';');
     var html = '';
+    var slots = payload.split(';');
     for (var i = 0; i < slots.length; i++) {
       var parts = slots[i].split(',');
       var active = (i === selected) ? ' active' : '';
       html += '<div class="slot' + active + '">'
-        + '<span class="name">' + parts[0] + '</span>'
+        + '<span class="name">' + (parts[0] ? prettyName(parts[0]) : '-') + '</span>'
         + '<span class="count">' + parts[1] + '</span>'
         + '<span class="key">' + (i + 1) + '</span></div>';
     }
-    bar.innerHTML = html;
+    document.getElementById('hotbar').innerHTML = html;
+  };
+  window.renderHud = function(s) {
+    var mode = s.flying ? 'flying' : (s.underwater ? 'underwater' : (s.swimming ? 'swimming' : 'walking'));
+    document.getElementById('status').innerHTML =
+      '<span class="title">World</span>'
+      + '<b>' + s.fps + '</b> fps <span class="dim">| ' + s.columns + ' columns, '
+      + s.meshes + ' meshes, ' + s.pending + ' queued</span><br>'
+      + 'Position <b>' + s.x.toFixed(1) + ' ' + s.y.toFixed(1) + ' ' + s.z.toFixed(1) + '</b><br>'
+      + 'Biome <b>' + s.biome + '</b><br>'
+      + 'Day <b>' + s.day + '</b>, ' + pad(s.hour) + ':' + pad(s.minute)
+      + ' <b>' + prettyName(s.phase) + '</b> <span class="dim">(time ' + s.timeScale + 'x)</span><br>'
+      + 'Sky light <b>' + s.skyLight + '</b>/15, moon phase ' + s.moon + '<br>'
+      + 'Weather <b>' + prettyName(s.weather) + '</b><br>'
+      + 'Animals <b>' + s.passive + '</b>, monsters <b>' + s.hostile + '</b><br>'
+      + 'Villagers <b>' + s.villagers + '</b> (' + s.employed + ' employed), '
+      + s.beds + ' beds, ' + s.workstations + ' workstations<br>'
+      + 'Water flows <b>' + s.waterSites + '</b> <span class="dim">(' + s.flowingCells + ' wet cells)</span>';
+    document.getElementById('vitals').innerHTML =
+      '<span class="title">' + prettyName(mode) + '</span>'
+      + 'Health ' + s.health.toFixed(0) + '/' + s.maxHealth.toFixed(0) + bar('health', s.health, s.maxHealth)
+      + 'Hunger ' + s.hunger.toFixed(0) + '/' + s.maxHunger.toFixed(0) + bar('hunger', s.hunger, s.maxHunger)
+      + 'Breath ' + s.air.toFixed(0) + 's' + bar('air', s.air, s.maxAir)
+      + 'Food carried <b>' + s.food + '</b>';
+    document.getElementById('target').textContent = s.target ? prettyName(s.target) : '';
+    var mining = document.getElementById('mining');
+    mining.style.display = s.mining > 0 ? 'block' : 'none';
+    mining.firstChild.style.width = Math.min(100, s.mining * 100) + '%';
+    document.getElementById('message').textContent = s.message;
   };
 </script>
 {{{ SCRIPT }}}

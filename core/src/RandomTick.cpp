@@ -20,7 +20,7 @@ uint64_t asBits(int v) {
     return static_cast<uint64_t>(static_cast<uint32_t>(v));
 }
 
-} // namespace
+}
 
 RandomTick::RandomTick(uint32_t worldSeed, int ticksPerChunk)
     : seed(worldSeed), ticks(ticksPerChunk < 0 ? 0 : ticksPerChunk) {}
@@ -68,4 +68,4 @@ std::vector<Vec3i> RandomTick::sampleGlobal(const Vec3i& chunkCoord, long long t
     return out;
 }
 
-} // namespace vf
+}

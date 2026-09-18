@@ -22,7 +22,7 @@ int32_t signExtend(uint64_t value, int bits) {
     return static_cast<int32_t>(static_cast<int64_t>(value));
 }
 
-}  // namespace
+}
 
 bool PacketReader::readI32(int32_t& out) {
     uint32_t raw;
@@ -304,7 +304,7 @@ bool peekVarU32(const uint8_t* data, std::size_t size, std::size_t pos, uint32_t
     return false;
 }
 
-}  // namespace
+}
 
 void splitFrames(const uint8_t* data, std::size_t size, std::vector<Frame>& frames,
                  std::size_t& consumed) {
@@ -326,4 +326,4 @@ void splitFrames(const uint8_t* data, std::size_t size, std::vector<Frame>& fram
     consumed = pos;
 }
 
-} // namespace vf
+}

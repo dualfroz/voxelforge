@@ -36,7 +36,7 @@ std::unique_ptr<BehaviorNode> action(const char* name, BehaviorAction fn) {
 
 BehaviorStatus followRouteAction(BehaviorContext& ctx) { return followRouteStep(ctx); }
 
-} // namespace
+}
 
 const char* behaviorStatusName(BehaviorStatus status) {
     switch (status) {
@@ -755,4 +755,4 @@ BehaviorTree makeTreeForRole(BehaviorRole role, const BehaviorTuning& tuning) {
     }
 }
 
-} // namespace vf
+}

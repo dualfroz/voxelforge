@@ -22,9 +22,6 @@ enum class PacketId : uint8_t {
     KeepAlive = 8,
 };
 
-// Wire writer: varints (unsigned LEB128 and zigzag signed), fixed scalars,
-// length-prefixed strings, a 26/12/26 packed block position, and a 128-bit
-// uuid split into two 64-bit halves.
 class PacketWriter {
 public:
     void writeVarInt(int32_t v) { writer.putVarI32(v); }
@@ -49,8 +46,6 @@ private:
     ByteWriter writer;
 };
 
-// Wire reader mirroring PacketWriter. Every read is bounds checked; ok() stays
-// false once any read has run past the end.
 class PacketReader {
 public:
     PacketReader(const uint8_t* data, std::size_t size) : reader(data, size) {}
@@ -110,8 +105,6 @@ struct JoinGame {
     bool decode(PacketReader& r);
 };
 
-// A full chunk: coordinate plus the palette and bit-packed indices, carried on
-// the wire as a Codec-compressed blob.
 struct ChunkData {
     static constexpr PacketId id = PacketId::ChunkData;
     int32_t chunkX = 0;
@@ -180,7 +173,6 @@ struct KeepAlive {
     bool decode(PacketReader& r);
 };
 
-// Length-prefixed framing: varint(1 + payload) + packetId + payload.
 void writeFramed(ByteWriter& stream, PacketId id, const PacketWriter& body);
 
 struct Frame {
@@ -188,10 +180,7 @@ struct Frame {
     ByteBuffer payload;
 };
 
-// Pulls every complete frame out of a possibly-glued stream. `consumed` is set
-// to the number of bytes fully parsed, so a trailing partial frame can be kept
-// for the next read.
 void splitFrames(const uint8_t* data, std::size_t size, std::vector<Frame>& frames,
                  std::size_t& consumed);
 
-} // namespace vf
+}

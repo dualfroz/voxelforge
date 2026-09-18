@@ -2,7 +2,7 @@
 
 namespace vf {
 
-inline const char* vertexShaderSource() {
+inline const char* terrainVertexShaderSource() {
     return R"(#version 300 es
 precision highp float;
 layout(location = 0) in vec3 aPos;
@@ -31,7 +31,7 @@ void main() {
 )";
 }
 
-inline const char* fragmentShaderSource() {
+inline const char* terrainFragmentShaderSource() {
     return R"(#version 300 es
 precision highp float;
 precision highp sampler2DArray;
@@ -42,25 +42,55 @@ in float vDepth;
 in float vLight;
 in float vAo;
 uniform sampler2DArray uAtlas;
-uniform vec3 uLightDir;
+uniform vec3 uSunDir;
+uniform float uSunStrength;
 uniform vec3 uFogColor;
+uniform vec2 uFogRange;
 out vec4 fragColor;
 void main() {
     vec4 texel = texture(uAtlas, vec3(vUv, float(vTile)));
-    // Cutout tiles (ladders, rails, grates, plants, cobweb) carry their shape
-    // in alpha. The opaque pass runs with blending off, so without this the
-    // holes would draw as solid squares of whatever sits behind them.
     if (texel.a < 0.5) discard;
-    float ndl = max(dot(normalize(vNormal), normalize(uLightDir)), 0.0);
-    float directional = 0.55 + 0.45 * ndl;
-    float baked = 0.18 + 0.82 * vLight;
+    float ndl = max(dot(normalize(vNormal), normalize(uSunDir)), 0.0);
+    float directional = 0.62 + 0.38 * ndl * uSunStrength;
+    float baked = 0.06 + 0.94 * vLight;
     float ao = 0.45 + 0.55 * vAo;
     vec3 color = texel.rgb * directional * baked * ao;
-    float fog = clamp((vDepth - 90.0) / 90.0, 0.0, 1.0);
-    color = mix(color, uFogColor, fog);
-    fragColor = vec4(color, texel.a);
+    float fog = clamp((vDepth - uFogRange.x) / (uFogRange.y - uFogRange.x), 0.0, 1.0);
+    fragColor = vec4(mix(color, uFogColor, fog), texel.a);
 }
 )";
 }
 
-} // namespace vf
+inline const char* entityVertexShaderSource() {
+    return R"(#version 300 es
+precision highp float;
+layout(location = 0) in vec3 aPos;
+layout(location = 1) in vec3 aColor;
+uniform mat4 uViewProj;
+out vec3 vColor;
+out float vDepth;
+void main() {
+    vec4 clip = uViewProj * vec4(aPos, 1.0);
+    gl_Position = clip;
+    vColor = aColor;
+    vDepth = clip.w;
+}
+)";
+}
+
+inline const char* entityFragmentShaderSource() {
+    return R"(#version 300 es
+precision highp float;
+in vec3 vColor;
+in float vDepth;
+uniform vec3 uFogColor;
+uniform vec2 uFogRange;
+out vec4 fragColor;
+void main() {
+    float fog = clamp((vDepth - uFogRange.x) / (uFogRange.y - uFogRange.x), 0.0, 1.0);
+    fragColor = vec4(mix(vColor, uFogColor, fog), 1.0);
+}
+)";
+}
+
+}

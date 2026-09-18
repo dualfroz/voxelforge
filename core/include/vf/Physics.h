@@ -11,7 +11,7 @@ struct Aabb {
 };
 
 struct Player {
-    Vec3 position;   // feet centre (bottom of the collision box)
+    Vec3 position;
     Vec3 velocity;
     float yaw = 0.0f;
     float pitch = 0.0f;
@@ -23,11 +23,11 @@ struct Player {
 };
 
 struct MoveInput {
-    float forward = 0.0f;   // -1..1
-    float strafe = 0.0f;    // -1..1
+    float forward = 0.0f;
+    float strafe = 0.0f;
     bool jump = false;
-    bool up = false;        // fly ascend
-    bool down = false;      // fly descend
+    bool up = false;
+    bool down = false;
 };
 
 struct PhysicsConfig {
@@ -43,9 +43,7 @@ Vec3 eyePosition(const Player& player);
 
 bool boxOverlapsSolid(const World& world, const Aabb& box);
 
-// Advances the player one fixed step: applies input, gravity/fly, then resolves
-// AABB collisions against solid voxels axis by axis (move and slide).
 void stepPlayer(const World& world, Player& player, const MoveInput& input,
                 const PhysicsConfig& config, float dt);
 
-} // namespace vf
+}

@@ -6,7 +6,7 @@ namespace vf {
 
 namespace {
 
-constexpr uint32_t schematicMagic = 0x56585343u;   // "VXSC"
+constexpr uint32_t schematicMagic = 0x56585343u;
 constexpr std::size_t maxSchematicCells = 1u << 26;
 constexpr uint8_t voidMaskFlag = 0x01;
 
@@ -14,8 +14,6 @@ std::size_t packedByteCount(std::size_t cells, uint8_t bits) {
     return (cells * static_cast<std::size_t>(bits) + 7u) / 8u;
 }
 
-// Indices are packed low bits first. Every supported width divides eight, so a
-// value never straddles two bytes and the reader can address it directly.
 void packIndices(const std::vector<uint16_t>& indices, uint8_t bits, ByteBuffer& out) {
     std::size_t base = out.size();
     out.resize(base + packedByteCount(indices.size(), bits));
@@ -71,7 +69,7 @@ bool getI32(ByteReader& reader, int& out) {
     return true;
 }
 
-} // namespace
+}
 
 ClipboardBuffer::ClipboardBuffer(const Vec3i& dims, const Vec3i& anchor) {
     if (dims.x <= 0 || dims.y <= 0 || dims.z <= 0) return;
@@ -506,4 +504,4 @@ std::size_t Schematic::pasteInto(World& world, EditHistory& history, const Vec3i
     return written;
 }
 
-} // namespace vf
+}

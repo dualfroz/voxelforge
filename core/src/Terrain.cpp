@@ -9,7 +9,7 @@ namespace {
 
 int heightAt(const PerlinNoise& noise, const TerrainParams& params, int gx, int gz) {
     float n = noise.fbm2D(gx * params.frequency, gz * params.frequency, params.octaves, 2.0f, 0.5f);
-    float ridged = 1.0f - std::fabs(n);           // sharper ridges near peaks
+    float ridged = 1.0f - std::fabs(n);
     float shaped = n * 0.7f + (ridged - 0.5f) * 0.6f;
     int h = params.baseHeight + static_cast<int>(std::round(shaped * params.amplitude));
     if (h < 1) h = 1;
@@ -41,7 +41,7 @@ void placeTree(World& world, int gx, int baseY, int gz, int worldHeight) {
     }
 }
 
-} // namespace
+}
 
 int columnHeight(uint32_t seed, const TerrainParams& params, int gx, int gz) {
     PerlinNoise noise(seed);
@@ -77,4 +77,4 @@ void generateTerrain(World& world, const TerrainParams& params) {
     }
 }
 
-} // namespace vf
+}

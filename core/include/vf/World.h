@@ -66,4 +66,4 @@ private:
     std::unordered_map<Vec3i, std::unique_ptr<Chunk>, Vec3iHash> chunks;
 };
 
-} // namespace vf
+}

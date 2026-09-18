@@ -361,4 +361,4 @@ void JobSystem::resetStats() {
     counters = JobStats{};
 }
 
-} // namespace vf
+}

@@ -6,7 +6,6 @@
 
 namespace vf {
 
-// A chunk column address (x, z); a column owns the full vertical stack of chunks.
 struct ColumnCoord {
     int x = 0;
     int z = 0;
@@ -23,24 +22,19 @@ struct ColumnCoordHash {
 };
 
 struct StreamingConfig {
-    int loadRadius = 8;     // columns within this circle are kept resident
-    int unloadRadius = 10;  // columns are only evicted past this larger circle
+    int loadRadius = 8;
+    int unloadRadius = 10;
 };
 
 struct StreamDelta {
-    std::vector<ColumnCoord> load;    // to generate, nearest-to-player first
-    std::vector<ColumnCoord> unload;  // now beyond the unload ring
+    std::vector<ColumnCoord> load;
+    std::vector<ColumnCoord> unload;
 };
 
-// Tracks which chunk columns are resident around a moving centre. The load and
-// unload rings differ (hysteresis) so a player pacing across a boundary does not
-// thrash the same columns in and out every step.
 class ChunkStreamer {
 public:
     explicit ChunkStreamer(StreamingConfig config = {}) : config(config) {}
 
-    // Recomputes residency around `centre`, mutating the resident set and
-    // returning the columns that entered (to load) and left (to unload).
     StreamDelta update(ColumnCoord centre);
 
     bool isLoaded(ColumnCoord column) const { return resident.count(column) != 0; }
@@ -52,8 +46,6 @@ private:
     std::unordered_set<ColumnCoord, ColumnCoordHash> resident;
 };
 
-// Columns whose centre lies within `radius` of (0,0), sorted nearest first.
-// Distance is Euclidean so the loaded area is a disc, not a square.
 std::vector<ColumnCoord> columnsInRadius(ColumnCoord centre, int radius);
 
-} // namespace vf
+}
