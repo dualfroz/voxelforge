@@ -37,7 +37,6 @@ std::unique_ptr<BehaviorNode> flagCondition(const char* name, const bool* source
         new ConditionNode(name, [source](BehaviorContext&) { return *source; }));
 }
 
-// Reports Running for `runningTicks` calls, then Success once, then restarts.
 std::unique_ptr<BehaviorNode> slowAction(const char* name, int runningTicks, int* counter,
                                          int* progress) {
     return std::unique_ptr<BehaviorNode>(
@@ -68,7 +67,7 @@ BehaviorAgent makeAgent(Species species, const Vec3& position) {
     return agent;
 }
 
-} // namespace
+}
 
 VF_TEST(blackboardKeepsEachValueTypeInItsOwnDrawer) {
     Blackboard board;
@@ -88,7 +87,6 @@ VF_TEST(blackboardKeepsEachValueTypeInItsOwnDrawer) {
     CHECK_EQ(board.route("path")->size(), 2u);
     CHECK_EQ(board.entryCount(), 6u);
 
-    // A key written as one type is invisible to every other type.
     CHECK(!board.hasCount("threat"));
     CHECK(!board.hasNumber("meals"));
     CHECK(board.route("threat") == nullptr);
@@ -167,8 +165,6 @@ VF_TEST(aRunningNodeResumesNextTickInsteadOfRestartingTheSequence) {
     CHECK_EQ(firstRuns, 1);
     CHECK_EQ(slowRuns, 1);
 
-    // The whole point: the first child must not run again while the second is
-    // still Running.
     CHECK(tree.tick(ctx) == BehaviorStatus::Running);
     CHECK_EQ(firstRuns, 1);
     CHECK_EQ(slowRuns, 2);
@@ -177,7 +173,6 @@ VF_TEST(aRunningNodeResumesNextTickInsteadOfRestartingTheSequence) {
     CHECK_EQ(firstRuns, 1);
     CHECK_EQ(slowRuns, 3);
 
-    // Once settled the sequence starts over from the top.
     CHECK(tree.tick(ctx) == BehaviorStatus::Running);
     CHECK_EQ(firstRuns, 2);
     CHECK_EQ(slowRuns, 4);
@@ -226,7 +221,6 @@ VF_TEST(cooldownBlocksForExactlyTheRequestedNumberOfTicks) {
     CHECK(tree.tick(ctx) == BehaviorStatus::Success);
     CHECK_EQ(runs, 2);
 
-    // And the block starts again immediately after the second firing.
     CHECK(tree.tick(ctx) == BehaviorStatus::Failure);
     CHECK_EQ(runs, 2);
 }
@@ -308,7 +302,6 @@ VF_TEST(timeLimitCutsOffAChildThatNeverSettles) {
     CHECK(tree.tick(ctx) == BehaviorStatus::Failure);
     CHECK_EQ(runs, 3);
 
-    // The budget is refilled once the decorator gave its verdict.
     CHECK(tree.tick(ctx) == BehaviorStatus::Running);
     CHECK_EQ(runs, 4);
 }
@@ -325,10 +318,8 @@ VF_TEST(parallelSettlesOnItsSuccessAndFailureThresholds) {
     BehaviorTree tree(std::move(wide));
     BehaviorContext ctx;
 
-    // One success, one failure, one still running: neither threshold is met.
     CHECK(tree.tick(ctx) == BehaviorStatus::Running);
     CHECK(tree.tick(ctx) == BehaviorStatus::Running);
-    // The slow child succeeds on its third visit, which is the second success.
     CHECK(tree.tick(ctx) == BehaviorStatus::Success);
     CHECK_EQ(slowRuns, 3);
 

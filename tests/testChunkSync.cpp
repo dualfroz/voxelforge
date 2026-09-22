@@ -18,7 +18,6 @@ struct Lcg {
     int range(int n) { return static_cast<int>(next() % static_cast<uint32_t>(n)); }
 };
 
-// Server-side edit: mutate the authoritative world and flag the slot dirty.
 void serverEdit(World& world, ServerChunkSync& sync, const Vec3i& chunkCoord, int x, int y, int z,
                 Block block) {
     Chunk& chunk = world.ensureChunk(chunkCoord);
@@ -51,7 +50,7 @@ MultiBlockChange reframeDelta(const MultiBlockChange& packet) {
     return back;
 }
 
-}  // namespace
+}
 
 VF_TEST(chunkSyncFullSnapshotReplicatesChunk) {
     World server;
@@ -133,7 +132,6 @@ VF_TEST(chunkSyncOverlappingEditsCollapse) {
     serverEdit(server, sync, coord, 3, 3, 3, Block::Dirt);
     serverEdit(server, sync, coord, 3, 3, 3, Block::Stone);
     serverEdit(server, sync, coord, 3, 3, 3, Block::Grass);
-    // The same slot touched three times is one dirty entry carrying the final block.
     CHECK_EQ(sync.dirtyCount(coord), static_cast<std::size_t>(1));
 
     MultiBlockChange delta;

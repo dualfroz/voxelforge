@@ -19,7 +19,7 @@ Player standingPlayer() {
     return player;
 }
 
-} // namespace
+}
 
 VF_TEST(physicsPlayerFallsAndLandsOnFloor) {
     World world = floorWorld();
@@ -30,7 +30,7 @@ VF_TEST(physicsPlayerFallsAndLandsOnFloor) {
     for (int i = 0; i < 300; ++i) stepPlayer(world, player, input, config, 1.0f / 60.0f);
 
     CHECK(player.onGround);
-    CHECK_NEAR(player.position.y, 1.0f, 0.02f);   // feet rest on top of the y=0 block
+    CHECK_NEAR(player.position.y, 1.0f, 0.02f);
     CHECK(!boxOverlapsSolid(world, playerBox(player)));
 }
 
@@ -43,7 +43,7 @@ VF_TEST(physicsWallBlocksHorizontalMovement) {
     Player player = standingPlayer();
     PhysicsConfig config;
     MoveInput input;
-    input.strafe = 1.0f;   // yaw 0 -> pushes toward +x
+    input.strafe = 1.0f;
 
     for (int i = 0; i < 300; ++i) stepPlayer(world, player, input, config, 1.0f / 60.0f);
 
@@ -52,7 +52,7 @@ VF_TEST(physicsWallBlocksHorizontalMovement) {
 }
 
 VF_TEST(physicsFlyModeIgnoresGravity) {
-    World world;   // empty, nothing to stand on
+    World world;
     Player player;
     player.position = {0.0f, 20.0f, 0.0f};
     player.flying = true;
@@ -61,7 +61,7 @@ VF_TEST(physicsFlyModeIgnoresGravity) {
 
     for (int i = 0; i < 120; ++i) stepPlayer(world, player, input, config, 1.0f / 60.0f);
 
-    CHECK_NEAR(player.position.y, 20.0f, 1e-3f);   // hovers in place
+    CHECK_NEAR(player.position.y, 20.0f, 1e-3f);
 }
 
 VF_TEST(physicsFlyAscendsWithInput) {

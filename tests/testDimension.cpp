@@ -46,8 +46,6 @@ VF_TEST(dimensionConfigClampsToItsOwnPlaceableRange) {
     CHECK_EQ(nether.clampY(9000), nether.highestPlaceableY());
     CHECK_EQ(nether.clampY(60), 60);
 
-    // A dimension with a solid roof keeps one more block of margin than an
-    // open-sky one.
     CHECK(nether.highestPlaceableY() < overworld.highestPlaceableY());
     CHECK_EQ(nether.height(), 128);
 }
@@ -136,7 +134,6 @@ VF_TEST(dimensionGeneratesTerrainFromItsOwnGenerator) {
         if (dimensions.end().world().blockAt(4, gy, 4) == Block::EndStone) ++endStone;
     CHECK(endStone > 0);
 
-    // A second request for the same column is a no-op, not a regeneration.
     std::size_t before = dimensions.nether().world().chunkCount();
     dimensions.nether().generateColumn(2, -1);
     CHECK_EQ(dimensions.nether().world().chunkCount(), before);
@@ -159,7 +156,6 @@ VF_TEST(standingSpotNeedsSolidGroundAndHeadroom) {
     CHECK(dimensions.overworld().standingSpot(10, 10, 0, 3, feetY));
     CHECK_EQ(feetY, 41);
 
-    // A ceiling one block above the ground leaves no room to stand.
     world.setBlock(10, 42, 10, Block::Stone);
     CHECK(dimensions.overworld().standingSpot(10, 10, 0, 3, feetY));
     CHECK_EQ(feetY, 43);
@@ -184,8 +180,6 @@ VF_TEST(netherTravelDividesHorizontalCoordinatesByEight) {
     CHECK_EQ(result.searchRadius, 128);
     CHECK(result.needsPortal);
 
-    // Rounding is a floor, so a coordinate that is not a multiple of eight
-    // lands on the block below rather than being pulled towards zero.
     TravelResult negative = travel.plan(DimensionId::Overworld, DimensionId::Nether,
                                         {-9, 60, -1});
     CHECK_EQ(negative.target.x, -2);
@@ -253,7 +247,6 @@ VF_TEST(travelReusesAKnownPortalOnlyInsideTheSearchRadius) {
     CHECK(build.needsPortal);
     CHECK_EQ(build.nearestIndex, -1);
 
-    // The overworld radius is far tighter, so the same offset no longer counts.
     std::vector<Vec3i> homeSide{{820, 60, -400}};
     TravelResult tooFar = travel.plan(DimensionId::Nether, DimensionId::Overworld,
                                       {100, 60, -50}, homeSide);
@@ -290,7 +283,6 @@ VF_TEST(findSafeSpotPrefersGroundNearTheArrivalHeight) {
     CHECK_EQ(spot.x, 50);
     CHECK_EQ(spot.z, 50);
 
-    // Nothing at all within reach means the caller has to build its own floor.
     CHECK(!travel.findSafeSpot(DimensionId::Overworld, {900, 60, 900}, 3, 4, spot));
 }
 

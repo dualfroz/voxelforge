@@ -14,7 +14,7 @@ bool sameOverRegion(const World& a, const World& b, int xMax, int yMax, int zMax
     return true;
 }
 
-} // namespace
+}
 
 VF_TEST(serializeRoundTripsManualBlocks) {
     World world;
@@ -59,7 +59,7 @@ VF_TEST(serializeRejectsTruncatedStream) {
     World world;
     world.setBlock(0, 0, 0, Block::Stone);
     std::vector<uint8_t> bytes = serializeWorld(world);
-    bytes.resize(bytes.size() - 4);   // cut the block stream short
+    bytes.resize(bytes.size() - 4);
     World out;
     CHECK(!deserializeWorld(bytes.data(), bytes.size(), out));
 }

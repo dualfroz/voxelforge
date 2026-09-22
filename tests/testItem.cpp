@@ -45,7 +45,7 @@ VF_TEST(toolDurabilityRisesWithTierExceptGold) {
     CHECK(stone > wood);
     CHECK(iron > stone);
     CHECK(diamond > iron);
-    CHECK(gold < wood);   // gold tools are notoriously fragile
+    CHECK(gold < wood);
     CHECK_EQ(toolMaxDurability(ItemId::Stone), 0);
 }
 
@@ -64,7 +64,6 @@ VF_TEST(miningSpeedMultiplierRewardsMatchingToolAndTier) {
     CHECK_NEAR(miningSpeedMultiplier(ItemId::None, Block::Stone), 1.0f, 1e-6f);
     CHECK_NEAR(miningSpeedMultiplier(ItemId::WoodPickaxe, Block::Stone), 2.0f, 1e-6f);
     CHECK_NEAR(miningSpeedMultiplier(ItemId::DiamondPickaxe, Block::Stone), 8.0f, 1e-6f);
-    // Wrong tool class for the block: no bonus, same as bare hands.
     CHECK_NEAR(miningSpeedMultiplier(ItemId::StonePickaxe, Block::Wood), 1.0f, 1e-6f);
     CHECK_NEAR(miningSpeedMultiplier(ItemId::StoneAxe, Block::Wood), 4.0f, 1e-6f);
 }

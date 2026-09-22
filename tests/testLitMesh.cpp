@@ -15,8 +15,6 @@ float minAo(const Mesh& mesh) {
     return lo;
 }
 
-// Average light of the top face of the block at (5,5,5): its four vertices sit
-// at y = 6 with an upward normal. Isolating it ignores the roof's own lit faces.
 float coveredBlockTopLight(const Mesh& mesh) {
     float sum = 0.0f;
     int n = 0;
@@ -35,7 +33,7 @@ bool hasTile(const Mesh& mesh, int tile) {
     return false;
 }
 
-} // namespace
+}
 
 VF_TEST(litIsolatedBlockHasSixUnoccludedFaces) {
     World world;
@@ -43,23 +41,23 @@ VF_TEST(litIsolatedBlockHasSixUnoccludedFaces) {
     ChunkMesh mesh = meshChunkLit(world, {0, 0, 0}, lightFor(world));
     CHECK_EQ(mesh.opaque.quadCount(), static_cast<std::size_t>(6));
     CHECK(mesh.transparent.empty());
-    CHECK_NEAR(minAo(mesh.opaque), 1.0f, 1e-4f);   // nothing occludes an isolated block
+    CHECK_NEAR(minAo(mesh.opaque), 1.0f, 1e-4f);
 }
 
 VF_TEST(litInnerCornerDarkensVertex) {
     World world;
     world.setBlock(5, 5, 5, Block::Stone);
-    world.setBlock(6, 6, 5, Block::Stone);   // occludes one edge of the top face
-    world.setBlock(5, 6, 6, Block::Stone);   // occludes the other edge
+    world.setBlock(6, 6, 5, Block::Stone);
+    world.setBlock(5, 6, 6, Block::Stone);
     ChunkMesh mesh = meshChunkLit(world, {0, 0, 0}, lightFor(world));
-    CHECK_NEAR(minAo(mesh.opaque), 0.0f, 1e-4f);   // both sides set -> AO 0 at that corner
+    CHECK_NEAR(minAo(mesh.opaque), 0.0f, 1e-4f);
 }
 
 VF_TEST(litTopIsBrightRoofIsNot) {
     World open;
     open.setBlock(5, 5, 5, Block::Stone);
     ChunkMesh openMesh = meshChunkLit(open, {0, 0, 0}, lightFor(open));
-    CHECK(coveredBlockTopLight(openMesh.opaque) > 0.99f);   // top face sees open sky
+    CHECK(coveredBlockTopLight(openMesh.opaque) > 0.99f);
 
     World roofed;
     roofed.setBlock(5, 5, 5, Block::Stone);
@@ -67,7 +65,7 @@ VF_TEST(litTopIsBrightRoofIsNot) {
         for (int z = 3; z <= 7; ++z)
             roofed.setBlock(x, 8, z, Block::Stone);
     ChunkMesh roofedMesh = meshChunkLit(roofed, {0, 0, 0}, lightFor(roofed));
-    CHECK(coveredBlockTopLight(roofedMesh.opaque) < 0.99f);   // roof shadows this face
+    CHECK(coveredBlockTopLight(roofedMesh.opaque) < 0.99f);
 }
 
 VF_TEST(litWaterGoesToTransparentPass) {

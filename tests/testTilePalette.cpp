@@ -17,17 +17,12 @@ bool sameLook(const TileSpec& a, const TileSpec& b) {
     return a.base == b.base && a.accent == b.accent && a.pattern == b.pattern;
 }
 
-// A palette short of a row is exactly what these tests are here to catch, so
-// they must report it rather than walk off the end of the table proving it.
 int rowsToWalk(const TilePalette& palette) {
     return palette.size() < tileCount ? palette.size() : tileCount;
 }
 
-} // namespace
+}
 
-// The whole point of the palette: 157 tiles, 157 entries. The old generator had
-// a switch covering fifteen of them and one grey default for the other one
-// hundred and forty two, and nothing could tell you that from the outside.
 VF_TEST(everyAtlasTileHasItsOwnPaletteEntry) {
     TilePalette palette;
     CHECK_EQ(palette.size(), tileCount);
@@ -48,8 +43,6 @@ VF_TEST(everyAtlasTileHasItsOwnPaletteEntry) {
     }
 }
 
-// Two tiles that agree on base colour, accent colour and pattern render the
-// same picture, which means one of them is a copy nobody meant to ship.
 VF_TEST(noTwoTilesShareTheSameBaseAccentAndPattern) {
     TilePalette palette;
     int duplicates = 0;
@@ -66,9 +59,6 @@ VF_TEST(noTwoTilesShareTheSameBaseAccentAndPattern) {
     CHECK_EQ(duplicates, 0);
 }
 
-// The palette is indexed by whatever faceTile hands out, so the two have to
-// agree over the entire block list, not over the blocks that existed when the
-// palette was written.
 VF_TEST(everyBlockFaceLandsOnATileThatHasASpec) {
     TilePalette palette;
     for (int id = 1; id < static_cast<int>(Block::Count); ++id) {
@@ -86,27 +76,24 @@ VF_TEST(everyBlockFaceLandsOnATileThatHasASpec) {
     }
 }
 
-// Regression on the look of the world that already exists. These fifteen
-// numbers are copied out of the generator that render/Atlas.cpp used to carry;
-// if the palette drifts from them, old terrain changes colour.
 VF_TEST(theFifteenOriginalTilesKeepTheirExactColours) {
     TilePalette palette;
     const TileRgb historical[15] = {
-        {86, 154, 66},    // 0  grass top
-        {112, 92, 58},    // 1  grass side, dirt under the green lip
-        {119, 88, 58},    // 2  dirt
-        {129, 129, 132},  // 3  stone
-        {214, 199, 143},  // 4  sand
-        {104, 78, 46},    // 5  wood bark
-        {160, 128, 78},   // 6  wood rings
-        {58, 122, 52},    // 7  leaves
-        {54, 96, 168},    // 8  water
-        {236, 240, 245},  // 9  snow
-        {129, 129, 132},  // 10 coal ore, stone base
-        {129, 129, 132},  // 11 iron ore, stone base
-        {129, 129, 132},  // 12 gold ore, stone base
-        {122, 120, 120},  // 13 gravel
-        {242, 220, 132},  // 14 glowstone
+        {86, 154, 66},
+        {112, 92, 58},
+        {119, 88, 58},
+        {129, 129, 132},
+        {214, 199, 143},
+        {104, 78, 46},
+        {160, 128, 78},
+        {58, 122, 52},
+        {54, 96, 168},
+        {236, 240, 245},
+        {129, 129, 132},
+        {129, 129, 132},
+        {129, 129, 132},
+        {122, 120, 120},
+        {242, 220, 132},
     };
     CHECK(palette.size() >= 15);
     for (int tile = 0; tile < rowsToWalk(palette) && tile < 15; ++tile) {
@@ -118,8 +105,6 @@ VF_TEST(theFifteenOriginalTilesKeepTheirExactColours) {
         }
     }
 
-    // The accents the old code drew on top: the green lip on the grass side and
-    // the three ore vein colours.
     TileRgb grassGreen{86, 154, 66};
     TileRgb coal{38, 38, 42};
     TileRgb iron{196, 156, 120};
@@ -130,9 +115,6 @@ VF_TEST(theFifteenOriginalTilesKeepTheirExactColours) {
     CHECK(palette.specFor(12).accent == gold);
 }
 
-// The grey the old generator returned for every unhandled tile. Nothing may
-// still be sitting on it, and the TileSpec default is that same grey so an
-// entry that was declared and never filled in is caught here too.
 VF_TEST(noTileIsLeftOnTheOldDefaultGrey) {
     TilePalette palette;
     TileSpec untouched;
@@ -144,9 +126,6 @@ VF_TEST(noTileIsLeftOnTheOldDefaultGrey) {
     }
 }
 
-// The table is filled by pushing rows in order, so a row inserted or dropped in
-// the middle shifts everything after it. Names pinned to the indices Block.h
-// documents catch that shift immediately.
 VF_TEST(paletteEntriesSitAtTheTileIndexTheyName) {
     TilePalette palette;
     struct Anchor {
@@ -177,9 +156,6 @@ VF_TEST(paletteEntriesSitAtTheTileIndexTheyName) {
     }
 }
 
-// Cutout is what earns a tile a shape in the alpha channel. Glass, both
-// portals, the web, the plants, the ladder and the grates need one; a solid
-// rock must never get one or the mesher would show daylight through a wall.
 VF_TEST(cutoutIsSetExactlyForTheTilesThatCarryAShape) {
     TilePalette palette;
     const int shaped[] = {33, 34, 35, 38, 50, 51, 52, 53, 54, 55, 63, 64,  65,  70, 71,
@@ -202,8 +178,6 @@ VF_TEST(cutoutIsSetExactlyForTheTilesThatCarryAShape) {
     }
 }
 
-// A taxonomy nothing uses is decoration. Every material and every pattern the
-// enums declare has to be carried by at least one real tile.
 VF_TEST(everyMaterialAndEveryPatternIsCarriedByATile) {
     TilePalette palette;
     int materialUses[static_cast<int>(TileMaterial::Count)] = {};
@@ -222,9 +196,6 @@ VF_TEST(everyMaterialAndEveryPatternIsCarriedByATile) {
     }
 }
 
-// Ore in stone is stone with a vein in it. The host colour has to stay the
-// stone colour, and the veins have to be told apart from each other, because
-// the base colour alone cannot distinguish coal from gold.
 VF_TEST(stoneBorneOresKeepTheHostRockAndDifferByVein) {
     TilePalette palette;
     TileRgb stone = palette.specFor(3).base;
@@ -244,14 +215,10 @@ VF_TEST(stoneBorneOresKeepTheHostRockAndDifferByVein) {
 
     CHECK(palette.size() > 92);
     if (palette.size() <= 92) return;
-    // Nether quartz sits in netherrack, not stone, so it must not share the
-    // overworld host colour.
     CHECK(palette.specFor(92).pattern == TilePattern::OreSpeckle);
     CHECK(palette.specFor(92).base != stone);
 }
 
-// Two palettes built independently must agree row for row: the table is data,
-// not something assembled from whatever ran before it.
 VF_TEST(twoPalettesBuiltSeparatelyAgreeRowForRow) {
     TilePalette first;
     TilePalette second;

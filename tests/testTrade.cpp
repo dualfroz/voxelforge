@@ -9,8 +9,6 @@ constexpr int groundTop = 4;
 constexpr int walkY = groundTop + 1;
 const Vec3i villageCenter{0, walkY, 0};
 
-// Index of the fixed "4 emeralds for one comparator" librarian offer: the one
-// entry whose counts the seed jitter leaves alone, so prices are exact.
 constexpr int comparatorOffer = 5;
 
 World makeShopWorld() {
@@ -53,7 +51,7 @@ int firstOfferWithTier(const TradeOfferList& list, TradeTier tier) {
     return -1;
 }
 
-} // namespace
+}
 
 VF_TEST(offerTableIsIdenticalForTheSameProfessionAndSeedAndMovesWithTheSeed) {
     TradeOfferList a = buildTradeOffers(VillagerProfession::Librarian, 99u);

@@ -9,7 +9,7 @@ void runToState(Weather& weather, WeatherState target, long long limit) {
     for (long long i = 0; i < limit && weather.state() != target; ++i) weather.tick();
 }
 
-} // namespace
+}
 
 VF_TEST(weatherStartsClearWithZeroGradient) {
     Weather weather(1u);

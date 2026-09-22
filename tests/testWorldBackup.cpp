@@ -68,7 +68,7 @@ void dropChunk(SaveContainer& container, const Vec3i& coord) {
     }
 }
 
-} // namespace
+}
 
 VF_TEST(aFullBackupRestoresTheExactBytesItCaptured) {
     ByteBuffer save = writeSaveContainer(baseContainer());

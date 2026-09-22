@@ -89,7 +89,7 @@ Advancement makeAdvancement(const std::string& self, const std::string& parent) 
     return node;
 }
 
-} // namespace
+}
 
 VF_TEST(advancementsLoadOutOfAPackAndKeepTheirTreeShape) {
     std::vector<DataPackError> errors;
@@ -161,7 +161,6 @@ VF_TEST(anAdvancementIsGrantedOnlyWhenItsLastCriterionCompletes) {
     CHECK_EQ(progress.criterionTick(tools, "sticks"), 140);
     CHECK(!progress.granted(tools));
 
-    // An unrelated item moves nothing.
     granted = progress.notify(Event::itemObtained(ItemId::Dirt, 64), 150);
     CHECK(granted.empty());
     CHECK(!progress.granted(tools));
@@ -174,7 +173,6 @@ VF_TEST(anAdvancementIsGrantedOnlyWhenItsLastCriterionCompletes) {
     CHECK_EQ(progress.completedCriteria(tools).size(), static_cast<std::size_t>(2));
     CHECK_EQ(progress.totalExperience(), 10);
 
-    // Granting is a one shot: repeating the last event awards nothing again.
     granted = progress.notify(Event::itemObtained(ItemId::CraftingTable), 260);
     CHECK(granted.empty());
     CHECK_EQ(progress.grantedTick(tools), 200);
@@ -192,7 +190,6 @@ VF_TEST(requirementGroupsAreSatisfiedByAnyOneOfTheirCriteria) {
     CHECK(hunter->satisfiedBy({"zombies"}));
     CHECK(hunter->danglingRequirements().empty());
 
-    // Without requirement groups every criterion is needed.
     const Advancement* tools = tree.find(id("voxelforge:tools"));
     CHECK(tools->requirements.empty());
     CHECK(!tools->satisfiedBy({"sticks"}));
@@ -262,7 +259,6 @@ VF_TEST(hiddenAdvancementsStayOutOfSightUntilTheParentIsGranted) {
     CHECK(progress.granted(tools));
     CHECK(progress.visible(hunter));
 
-    // A hidden advancement is also its own reveal once it is earned.
     AdvancementTree lone;
     Advancement secret = makeAdvancement("voxelforge:secret", "");
     secret.hidden = true;
@@ -297,14 +293,12 @@ VF_TEST(aParentLoopIsReportedInsteadOfWalkedForever) {
     CHECK(tree.missingParents()[0] == id("voxelforge:orphan"));
     CHECK(tree.roots().empty());
 
-    // A looping node still answers questions instead of hanging the caller.
     AdvancementProgress progress(tree);
     CHECK(progress.visible(id("voxelforge:first")));
     std::vector<AdvancementId> granted = progress.notify(Event::itemObtained(ItemId::Dirt), 1);
     CHECK_EQ(granted.size(), static_cast<std::size_t>(5));
     CHECK(progress.granted(id("voxelforge:first")));
 
-    // Adding the same id twice is refused, so a duplicate cannot rewrite a node.
     CHECK(!tree.add(makeAdvancement("voxelforge:first", "voxelforge:third")));
     Advancement nameless;
     CHECK(!tree.add(nameless));
@@ -417,7 +411,6 @@ VF_TEST(advancementDocumentsAreCheckedFieldByField) {
     CHECK_EQ(parsed.criteria[0].requiredCount, 1);
     CHECK(parsed.reward.empty());
 
-    // A bare namespace default applies to every id inside the document.
     JsonParseResult defaulted = parseJson(
         R"json({"parent": "root", "criteria": {"x": {"trigger": "itemObtained",
                  "item": "stick"}}, "rewards": {"recipes": ["torch"]}})json");
@@ -467,7 +460,6 @@ VF_TEST(oneMiningRunFeedsBothTheAdvancementTreeAndTheStatSheet) {
     CHECK_EQ(board.score("mined", "foksiu"), 5);
     CHECK_EQ(board.stats("foksiu").blocksBroken(Block::Stone), 5);
 
-    // Breaking something else moves the sheet but not this advancement.
     board.stats("foksiu").addBlockBroken(Block::Dirt, 3);
     CHECK_EQ(board.score("mined", "foksiu"), 5);
     CHECK_EQ(board.stats("foksiu").total(StatKind::BlocksBroken), 8);

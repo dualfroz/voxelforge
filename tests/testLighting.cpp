@@ -12,20 +12,20 @@ void fillBox(World& world, Vec3i lo, Vec3i hi, Block block) {
                 world.setBlock(x, y, z, block);
 }
 
-} // namespace
+}
 
 VF_TEST(lightSunFloodsOpenColumnToFloor) {
     World world;
-    fillBox(world, {0, 0, 0}, {7, 0, 7}, Block::Stone);   // single floor layer
+    fillBox(world, {0, 0, 0}, {7, 0, 7}, Block::Stone);
     LightField field = computeLight(world, {0, 0, 0}, {8, 8, 8});
-    CHECK_EQ(static_cast<int>(field.sunAtWorld(3, 1, 3)), maxLight);   // air above floor
-    CHECK_EQ(static_cast<int>(field.sunAtWorld(3, 7, 3)), maxLight);   // top of column
+    CHECK_EQ(static_cast<int>(field.sunAtWorld(3, 1, 3)), maxLight);
+    CHECK_EQ(static_cast<int>(field.sunAtWorld(3, 7, 3)), maxLight);
 }
 
 VF_TEST(lightSealedPocketStaysDark) {
     World world;
     fillBox(world, {10, 10, 10}, {12, 12, 12}, Block::Stone);
-    world.setBlock(11, 11, 11, Block::Air);   // sealed air cell in the core
+    world.setBlock(11, 11, 11, Block::Air);
     LightField field = computeLight(world, {9, 9, 9}, {5, 5, 5});
     CHECK_EQ(static_cast<int>(field.sunAtWorld(11, 11, 11)), 0);
     CHECK_EQ(static_cast<int>(field.blockAtWorld(11, 11, 11)), 0);
@@ -34,11 +34,11 @@ VF_TEST(lightSealedPocketStaysDark) {
 VF_TEST(lightSunAttenuatesAlongTunnel) {
     World world;
     fillBox(world, {0, 0, 0}, {11, 4, 2}, Block::Stone);
-    for (int y = 1; y <= 4; ++y) world.setBlock(0, y, 1, Block::Air);   // vertical shaft
-    for (int x = 1; x <= 9; ++x) world.setBlock(x, 1, 1, Block::Air);   // horizontal tunnel
+    for (int y = 1; y <= 4; ++y) world.setBlock(0, y, 1, Block::Air);
+    for (int x = 1; x <= 9; ++x) world.setBlock(x, 1, 1, Block::Air);
 
     LightField field = computeLight(world, {0, 0, 0}, {12, 5, 3});
-    CHECK_EQ(static_cast<int>(field.sunAtWorld(0, 1, 1)), maxLight);       // shaft foot
+    CHECK_EQ(static_cast<int>(field.sunAtWorld(0, 1, 1)), maxLight);
     CHECK_EQ(static_cast<int>(field.sunAtWorld(1, 1, 1)), maxLight - 1);
     CHECK_EQ(static_cast<int>(field.sunAtWorld(3, 1, 1)), maxLight - 3);
     CHECK_EQ(static_cast<int>(field.sunAtWorld(6, 1, 1)), maxLight - 6);
@@ -58,7 +58,7 @@ VF_TEST(lightCombinedTakesBrighterChannel) {
     World world;
     fillBox(world, {0, 0, 0}, {11, 11, 11}, Block::Stone);
     world.setBlock(5, 5, 5, Block::Glowstone);
-    world.setBlock(6, 5, 5, Block::Air);   // lit only by the torch, no sky
+    world.setBlock(6, 5, 5, Block::Air);
     LightField field = computeLight(world, {0, 0, 0}, {12, 12, 12});
     CHECK_EQ(static_cast<int>(field.sunAtWorld(6, 5, 5)), 0);
     CHECK_EQ(static_cast<int>(field.blockAtWorld(6, 5, 5)), maxLight - 1);

@@ -16,7 +16,7 @@ Chunk patternChunk(int seed) {
     return chunk;
 }
 
-} // namespace
+}
 
 VF_TEST(regionCoordFloorsNegatives) {
     CHECK(regionForChunk({0, 0, 0}) == (RegionCoord{0, 0}));
@@ -68,14 +68,14 @@ VF_TEST(regionRejectsBadInput) {
     bytes[0] ^= 0xff;
     CHECK(!Region::deserialize(bytes.data(), bytes.size(), out));
     bytes[0] ^= 0xff;
-    CHECK(!Region::deserialize(bytes.data(), bytes.size() / 2, out));   // truncated
+    CHECK(!Region::deserialize(bytes.data(), bytes.size() / 2, out));
 }
 
 VF_TEST(regionWorldSplitCoversMultipleRegions) {
     World world;
-    world.setBlock(1, 1, 1, Block::Stone);      // chunk (0,0,0) -> region (0,0)
-    world.setBlock(20 * chunkSize, 0, 0, Block::Grass);   // chunk (20,0,0) -> region (1,0)
-    world.setBlock(-1, 40, -1, Block::Sand);    // chunk (-1,2,-1) -> region (-1,-1)
+    world.setBlock(1, 1, 1, Block::Stone);
+    world.setBlock(20 * chunkSize, 0, 0, Block::Grass);
+    world.setBlock(-1, 40, -1, Block::Sand);
 
     auto regions = splitWorldIntoRegions(world);
     CHECK(regions.size() >= 3);

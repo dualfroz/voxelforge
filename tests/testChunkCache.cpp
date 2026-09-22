@@ -50,7 +50,7 @@ void storeMarked(ChunkCache& cache, const Vec3i& coord, int quads) {
     cache.store(coord, markedChunk(coord.x), meshWithQuads(quads, static_cast<float>(coord.x)));
 }
 
-} // namespace
+}
 
 VF_TEST(entrySizeIsMeasuredFromTheRealPayload) {
     std::uint64_t blocks = static_cast<std::uint64_t>(chunkVolume) * sizeof(Block);
@@ -86,7 +86,7 @@ VF_TEST(lruEvictsTheLeastRecentlyUsedEntry) {
     storeMarked(cache, {1, 0, 0}, 6);
 
     Chunk fetched;
-    CHECK(cache.fetchChunk({0, 0, 0}, fetched));   // refreshes the older entry
+    CHECK(cache.fetchChunk({0, 0, 0}, fetched));
     storeMarked(cache, {2, 0, 0}, 6);
 
     CHECK_EQ(cache.size(), static_cast<std::size_t>(2));
@@ -124,7 +124,7 @@ VF_TEST(pinnedEntryIsNeverEvicted) {
     CHECK(cache.contains({0, 0, 0}));
     CHECK_EQ(cache.size(), static_cast<std::size_t>(1));
     std::vector<Vec3i> order = cache.evictionOrder();
-    CHECK(order.empty());                          // nothing left that may be dropped
+    CHECK(order.empty());
 }
 
 VF_TEST(unpinningMakesAnEntryEvictableAgain) {
@@ -151,7 +151,7 @@ VF_TEST(distanceWeightedPolicyDropsFarChunksFirst) {
     cache.setObserver({0, 0, 0});
     storeMarked(cache, nearby, 4);
     storeMarked(cache, distant, 4);
-    CHECK(cache.evictionOrder().front() == nearby);   // pure recency picks the older one
+    CHECK(cache.evictionOrder().front() == nearby);
 
     cache.setPolicy(CachePolicy::DistanceWeighted);
     CHECK(cache.evictionOrder().front() == distant);
@@ -195,7 +195,7 @@ VF_TEST(blockEditDropsTheOwnerAndTheMeshesAcrossThatBorder) {
     CHECK_EQ(dropped, static_cast<std::size_t>(1));
     CHECK(!cache.contains({0, 0, 0}));
     CHECK(cache.contains({1, 0, 0}));
-    CHECK(!cache.hasMesh({1, 0, 0}));            // its ambient occlusion read the edit
+    CHECK(!cache.hasMesh({1, 0, 0}));
     CHECK(cache.hasMesh({-1, 0, 0}));
     CHECK(cache.hasMesh({0, 1, 0}));
     CHECK(cache.hasMesh({0, 0, 1}));
@@ -217,7 +217,7 @@ VF_TEST(cornerBlockEditCascadesToEverySharingNeighbour) {
 
     std::size_t dropped = cache.invalidateBlock(chunkSize - 1, chunkSize - 1, chunkSize - 1);
     CHECK_EQ(dropped, static_cast<std::size_t>(7));
-    CHECK(cache.hasMesh({-1, 0, 0}));            // opposite side, untouched
+    CHECK(cache.hasMesh({-1, 0, 0}));
     CHECK(!cache.hasMesh({1, 1, 1}));
     CHECK(!cache.hasMesh({0, 0, 1}));
     CHECK_EQ(cache.stats().meshInvalidations, static_cast<std::uint64_t>(7));

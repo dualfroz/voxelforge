@@ -20,9 +20,6 @@ struct Lcg {
     int below(int limit) { return static_cast<int>(next() % static_cast<uint32_t>(limit)); }
 };
 
-// Hashes the block storage itself: every non-empty chunk, in a stable
-// coordinate order, over its raw byte array. Two worlds with the same
-// fingerprint hold the same bytes in the same cells.
 uint64_t worldFingerprint(const World& world) {
     std::vector<Vec3i> coords;
     for (const auto& entry : world.allChunks())
@@ -57,7 +54,7 @@ World layeredWorld(int span, int depth) {
     return world;
 }
 
-} // namespace
+}
 
 VF_TEST(recordingAnEditCapturesThePreviousBlockAndWritesTheNewOne) {
     World world;
@@ -201,7 +198,6 @@ VF_TEST(theMemoryBudgetDropsTheOldestBatchesFirst) {
 
     while (history.undo(world)) {
     }
-    // The seven oldest batches were evicted, so their blocks stay in the world.
     for (int batch = 0; batch < 7; ++batch) CHECK(world.blockAt(batch, 0, 5) == Block::Stone);
     for (int batch = 7; batch < 10; ++batch) CHECK(world.blockAt(batch, 0, 5) == Block::Air);
 }

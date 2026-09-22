@@ -9,7 +9,7 @@ void wireLine(World& world, int x0, int x1, int y, int z) {
     for (int x = x0; x <= x1; ++x) world.setBlock(x, y, z, Block::RedstoneWire);
 }
 
-} // namespace
+}
 
 VF_TEST(wirePropagatesWithFalloffToZeroAfterFifteenBlocks) {
     World world;
@@ -89,10 +89,10 @@ VF_TEST(torchInvertsThePowerStateOfItsMountBlock) {
     RedstoneCircuit circuit(world, {0, 0, 0}, {10, 3, 10});
 
     circuit.tick();
-    CHECK_EQ(circuit.powerAt(6, 1, 5), redstoneMaxPower);   // mount not yet observed as powered
+    CHECK_EQ(circuit.powerAt(6, 1, 5), redstoneMaxPower);
 
     circuit.tick();
-    CHECK_EQ(circuit.powerAt(6, 1, 5), 0);   // mount observed powered, torch inverted off
+    CHECK_EQ(circuit.powerAt(6, 1, 5), 0);
 }
 
 VF_TEST(torchWithUnpoweredMountStaysLitIndefinitely) {
@@ -117,9 +117,9 @@ VF_TEST(repeaterDelaysOutputByConfiguredTicksAndRefreshesToFull) {
     circuit.setRepeater({6, 0, 5}, Face::PosX, 4);
     circuit.setLever({5, 0, 5}, true);
 
-    circuit.tick();   // edge not visible yet (fresh field)
+    circuit.tick();
     CHECK(!circuit.repeaterOutputOn({6, 0, 5}));
-    circuit.tick();   // edge observed, countdown starts at 4 and ticks to 3
+    circuit.tick();
     CHECK(!circuit.repeaterOutputOn({6, 0, 5}));
     circuit.tick();
     CHECK(!circuit.repeaterOutputOn({6, 0, 5}));
@@ -127,7 +127,7 @@ VF_TEST(repeaterDelaysOutputByConfiguredTicksAndRefreshesToFull) {
     CHECK(!circuit.repeaterOutputOn({6, 0, 5}));
     circuit.tick();
     CHECK(circuit.repeaterOutputOn({6, 0, 5}));
-    CHECK_EQ(circuit.powerAt(7, 0, 5), redstoneMaxPower);   // output refreshed to full strength
+    CHECK_EQ(circuit.powerAt(7, 0, 5), redstoneMaxPower);
 }
 
 VF_TEST(repeaterWithMinimumDelayRespondsOneTickAfterTheEdge) {
@@ -147,7 +147,7 @@ VF_TEST(repeaterWithMinimumDelayRespondsOneTickAfterTheEdge) {
 
 VF_TEST(repeaterIgnoresInputPerpendicularToItsFacing) {
     World world;
-    world.setBlock(5, 0, 6, Block::Lever);          // powers from the side, not behind
+    world.setBlock(5, 0, 6, Block::Lever);
     world.setBlock(5, 0, 5, Block::Repeater);
     world.setBlock(6, 0, 5, Block::RedstoneWire);
     RedstoneCircuit circuit(world, {0, 0, 0}, {10, 3, 10});
@@ -175,10 +175,10 @@ VF_TEST(comparatorCompareModePassesBackWhenSideIsLower) {
 VF_TEST(comparatorCompareModeBlocksWhenSideExceedsBack) {
     World world;
     world.setBlock(3, 0, 5, Block::RedstoneBlock);
-    wireLine(world, 4, 5, 0, 5);                     // back input falls off to 14 by the comparator
+    wireLine(world, 4, 5, 0, 5);
     world.setBlock(6, 0, 5, Block::Comparator);
     world.setBlock(7, 0, 5, Block::RedstoneWire);
-    world.setBlock(6, 0, 6, Block::RedstoneBlock);   // full-strength side input
+    world.setBlock(6, 0, 6, Block::RedstoneBlock);
     RedstoneCircuit circuit(world, {0, 0, 0}, {10, 3, 10});
     circuit.setComparator({6, 0, 5}, Face::PosX, ComparatorMode::Compare);
 
@@ -200,7 +200,7 @@ VF_TEST(comparatorSubtractModeSubtractsSideFromBack) {
 
     circuit.tick();
     circuit.tick();
-    CHECK_EQ(circuit.powerAt(7, 0, 5), 0);   // full back (15) minus full side (15) = 0
+    CHECK_EQ(circuit.powerAt(7, 0, 5), 0);
 }
 
 VF_TEST(redstoneBlockIsAConstantSourceRegardlessOfTicks) {

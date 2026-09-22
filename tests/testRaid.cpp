@@ -57,7 +57,7 @@ int livingVillagerCount(const std::vector<Villager>& villagers) {
     return count;
 }
 
-} // namespace
+}
 
 VF_TEST(badOmenExpiresOnItsOwnAndCannotArmARaidAfterwards) {
     OmenState omen = omenAt(2);

@@ -19,7 +19,7 @@ void reportCheck(bool ok, const char* expr, const char* file, int line);
 extern int failures;
 extern int checks;
 
-} // namespace vftest
+}
 
 #define VF_TEST(name)                                                     \
     static void name();                                                   \

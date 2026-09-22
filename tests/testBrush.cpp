@@ -33,8 +33,6 @@ uint64_t worldFingerprint(const World& world) {
     return digest;
 }
 
-// Bumpy stone terrain with a grass skin and one free-standing pillar, so every
-// brush has something real to bite into.
 World bumpyWorld() {
     World world;
     for (int z = 0; z < 16; ++z)
@@ -83,7 +81,7 @@ BrushParams baseParams(BrushKind kind) {
     return params;
 }
 
-} // namespace
+}
 
 VF_TEST(everyBrushKindWritesExactlyOneUndoableBatch) {
     const BrushKind kinds[8] = {BrushKind::Sphere,  BrushKind::Cylinder,   BrushKind::Replace,
@@ -251,7 +249,6 @@ VF_TEST(theErodeBrushRemovesOnlyBlocksWithEnoughFreeNeighbours) {
     params.freeNeighbourThreshold = 3;
 
     BrushResult outcome = stroke.apply(params, 1u);
-    // Only the eight corners of a 3x3x3 cube see three empty faces.
     CHECK_EQ(outcome.changed, 8u);
     CHECK(world.blockAt(10, 10, 10) == Block::Air);
     CHECK(world.blockAt(12, 12, 12) == Block::Air);
@@ -284,10 +281,6 @@ VF_TEST(theOverlayBrushDecidesFromTheStateBeforeTheStroke) {
     CHECK(world.blockAt(2, 5, 2) == Block::Snow);
     CHECK(world.blockAt(2, 6, 2) == Block::Air);
 
-    // A wall along x = 0 gives the column next to it two solid neighbours, and
-    // nothing else in the layer has more than one. A brush that wrote as it
-    // walked would let that first column qualify its neighbour, and the whole
-    // row would fall over like dominoes.
     World walled = flatWorld(5, 4);
     for (int z = 0; z < 5; ++z) walled.setBlock(0, 5, z, Block::Stone);
     EditHistory walledHistory(1u << 22);
@@ -305,7 +298,6 @@ VF_TEST(theOverlayBrushDecidesFromTheStateBeforeTheStroke) {
         CHECK(walled.blockAt(4, 5, z) == Block::Air);
     }
 
-    // The same layer with no wall to lean on stays untouched at that threshold.
     World bare = flatWorld(5, 4);
     EditHistory bareHistory(1u << 22);
     BrushStroke bareStroke(bare, bareHistory);
@@ -332,7 +324,6 @@ VF_TEST(theNaturalizeBrushLaysGrassOverSoilOverStone) {
     CHECK(world.blockAt(3, 11, 3) == Block::Dirt);
     CHECK(world.blockAt(3, 10, 3) == Block::Dirt);
     CHECK(world.blockAt(3, 9, 3) == Block::Air);
-    // The lower stack is a separate surface and gets its own grass skin.
     CHECK(world.blockAt(3, 6, 3) == Block::Grass);
     CHECK(world.blockAt(3, 5, 3) == Block::Dirt);
     CHECK(world.blockAt(3, 4, 3) == Block::Dirt);
@@ -372,8 +363,6 @@ VF_TEST(theGradientBrushRepeatsExactlyForTheSameSeed) {
     thirdStroke.apply(other, 1u);
     CHECK(worldFingerprint(third) != worldFingerprint(first));
 
-    // The mix follows the distance: the centre is always the primary block and
-    // the outer shell is mostly the secondary one.
     CHECK(first.blockAt(20, 20, 20) == Block::Stone);
     Selection ball = Selection::sphere({20, 20, 20}, 6);
     Selection inner = Selection::sphere({20, 20, 20}, 2);

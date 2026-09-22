@@ -9,7 +9,6 @@ using namespace vf;
 
 namespace {
 
-// Deterministic pseudo-random generator so every run exercises the same data.
 struct Lcg {
     uint64_t state;
     explicit Lcg(uint64_t seed) : state(seed) {}
@@ -28,7 +27,7 @@ ByteBuffer roundTripCodec(const ByteBuffer& input) {
     return restored;
 }
 
-}  // namespace
+}
 
 VF_TEST(codecVarintUnsignedRoundTrip) {
     const uint64_t samples[] = {0, 1, 127, 128, 255, 300, 16383, 16384,
@@ -189,7 +188,6 @@ VF_TEST(lz77RejectsCorruptStream) {
     CHECK(lz77Decompress(encoded.data(), encoded.size(), decoded));
     ByteBuffer truncated(encoded.begin(), encoded.begin() + encoded.size() / 2);
     ByteBuffer partial;
-    // A truncated stream must not silently claim success on a full reconstruction.
     bool ok = lz77Decompress(truncated.data(), truncated.size(), partial);
     CHECK(!(ok && partial == input));
 }
@@ -206,7 +204,6 @@ VF_TEST(codecPicksBestAndRoundTrips) {
     for (int i = 0; i < 4000; ++i) noise.push_back(rng.byte(256));
     ByteBuffer packedNoise = compress(noise);
     CHECK(roundTripCodec(noise) == noise);
-    // Incompressible noise falls back to store, never larger than raw + header.
     CHECK(packedNoise.size() <= noise.size() + 8);
 }
 

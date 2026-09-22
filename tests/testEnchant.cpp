@@ -7,8 +7,6 @@ using namespace vf;
 
 namespace {
 
-// Places `count` shelves on the ring the table reads, filling the lower layer
-// before the upper one.
 void surroundWithShelves(World& world, const Vec3i& table, int count) {
     int placed = 0;
     for (int dy = 0; dy <= 1 && placed < count; ++dy) {
@@ -38,7 +36,7 @@ EnchantSet setOf(EnchantKind kind, int level) {
     return set;
 }
 
-} // namespace
+}
 
 VF_TEST(bookshelvesOnTheRingRaiseTheOfferedLevelsUpToTheCap) {
     World bare;
@@ -61,7 +59,6 @@ VF_TEST(shelvesWithSomethingSolidInBetweenDoNotCount) {
     world.setBlock(1, 64, 0, Block::Stone);
     CHECK_EQ(bookshelfCount(world, {0, 64, 0}), 0);
 
-    // A torch in the gap is see-through, so the shelf counts again.
     world.setBlock(1, 64, 0, Block::Torch);
     CHECK_EQ(bookshelfCount(world, {0, 64, 0}), 1);
 }

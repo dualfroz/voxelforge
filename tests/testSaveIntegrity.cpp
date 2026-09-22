@@ -81,7 +81,7 @@ bool sameBlocks(const Chunk& a, const Chunk& b) {
     return true;
 }
 
-} // namespace
+}
 
 VF_TEST(scannerFindsNothingWrongWithAFreshContainer) {
     SaveContainer container = buildContainer(SaveVersion::V4, 4);

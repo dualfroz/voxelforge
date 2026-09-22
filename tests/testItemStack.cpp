@@ -23,7 +23,7 @@ int hitsUntilBroken(MetaStack stack, uint32_t seed, int limit) {
     return -1;
 }
 
-} // namespace
+}
 
 VF_TEST(stackLimitFollowsTheItemKindRatherThanAFixedNumber) {
     CHECK_EQ(makeStack(ItemId::Stone, 1).maxCount(), 64);

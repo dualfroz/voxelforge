@@ -11,7 +11,7 @@ int topSolid(const World& world, int gx, int gz, int worldHeight) {
     return -1;
 }
 
-} // namespace
+}
 
 VF_TEST(terrainIsDeterministicForSeed) {
     TerrainParams params;
@@ -68,7 +68,7 @@ VF_TEST(terrainHeightMatchesColumnHelperAndIsBounded) {
             if (top > maxH) maxH = top;
         }
     }
-    CHECK(minH < maxH);   // terrain is not flat
+    CHECK(minH < maxH);
 }
 
 VF_TEST(terrainColumnAboveSurfaceIsNotStoneCore) {
@@ -83,7 +83,7 @@ VF_TEST(terrainColumnAboveSurfaceIsNotStoneCore) {
         for (int z = 0; z < chunkSize; ++z) {
             int top = topSolid(world, x, z, params.worldHeight);
             Block below = world.blockAt(x, 0, z);
-            CHECK(below == Block::Stone);   // bedrock-ish base is always stone
+            CHECK(below == Block::Stone);
             CHECK(world.solidAt(x, top, z));
         }
     }

@@ -39,7 +39,7 @@ int findColumnWithBiome(const NetherGenerator& generator, NetherBiome biome, int
     return 0;
 }
 
-} // namespace
+}
 
 VF_TEST(netherChunkGenerationRepeatsExactlyOnTheSameSeed) {
     NetherGenerator generator;
@@ -113,7 +113,6 @@ VF_TEST(netherIsSealedByBedrockAtTheFloorAndTheRoof) {
     CHECK_EQ(floorGaps, 0);
     CHECK_EQ(roofGaps, 0);
 
-    // The bands just inside those layers are ragged, not uniformly bedrock.
     int raggedFloor = 0;
     for (int gx = 0; gx < chunkSize; ++gx)
         for (int gz = 0; gz < chunkSize; ++gz)

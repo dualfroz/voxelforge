@@ -12,7 +12,7 @@ bool roundTrip(const std::string& name, const NbtTag& tag, std::string& outName,
     return deserializeNbt(bytes.data(), bytes.size(), outName, outTag);
 }
 
-} // namespace
+}
 
 VF_TEST(nbtScalarRoundTripPreservesValueAndType) {
     std::string name;

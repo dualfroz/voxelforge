@@ -20,8 +20,6 @@ PotionItem bottleOf(PotionKind kind, bool upgraded = false, bool extended = fals
     return potion;
 }
 
-// Runs a whole ingredient list through an actual brewing stand, one full
-// four hundred tick brew per step.
 PotionItem replayOnAStand(const std::vector<Ingredient>& steps) {
     BrewingStandState stand;
     setBottle(stand, 0, PotionItem{});
@@ -51,7 +49,7 @@ int splashDurationThroughTheStand(const PotionItem& potion) {
     return target.active[0].durationTicks;
 }
 
-} // namespace
+}
 
 VF_TEST(theCatalogsPublishedConstantsAreTheOnesTheNumbersWereDerivedFrom) {
     CHECK_NEAR(splashDurationScale, 0.75f, 0.0001f);
@@ -59,8 +57,6 @@ VF_TEST(theCatalogsPublishedConstantsAreTheOnesTheNumbersWereDerivedFrom) {
     CHECK_EQ(lingeringCloudTicks, 600);
     CHECK_EQ(lingeringCloudTicks, 30 * ticksPerSecond);
 
-    // Pinned against literals rather than the constants, so shifting a constant
-    // cannot quietly shift the expectations with it.
     const PotionCatalog& catalog = potionCatalog();
     PotionItem swiftness = bottleOf(PotionKind::Swiftness);
     CHECK_EQ(catalog.variantTicks(swiftness), 3600);
@@ -234,7 +230,6 @@ VF_TEST(invertedKindReadsTheFermentedSpiderEyeBranchesStraightOffTheRecipeTable)
                                     PotionKind::Harming, PotionKind::Slowness};
     for (PotionKind kind : untouched) CHECK_EQ(catalog.invertedKind(kind), PotionKind::Count);
 
-    // Every inversion the catalog reports has to survive a real brew.
     for (int index = 0; index < static_cast<int>(PotionKind::Count); ++index) {
         PotionKind kind = static_cast<PotionKind>(index);
         PotionKind inverted = catalog.invertedKind(kind);
@@ -321,8 +316,6 @@ VF_TEST(modifiersAPotionRefusesLeaveThatVariantWithNoPathAtAll) {
         CHECK(graph.reachable(bottleOf(kind, true, false)));
     }
 
-    // The four effectless potions take no modifier at all: glowstone and
-    // redstone on water are recipes, not upgrades.
     const PotionKind bases[] = {PotionKind::Water, PotionKind::Mundane, PotionKind::Thick,
                                 PotionKind::Awkward};
     for (PotionKind kind : bases) {
@@ -354,8 +347,6 @@ VF_TEST(gunpowderAndDragonBreathAddExactlyOneStepEachOnTopOfTheDrinkable) {
 
     BrewPath path = graph.shortestPath(lingering);
     CHECK(path.reachable);
-    // Dragon breath has to close the chain, but gunpowder is free to land
-    // anywhere before it: splashing the awkward base is just as short.
     CHECK_EQ(path.steps.back(), Ingredient::DragonBreath);
     int gunpowderSteps = 0;
     int dragonBreathSteps = 0;
@@ -378,8 +369,6 @@ VF_TEST(aLingeringBottleTakesNoFurtherIngredientEvenThoughTheBareStandWouldTakeO
         CHECK(after == lingering);
     }
 
-    // Without the catalog guard the salvaged stand would happily push a
-    // lingering cloud back down to a splash bottle.
     bool standChanged = false;
     PotionItem downgraded = brewResult(lingering, Ingredient::Gunpowder, standChanged);
     CHECK(standChanged);
@@ -472,9 +461,6 @@ VF_TEST(everyPathTheGraphReportsIsGenuinelyShortestForItsTarget) {
     }
     CHECK_EQ(relaxationFailures, 0);
 
-    // Water is the only bottle no brew produces; everything else the graph
-    // calls reachable has to come out of some edge, and nothing outside the
-    // reachable set may be produced at all.
     int mismatches = 0;
     for (int index = 0; index < BrewGraph::stateCount(); ++index) {
         bool isReachable = graph.depthOf(BrewGraph::stateAt(index)) >= 0;

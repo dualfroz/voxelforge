@@ -37,7 +37,7 @@ int countBlockInBox(const World& world, const Vec3i& lo, const Vec3i& hi, Block 
     return found;
 }
 
-} // namespace
+}
 
 VF_TEST(commandTokenizerSplitsOnWhitespace) {
     std::vector<std::string> tokens = tokenizeCommand("  setblock   10 64   -3  stone ");
@@ -270,6 +270,35 @@ VF_TEST(commandTpMovesCaller) {
 
     fix.run("tp ~ ~5 ~");
     CHECK_NEAR(fix.context.callerPos.y, 77.0f, 1e-4f);
+}
+
+VF_TEST(commandTpRejectsPositionOutsideWorldHeight) {
+    Fixture fix;
+    fix.context.worldMinY = -64;
+    fix.context.worldMaxY = 320;
+    CHECK(fix.run("tp 0 -64 0").ok);
+    CHECK_NEAR(fix.context.callerPos.y, -64.0f, 1e-4f);
+
+    CommandResult below = fix.run("tp 0 -65 0");
+    CHECK(!below.ok);
+    CHECK(below.message == "position out of bounds");
+    CHECK(!fix.run("tp ~ ~-1 ~").ok);
+    CHECK(!fix.run("tp 0 320 0").ok);
+    CHECK_NEAR(fix.context.callerPos.y, -64.0f, 1e-4f);
+}
+
+VF_TEST(commandSummonRejectsPositionOutsideWorldHeight) {
+    Fixture fix;
+    CommandResult below = fix.run("summon zombie 5 -1 5");
+    CHECK(!below.ok);
+    CHECK(below.message == "position out of bounds");
+    CHECK(!fix.run("summon cow 5 256 5").ok);
+    CHECK(!fix.run("summon cow 30000001 64 0").ok);
+    CHECK(fix.creatures.empty());
+
+    CHECK(fix.run("summon cow 5 0 5").ok);
+    CHECK(fix.run("summon cow 5 255 5").ok);
+    CHECK_EQ(fix.creatures.size(), 2u);
 }
 
 VF_TEST(commandKillSelfEndsPlayer) {

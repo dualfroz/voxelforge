@@ -42,7 +42,7 @@ Chunk mixedChunk() {
     return chunk;
 }
 
-}  // namespace
+}
 
 VF_TEST(protocolHandshakeRoundTrip) {
     Handshake packet;
@@ -173,7 +173,6 @@ VF_TEST(protocolChunkDataRoundTripThroughCodec) {
 
     PacketWriter w;
     packet.encode(w);
-    // The palette + packed payload must be compressed on the wire.
     CHECK(w.size() < chunkVolume);
 
     PacketReader r(w.bytes().data(), w.bytes().size());
@@ -245,7 +244,6 @@ VF_TEST(protocolFramingKeepsTrailingPartial) {
     second.encode(sw);
     writeFramed(stream, PacketId::KeepAlive, sw);
 
-    // Cut the stream one byte before the second frame ends: only the first is whole.
     ByteBuffer truncated(stream.bytes().begin(), stream.bytes().end() - 1);
     std::vector<Frame> frames;
     std::size_t consumed = 0;
@@ -253,7 +251,6 @@ VF_TEST(protocolFramingKeepsTrailingPartial) {
     CHECK_EQ(frames.size(), static_cast<std::size_t>(1));
     CHECK_EQ(consumed, completeEnd);
 
-    // Feeding the withheld tail back completes the second frame.
     std::vector<Frame> frames2;
     std::size_t consumed2 = 0;
     splitFrames(stream.bytes().data(), stream.bytes().size(), frames2, consumed2);

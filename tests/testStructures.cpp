@@ -32,15 +32,15 @@ bool worldsEqual(const World& a, const World& b) {
     return true;
 }
 
-} // namespace
+}
 
 VF_TEST(structureBuildIsDeterministicPerSeed) {
     std::vector<StructureEdit> oakA = buildStructure(StructureKind::OakTree, 12345u);
     std::vector<StructureEdit> oakB = buildStructure(StructureKind::OakTree, 12345u);
-    CHECK(sameEdits(oakA, oakB));   // same seed, same tree
+    CHECK(sameEdits(oakA, oakB));
 
     std::vector<StructureEdit> oakC = buildStructure(StructureKind::OakTree, 999u);
-    CHECK(!sameEdits(oakA, oakC));  // different seed, different tree
+    CHECK(!sameEdits(oakA, oakC));
     CHECK(!oakA.empty());
 }
 
@@ -50,7 +50,7 @@ VF_TEST(structureHutHasLanternFloorAndDoor) {
     for (const StructureEdit& e : hut) {
         if (e.block == Block::Glowstone) lantern = true;
         if (e.offset == Vec3i(0, 0, 0) && e.block == Block::Wood) floorCentre = true;
-        if (e.offset == Vec3i(0, 1, -2)) doorOpen = false;   // doorway cell must stay empty
+        if (e.offset == Vec3i(0, 1, -2)) doorOpen = false;
     }
     CHECK(lantern);
     CHECK(floorCentre);
@@ -61,17 +61,16 @@ VF_TEST(structureStampWritesBlocks) {
     World world;
     std::vector<StructureEdit> oak = buildStructure(StructureKind::OakTree, 42u);
     stampStructure(world, {100, 40, 100}, oak, 128);
-    CHECK(world.blockAt(100, 40, 100) == Block::Wood);   // trunk base
-    CHECK(countBlock(world, Block::Leaves) > 0);         // canopy present
+    CHECK(world.blockAt(100, 40, 100) == Block::Wood);
+    CHECK(countBlock(world, Block::Leaves) > 0);
 }
 
 VF_TEST(structureLeavesDoNotOverwriteSolids) {
     World world;
-    world.setBlock(100, 41, 100, Block::Stone);   // pre-existing solid where a leaf would go
+    world.setBlock(100, 41, 100, Block::Stone);
     std::vector<StructureEdit> oak = buildStructure(StructureKind::OakTree, 42u);
     stampStructure(world, {100, 40, 100}, oak, 128);
     CHECK(world.blockAt(100, 41, 100) == Block::Wood || world.blockAt(100, 41, 100) == Block::Stone);
-    // trunk (wood) may overwrite, but no leaf replaced the stone
 }
 
 VF_TEST(worldGenWithStructuresIsDeterministic) {
@@ -84,7 +83,7 @@ VF_TEST(worldGenWithStructuresIsDeterministic) {
             genA.generateColumn(a, cx, cz);
             genB.generateColumn(b, cx, cz);
         }
-    CHECK(worldsEqual(a, b));   // same seed -> identical structures and terrain
+    CHECK(worldsEqual(a, b));
 }
 
 VF_TEST(worldGenDifferentSeedDiffersWithStructures) {
@@ -110,7 +109,7 @@ VF_TEST(worldGenStampsHutsWhenEnabled) {
     for (int cx = 0; cx < 16; ++cx)
         for (int cz = 0; cz < 16; ++cz)
             gen.generateColumn(world, cx, cz);
-    CHECK(countBlock(world, Block::Glowstone) > 0);   // lantern proves a hut was stamped
+    CHECK(countBlock(world, Block::Glowstone) > 0);
 
     WorldGenParams off;
     off.structures = false;

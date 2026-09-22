@@ -35,7 +35,7 @@ int32_t expectedHeight(const Chunk& chunk, int sectionY, int x, int z) {
     return best;
 }
 
-}  // namespace
+}
 
 VF_TEST(bitPackerWidthForPalette) {
     CHECK_EQ(BitPacker::bitWidthForPalette(1), 1);

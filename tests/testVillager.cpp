@@ -20,7 +20,6 @@ World makeGround(int radius) {
 
 void placePoi(World& world, int x, int z, Block block) { world.setBlock(x, walkY, z, block); }
 
-// A small village: a bell in the middle, two beds, a lectern and a composter.
 World makeVillage() {
     World world = makeGround(20);
     placePoi(world, 0, 0, Block::Bell);
@@ -54,7 +53,7 @@ float horizontalGap(const Vec3& position, const Vec3i& cell) {
     return std::sqrt(dx * dx + dz * dz);
 }
 
-} // namespace
+}
 
 VF_TEST(poiRegistryIndexesWorkstationsBedsAndTheBellAroundTheVillage) {
     World world = makeVillage();

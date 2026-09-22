@@ -16,15 +16,12 @@ BrewingStandState fueledStand(const PotionItem& bottle, int blazePowder = 5) {
     return stand;
 }
 
-// Loads one ingredient and runs the stand until the brew lands. Returns the
-// bottle in the first slot afterwards.
 PotionItem brewOnce(BrewingStandState& stand, Ingredient ingredient) {
     setIngredient(stand, ingredient, 1);
     for (int tick = 0; tick < brewDurationTicks; ++tick) tickBrewing(stand);
     return stand.bottles[0].potion;
 }
 
-// Walks a whole chain of ingredients through a single bottle.
 PotionItem brewChain(const PotionItem& start, const std::vector<Ingredient>& chain) {
     BrewingStandState stand = fueledStand(start, 10);
     PotionItem bottle = start;
@@ -52,7 +49,7 @@ int levelOf(PotionKind kind, bool upgraded, bool extended) {
     return potionEffect(potion).level();
 }
 
-} // namespace
+}
 
 VF_TEST(theStandsPublishedConstantsAreTheOnesTheRestOfTheEngineWasBuiltAgainst) {
     CHECK_EQ(brewingBottleSlots, 3);
@@ -62,8 +59,6 @@ VF_TEST(theStandsPublishedConstantsAreTheOnesTheRestOfTheEngineWasBuiltAgainst) 
     CHECK_EQ(static_cast<int>(PotionKind::Count), 17);
     CHECK_EQ(static_cast<int>(BrewRecipe::Ingredient::None), 0);
 
-    // A stand with one blaze powder in it runs a literal twenty second brew and
-    // has nineteen brews of fuel left afterwards.
     BrewingStandState stand;
     setBottle(stand, 0, PotionItem{});
     addFuel(stand, 1);
@@ -346,8 +341,6 @@ VF_TEST(everyCompletedBrewSpendsExactlyOneIngredientAndOneFuelCharge) {
     CHECK_EQ(stand.ingredient, Ingredient::NetherWart);
     CHECK_EQ(stand.fuel, brewsPerBlazePowder - 1);
 
-    // The bottle is awkward now and nether wart does nothing to it, so the
-    // remaining stack sits unused instead of burning fuel.
     CHECK(!canBrew(stand));
     for (int tick = 0; tick < brewDurationTicks; ++tick) CHECK(!tickBrewing(stand));
     CHECK_EQ(stand.ingredientCount, 2);

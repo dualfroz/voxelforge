@@ -41,10 +41,10 @@ VF_TEST(hopperRespectsCooldownBetweenTransfers) {
     store.ensure(pos + Vec3i{0, 1, 0}, 5).insert(ItemId::Stone, 64);
 
     HopperState state;
-    CHECK(tickHopper(world, pos, state, store));   // transfer, arms cooldown 8
+    CHECK(tickHopper(world, pos, state, store));
     for (int i = 0; i < hopperCooldownTicks; ++i)
-        CHECK(!tickHopper(world, pos, state, store));   // idle while cooldown drains
-    CHECK(tickHopper(world, pos, state, store));   // fires again
+        CHECK(!tickHopper(world, pos, state, store));
+    CHECK(tickHopper(world, pos, state, store));
     CHECK_EQ(store.at(pos)->totalItems(), 2);
 }
 
@@ -55,7 +55,7 @@ VF_TEST(hopperDoesNothingWhenSourceEmptyAndNoPushTarget) {
 
     ContainerStore store;
     store.ensure(pos, hopperSlots);
-    store.ensure(pos + Vec3i{0, 1, 0}, 5);   // empty source
+    store.ensure(pos + Vec3i{0, 1, 0}, 5);
 
     HopperState state;
     CHECK(!tickHopper(world, pos, state, store));
@@ -70,7 +70,7 @@ VF_TEST(hopperBlockedWhenTargetIsFull) {
     ContainerStore store;
     store.ensure(pos, hopperSlots).insert(ItemId::Stone, 5);
     Container& target = store.ensure(pos + Vec3i{0, -1, 0}, 1);
-    target.insert(ItemId::Stone, 64);   // exactly full
+    target.insert(ItemId::Stone, 64);
 
     HopperState state;
     CHECK(!tickHopper(world, pos, state, store));

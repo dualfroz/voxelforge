@@ -18,7 +18,7 @@ int shareRounds(const GossipLedger& source, GossipLedger& target, int rounds) {
     return changes;
 }
 
-} // namespace
+}
 
 VF_TEST(gossipSaturatesAtItsPerKindCapNoMatterHowManyEventsLand) {
     GossipLedger ledger = ledgerWith(GossipKind::MinorNegative, 40, gossipMinorNegativeGain);

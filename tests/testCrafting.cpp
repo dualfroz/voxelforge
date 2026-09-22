@@ -15,7 +15,7 @@ void place(CraftGrid& grid, int row, int col, ItemId item) {
     grid[static_cast<std::size_t>(row * craftGridWidth + col)] = item;
 }
 
-} // namespace
+}
 
 VF_TEST(defaultRegistryLoadsExpectedRecipeCounts) {
     CraftingRegistry registry;
@@ -38,7 +38,6 @@ VF_TEST(shapelessPlanksMatchesFromAnySingleCell) {
 
 VF_TEST(shapedRecipeMatchesRegardlessOfGridOffset) {
     CraftingRegistry registry;
-    // 2x2 crafting-table recipe: try all four corners of the 3x3 grid.
     int origins[4][2] = {{0, 0}, {0, 1}, {1, 0}, {1, 1}};
     for (auto& origin : origins) {
         CraftGrid grid = emptyGrid();
@@ -88,7 +87,7 @@ VF_TEST(shapedPickaxeBreaksWhenAStickIsMissing) {
     CHECK(good.valid());
     CHECK(good.item == ItemId::StonePickaxe);
 
-    place(grid, 2, 1, ItemId::None);   // break the pattern: only one stick left
+    place(grid, 2, 1, ItemId::None);
     CraftResult broken = registry.craftMatch(grid);
     CHECK(!broken.valid());
 }
@@ -171,10 +170,10 @@ VF_TEST(furnaceStopsProgressingWhenOutputHoldsADifferentItem) {
     Furnace furnace(registry);
     furnace.input = {ItemId::IronOre, 1, 0};
     furnace.fuel = {ItemId::CoalLump, 1, 0};
-    furnace.output = {ItemId::GoldIngot, 5, 0};   // blocks the mismatched output
+    furnace.output = {ItemId::GoldIngot, 5, 0};
 
     for (int i = 0; i < 60; ++i) furnace.tick(0.5f);
     CHECK(furnace.output.item == ItemId::GoldIngot);
     CHECK_EQ(furnace.output.count, 5);
-    CHECK_EQ(furnace.input.count, 1);   // never consumed
+    CHECK_EQ(furnace.input.count, 1);
 }

@@ -9,8 +9,8 @@ VF_TEST(raycastHitsBlockAlongNegativeZ) {
     RaycastHit hit = raycastVoxels(world, {0.5f, 0.5f, 5.5f}, {0, 0, -1}, 20.0f);
     CHECK(hit.hit);
     CHECK(hit.block == Vec3i(0, 0, 0));
-    CHECK(hit.normal == Vec3i(0, 0, 1));   // entered the +z face
-    CHECK_NEAR(hit.distance, 4.5f, 1e-3f);  // origin z=5.5 to the face at z=1
+    CHECK(hit.normal == Vec3i(0, 0, 1));
+    CHECK_NEAR(hit.distance, 4.5f, 1e-3f);
 }
 
 VF_TEST(raycastMissReturnsNoHit) {

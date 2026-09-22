@@ -16,7 +16,6 @@ DragonPlayerInput clingingTo(const DragonFight& fight, float melee) {
     return input;
 }
 
-// Shoots down every crystal in order, breaking a cage first where one stands.
 int shatterEveryCrystal(DragonFight& fight) {
     int destroyed = 0;
     for (int index = 0; index < static_cast<int>(fight.crystals().size()); ++index) {
@@ -39,7 +38,6 @@ WitherFightConfig quickSummon(int summonTicks) {
     return config;
 }
 
-// Drives the wither out of the summon charge and into its ranged phase.
 void runUpToRangedPhase(WitherFight& fight, std::vector<WitherTarget>& targets) {
     std::vector<WitherHit> nothing;
     for (int step = 0; step < 200 && fight.state().phase != BossPhase::Ranged; ++step) {
@@ -59,7 +57,7 @@ World witherAltar(const Vec3i& base, bool alongX) {
     return world;
 }
 
-} // namespace
+}
 
 VF_TEST(everyBossKindAndPhaseHasAName) {
     for (int index = 0; index < static_cast<int>(BossKind::Count); ++index) {
@@ -88,7 +86,6 @@ VF_TEST(theBossBarTranslatesHealthIntoNotchesAndPercent) {
     CHECK_EQ(bar.filledNotches(), 0);
     CHECK_EQ(bar.percent(), 0);
 
-    // Overheal and negative health both clamp instead of drawing past the ends.
     bar.setFromHealth(500.0f, 200.0f);
     CHECK_NEAR(bar.progress, 1.0f, 1e-6f);
     bar.setFromHealth(-10.0f, 200.0f);
@@ -125,7 +122,6 @@ VF_TEST(crystalsAreBuiltOnTopOfTheGeneratedObsidianPillars) {
         CHECK(crystals[i].cageIntact == pillars[i].crowned);
         if (crystals[i].caged) ++caged;
     }
-    // The tall pillars in the generated ring carry cages.
     CHECK(caged > 0);
 }
 
@@ -197,9 +193,7 @@ VF_TEST(aCagedCrystalIgnoresShotsUntilTheCageComesDown) {
     CHECK_EQ(fight.tick(blocked).crystalsDestroyed, 1);
     CHECK(!fight.crystals()[static_cast<std::size_t>(cagedIndex)].alive);
 
-    // A second shot at the same wreck changes nothing.
     CHECK_EQ(fight.tick(blocked).crystalsDestroyed, 0);
-    // Nonsense indices are ignored rather than crashing.
     DragonPlayerInput bogus = clingingTo(fight, 0.0f);
     bogus.shootCrystal = 9999;
     CHECK_EQ(fight.tick(bogus).crystalsDestroyed, 0);
@@ -247,7 +241,6 @@ VF_TEST(theWholeDragonFightRunsFromTheCrystalsToTheEgg) {
     CHECK(fight.dragonEggDropped());
     CHECK(fight.eggPosition() == Vec3i(0, end.surfaceHeight(0, 0) + 1, 0));
 
-    // The tick after the kill is a no-op, not a second death.
     BossTickReport after = fight.tick(clingingTo(fight, 8.0f));
     CHECK(after.defeated);
     CHECK(!after.phaseChanged);
@@ -323,7 +316,6 @@ VF_TEST(theWitherIsCalledOutOfASoulSandPatternInEitherOrientation) {
     CHECK(fight.state().bar.style == BossBarStyle::Notched6);
     CHECK_NEAR(fight.state().position.y, static_cast<float>(base.y + 1), 1e-6f);
 
-    // The pattern is consumed, so the same altar cannot be reused.
     CHECK(alongX.blockAt(base.x, base.y, base.z) == Block::Air);
     CHECK(alongX.blockAt(base.x, base.y + 2, base.z) == Block::Air);
     WitherFight second(12u);

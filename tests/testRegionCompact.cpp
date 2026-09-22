@@ -59,10 +59,6 @@ std::vector<Vec3i> coordsOf(const ByteBuffer& buffer) {
     return coords;
 }
 
-// A layout written by hand so the fragmentation arithmetic is known before the
-// code runs: 13 sectors of 64 bytes, 2 header sectors, runs of 4 and 3 sectors
-// at sector 2 and sector 10, so 4 sectors are holes and 1 sector inside the
-// second run is reserved for nothing.
 ByteBuffer handBuiltLayout() {
     const uint32_t sectorBytes = 64;
     ByteBuffer buffer(13 * static_cast<std::size_t>(sectorBytes), 0);
@@ -94,7 +90,7 @@ ByteBuffer handBuiltLayout() {
     return buffer;
 }
 
-} // namespace
+}
 
 VF_TEST(fragmentationOfAHandBuiltLayoutMatchesTheArithmetic) {
     ByteBuffer buffer = handBuiltLayout();

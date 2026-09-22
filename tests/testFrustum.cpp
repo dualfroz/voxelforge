@@ -6,12 +6,12 @@ using namespace vf;
 namespace {
 
 Frustum makeFrustum() {
-    Mat4 proj = perspective(1.0472f, 1.3333f, 0.1f, 100.0f);   // 60 degrees
-    Mat4 view = lookAt({0, 0, 5}, {0, 0, 0}, {0, 1, 0});       // camera looks toward -z
+    Mat4 proj = perspective(1.0472f, 1.3333f, 0.1f, 100.0f);
+    Mat4 view = lookAt({0, 0, 5}, {0, 0, 0}, {0, 1, 0});
     return Frustum::fromMatrix(proj * view);
 }
 
-} // namespace
+}
 
 VF_TEST(frustumPointInFrontIsVisible) {
     Frustum f = makeFrustum();

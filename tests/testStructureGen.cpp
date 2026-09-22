@@ -24,7 +24,7 @@ int countBlock(const StructurePlan& plan, Block block) {
     return count;
 }
 
-} // namespace
+}
 
 VF_TEST(structureGenBoundingBoxContainsAndIntersects) {
     BoundingBoxI box{{0, 0, 0}, {10, 10, 10}};
@@ -171,9 +171,6 @@ VF_TEST(structureGenStampWritesEveryPieceWithinRange) {
     StructurePlan plan = gen.buildStructure(StructureGenKind::Dungeon, 1, 1, 30);
     gen.stamp(world, plan, 128);
 
-    // Later pieces at the same offset overwrite earlier ones (e.g. a chest
-    // stamped over the floor cell it sits on), so the oracle must replay the
-    // writes in order rather than expect every single piece to survive.
     std::unordered_map<Vec3i, Block, Vec3iHash> oracle;
     for (const StructurePiece& piece : plan.pieces)
         oracle[plan.origin + piece.offset] = piece.block;

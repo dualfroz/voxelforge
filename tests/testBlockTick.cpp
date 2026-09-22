@@ -14,7 +14,7 @@ int countBlock(World& world, Block target, int x0, int x1, int y0, int y1, int z
     return count;
 }
 
-} // namespace
+}
 
 VF_TEST(scheduledTickFiresAfterExactDelay) {
     World world;
@@ -78,10 +78,10 @@ VF_TEST(sandFallsOneCellPerTickUntilItLands) {
     CHECK(world.blockAt(0, 2, 0) == Block::Sand);
 
     scheduler.tick(world);
-    CHECK(world.blockAt(0, 1, 0) == Block::Sand);   // landed on the stone
+    CHECK(world.blockAt(0, 1, 0) == Block::Sand);
 
     scheduler.tick(world);
-    CHECK(world.blockAt(0, 1, 0) == Block::Sand);   // stays put once supported
+    CHECK(world.blockAt(0, 1, 0) == Block::Sand);
     CHECK_EQ(countBlock(world, Block::Sand, -2, 2, 0, 6, -2, 2), 1);
 }
 
@@ -93,7 +93,7 @@ VF_TEST(gravelBehavesLikeSandAndSupportedBlocksDoNotFall) {
 
     scheduler.tick(world);
     scheduler.tick(world);
-    CHECK(world.blockAt(1, 1, 1) == Block::Gravel);   // already supported, never moved
+    CHECK(world.blockAt(1, 1, 1) == Block::Gravel);
 }
 
 VF_TEST(stackedFallingBlocksMaintainRelativeOrderWithoutGaps) {
@@ -113,7 +113,7 @@ VF_TEST(stackedFallingBlocksMaintainRelativeOrderWithoutGaps) {
 VF_TEST(randomTicksSampleConfiguredCountPerLoadedChunk) {
     World world;
     world.setBlock(0, 0, 0, Block::Stone);
-    world.setBlock(20, 0, 0, Block::Stone);   // second chunk along x
+    world.setBlock(20, 0, 0, Block::Stone);
     BlockTickScheduler scheduler(42, 5);
 
     scheduler.tick(world);
@@ -155,7 +155,7 @@ VF_TEST(growthHookFiresOnRandomTicksAndGrowsExposedDirtToGrass) {
     World world;
     world.setBlock(3, 3, 3, Block::Dirt);
     world.setBlock(3, 3, 4, Block::Dirt);
-    world.setBlock(3, 4, 4, Block::Stone);   // covered dirt must not grow
+    world.setBlock(3, 4, 4, Block::Stone);
 
     BlockTickScheduler scheduler(7, 200);
     scheduler.setRandomTickHook([](World& w, const Vec3i& pos, Block b) {
@@ -168,7 +168,7 @@ VF_TEST(growthHookFiresOnRandomTicksAndGrowsExposedDirtToGrass) {
         if (world.blockAt(3, 3, 3) == Block::Grass) grewExposed = true;
     }
     CHECK(grewExposed);
-    CHECK(world.blockAt(3, 3, 4) == Block::Dirt);   // stays dirt, blocked by the stone above
+    CHECK(world.blockAt(3, 3, 4) == Block::Dirt);
 }
 
 VF_TEST(tryGrowGrassRejectsNonDirtAndCoveredDirt) {

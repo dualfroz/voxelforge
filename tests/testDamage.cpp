@@ -29,7 +29,7 @@ void idleTicks(CombatStats& stats, EffectSet& effects, int count) {
     for (int i = 0; i < count; ++i) tickCombat(stats, effects);
 }
 
-} // namespace
+}
 
 VF_TEST(diamondArmorReducesMeleeDamageByTheVanillaCurve) {
     ArmorSet diamond = fullSet(Armor::Material::Diamond);
@@ -40,7 +40,6 @@ VF_TEST(diamondArmorReducesMeleeDamageByTheVanillaCurve) {
     ArmorSet leather = fullSet(Armor::Material::Leather);
     CHECK_EQ(leather.totalPoints(), 7);
     CHECK_NEAR(leather.totalToughness(), 0.0f, 0.001f);
-    // Weak armour hits the points/5 floor against a big blow.
     CHECK_NEAR(armorReduction(7, 0.0f, 20.0f), 20.0f * (1.0f - 1.4f / 25.0f), 0.001f);
 }
 
@@ -118,7 +117,6 @@ VF_TEST(attackChargeRampsBackToFullAndScalesSwingDamage) {
     float fullSwing = meleeAttackDamage(attacker, bare, none, false, false, false);
     CHECK_NEAR(fullSwing, 7.0f, 0.001f);
 
-    // The bar caps, extra ticks change nothing.
     for (int i = 0; i < 20; ++i) tickCombat(attacker, none);
     CHECK_NEAR(attackCharge(attacker), 1.0f, 0.001f);
 }

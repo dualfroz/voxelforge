@@ -17,7 +17,6 @@ ByteBuffer messageOf(uint32_t index, std::size_t size) {
         state = state * 1664525u + 1013904223u;
         payload.push_back(static_cast<uint8_t>((state >> 16) & 0xffu));
     }
-    // The first four bytes carry the index so the receiver can prove ordering.
     for (int byte = 0; byte < 4 && static_cast<std::size_t>(byte) < payload.size(); ++byte)
         payload[static_cast<std::size_t>(byte)] =
             static_cast<uint8_t>((index >> (8 * byte)) & 0xffu);
@@ -31,8 +30,6 @@ uint32_t indexOf(const ByteBuffer& payload) {
     return index;
 }
 
-// One tick of a two-endpoint exchange, always in the same order so a run is
-// reproducible from the link seed alone.
 void stepPair(Transport& a, Transport& b, uint64_t tick) {
     a.pump(tick);
     a.flush(tick);
@@ -40,7 +37,7 @@ void stepPair(Transport& a, Transport& b, uint64_t tick) {
     b.flush(tick);
 }
 
-}  // namespace
+}
 
 VF_TEST(loopbackLinkReplaysTheSameImpairmentsForTheSameSeed) {
     LinkQuality quality;
@@ -118,7 +115,6 @@ VF_TEST(reliableChannelDeliversEveryMessageExactlyOnceInOrderOverALossyLink) {
         if (order[i] != static_cast<uint32_t>(i)) inOrder = false;
     CHECK(inOrder);
 
-    // Payloads survive intact, not just their headers.
     for (uint32_t i = 0; i < 5 && i < order.size(); ++i) CHECK_EQ(order[i], i);
 
     CHECK(link.droppedCount() > 20u);
@@ -157,7 +153,6 @@ VF_TEST(reliableMessagesLargerThanTheMtuAreFragmentedAndReassembledByteForByte) 
         if (receiver.popReliable(got)) arrived = true;
     }
     CHECK(arrived);
-    // Let the last acks come back before asking whether anything is still unacked.
     for (uint64_t settle = 0; settle < 40; ++settle) stepPair(sender, receiver, tick + settle);
     CHECK_EQ(got.size(), huge.size());
     CHECK(got == huge);
@@ -336,15 +331,11 @@ VF_TEST(theAckBitfieldConfirmsDatagramsWhoseOwnAckWasLost) {
 
     for (uint32_t i = 0; i < 12; ++i) sender.sendReliable(messageOf(i, 50));
 
-    // Twelve datagrams leave, and the sender never pumps, so not a single ack
-    // has been seen when the burst is complete.
     sender.flush(0);
     CHECK_EQ(sender.inFlightDatagramCount(), static_cast<std::size_t>(12));
     CHECK_EQ(sender.stats().datagramsSent, static_cast<uint64_t>(12));
     CHECK_EQ(sender.stats().smoothedRttTicks, 0.0);
 
-    // A single hand-built ack: latest is sequence 11, and the history bitfield
-    // covers sequences 10 down to 0. Nothing else ever reaches the sender.
     receiver.pump(1);
     Datagram carrier;
     carrier.sequence = 0;
@@ -361,7 +352,6 @@ VF_TEST(theAckBitfieldConfirmsDatagramsWhoseOwnAckWasLost) {
     CHECK_EQ(sender.stats().retransmitted, static_cast<uint64_t>(0));
     CHECK(sender.stats().smoothedRttTicks > 0.0);
 
-    // The whole burst still arrived exactly once, in order.
     std::vector<uint32_t> order;
     for (uint64_t tick = 2; tick < 30; ++tick) {
         receiver.pump(tick);
@@ -391,7 +381,6 @@ VF_TEST(aTransportWithNothingToSendStillAcknowledgesWithoutAnAckStorm) {
     CHECK(receiver.popReliable(got));
     CHECK_EQ(indexOf(got), 0u);
     CHECK_EQ(sender.unackedFragmentCount(), static_cast<std::size_t>(0));
-    // One payload datagram plus at most a handful of bare acks, not one per tick.
     CHECK(receiver.stats().datagramsSent <= 3u);
     CHECK(sender.stats().datagramsSent <= 3u);
 }

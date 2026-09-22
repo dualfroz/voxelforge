@@ -25,7 +25,7 @@ std::size_t cellsInsideBox(const Selection& selection, const Vec3i& lo, const Ve
     return inside;
 }
 
-} // namespace
+}
 
 VF_TEST(boxSelectionCoversEveryCellBetweenTheTwoCorners) {
     Selection box = Selection::box({4, 1, -2}, {1, 3, 0});
@@ -155,7 +155,6 @@ VF_TEST(dilationGrowsOneCellIntoASixNeighbourCrossAndKeepsGoing) {
     CHECK(!once.contains({1, 1, 0}));
     CHECK(once.min() == Vec3i(-1, -1, -1));
 
-    // Manhattan ball of radius two: 1 + 6 + 18 cells.
     Selection twice = seed.expanded(2);
     CHECK_EQ(twice.count(), 25u);
     CHECK(twice.contains({1, 1, 0}));

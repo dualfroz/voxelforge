@@ -12,8 +12,6 @@ void fillBox(World& world, Vec3i lo, Vec3i hi, Block block) {
                 world.setBlock(x, y, z, block);
 }
 
-// Compares an incrementally maintained engine against a full rebuild of the
-// same world+box. Equality is the correctness oracle for incremental edits.
 bool matchesRebuild(const LightEngine& incremental, World& world) {
     Vec3i origin = incremental.regionOrigin();
     Vec3i dims = incremental.regionDims();
@@ -29,7 +27,7 @@ bool matchesRebuild(const LightEngine& incremental, World& world) {
     return true;
 }
 
-} // namespace
+}
 
 VF_TEST(lightEngineSkyFillsOpenColumnStraightDown) {
     World world;
@@ -37,7 +35,7 @@ VF_TEST(lightEngineSkyFillsOpenColumnStraightDown) {
     LightEngine engine(world, {0, 0, 0}, {8, 8, 8});
     engine.rebuild();
     CHECK_EQ(static_cast<int>(engine.sunAt(3, 7, 3)), maxLightLevel);
-    CHECK_EQ(static_cast<int>(engine.sunAt(3, 1, 3)), maxLightLevel);   // no vertical loss
+    CHECK_EQ(static_cast<int>(engine.sunAt(3, 1, 3)), maxLightLevel);
 }
 
 VF_TEST(lightEngineBlockEmitterFallsOffRadially) {
@@ -52,15 +50,15 @@ VF_TEST(lightEngineBlockEmitterFallsOffRadially) {
 
 VF_TEST(lightEnginePlacingOpaqueDarkensColumnBelow) {
     World world;
-    fillBox(world, {0, 0, 0}, {4, 11, 4}, Block::Stone);   // solid box
-    for (int y = 1; y <= 11; ++y) world.setBlock(2, y, 2, Block::Air);   // walled shaft
+    fillBox(world, {0, 0, 0}, {4, 11, 4}, Block::Stone);
+    for (int y = 1; y <= 11; ++y) world.setBlock(2, y, 2, Block::Air);
     LightEngine engine(world, {0, 0, 0}, {5, 12, 5});
     engine.rebuild();
     CHECK_EQ(static_cast<int>(engine.sunAt(2, 1, 2)), maxLightLevel);
 
-    engine.setBlock(2, 6, 2, Block::Stone);   // seal the shaft midway
-    CHECK_EQ(static_cast<int>(engine.sunAt(2, 5, 2)), 0);   // shadow below the lid
-    CHECK_EQ(static_cast<int>(engine.sunAt(2, 7, 2)), maxLightLevel);   // still lit above
+    engine.setBlock(2, 6, 2, Block::Stone);
+    CHECK_EQ(static_cast<int>(engine.sunAt(2, 5, 2)), 0);
+    CHECK_EQ(static_cast<int>(engine.sunAt(2, 7, 2)), maxLightLevel);
     CHECK(matchesRebuild(engine, world));
 }
 
@@ -68,26 +66,26 @@ VF_TEST(lightEngineBreakingOpaqueRePropagates) {
     World world;
     fillBox(world, {0, 0, 0}, {4, 11, 4}, Block::Stone);
     for (int y = 1; y <= 11; ++y) world.setBlock(2, y, 2, Block::Air);
-    world.setBlock(2, 6, 2, Block::Stone);   // lid already in place
+    world.setBlock(2, 6, 2, Block::Stone);
     LightEngine engine(world, {0, 0, 0}, {5, 12, 5});
     engine.rebuild();
-    CHECK_EQ(static_cast<int>(engine.sunAt(2, 5, 2)), 0);   // in shadow
+    CHECK_EQ(static_cast<int>(engine.sunAt(2, 5, 2)), 0);
 
-    engine.setBlock(2, 6, 2, Block::Air);   // reopen the shaft
-    CHECK_EQ(static_cast<int>(engine.sunAt(2, 5, 2)), maxLightLevel);   // relit straight down
+    engine.setBlock(2, 6, 2, Block::Air);
+    CHECK_EQ(static_cast<int>(engine.sunAt(2, 5, 2)), maxLightLevel);
     CHECK(matchesRebuild(engine, world));
 }
 
 VF_TEST(lightEngineRemovingEmitterDarkensRoom) {
     World world;
     fillBox(world, {0, 0, 0}, {8, 8, 8}, Block::Stone);
-    fillBox(world, {1, 1, 1}, {7, 7, 7}, Block::Air);   // sealed room, no sky
+    fillBox(world, {1, 1, 1}, {7, 7, 7}, Block::Air);
     world.setBlock(4, 4, 4, Block::Glowstone);
     LightEngine engine(world, {0, 0, 0}, {9, 9, 9});
     engine.rebuild();
     CHECK(engine.blockAt(5, 4, 4) > 0);
 
-    engine.setBlock(4, 4, 4, Block::Air);   // remove the emitter
+    engine.setBlock(4, 4, 4, Block::Air);
     CHECK_EQ(static_cast<int>(engine.blockAt(5, 4, 4)), 0);
     CHECK_EQ(static_cast<int>(engine.blockAt(4, 4, 4)), 0);
     CHECK(matchesRebuild(engine, world));
@@ -95,15 +93,14 @@ VF_TEST(lightEngineRemovingEmitterDarkensRoom) {
 
 VF_TEST(lightEngineEditAcrossChunkBorderMatchesRebuild) {
     World world;
-    // floor spanning four chunk columns so light crosses chunk borders in the box.
     fillBox(world, {12, 0, 12}, {35, 0, 35}, Block::Stone);
-    LightEngine engine(world, {12, 0, 12}, {24, 20, 24});   // spans chunks x/z 0..2
+    LightEngine engine(world, {12, 0, 12}, {24, 20, 24});
     engine.rebuild();
 
     world.setBlock(0, 0, 0, Block::Air);
-    engine.setBlock(15, 5, 15, Block::Glowstone);   // near a chunk boundary
+    engine.setBlock(15, 5, 15, Block::Glowstone);
     engine.setBlock(16, 5, 16, Block::Stone);
-    engine.setBlock(31, 5, 31, Block::Glowstone);   // in a different chunk
+    engine.setBlock(31, 5, 31, Block::Glowstone);
     engine.setBlock(31, 5, 31, Block::Air);
     CHECK(matchesRebuild(engine, world));
 }

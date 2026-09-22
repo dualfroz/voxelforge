@@ -13,8 +13,6 @@ const CraftingRegistry& sharedRegistry() {
     return registry;
 }
 
-// A recipe nothing in the default set uses: a tool sits in the grid as a proper
-// ingredient, which is the only way to exercise the remainder rule.
 CraftingRegistry registryWithToolRecipe() {
     CraftingRegistry registry;
     ShapedRecipe carving;
@@ -31,7 +29,7 @@ int countSlotsWithRole(const ContainerMenu& menu, MenuSlot::Role role) {
     return static_cast<int>(menu.slotsWithRole(role).size());
 }
 
-} // namespace
+}
 
 VF_TEST(everyMenuKindLaysOutTheSectionsItsScreenNeeds) {
     for (int i = 0; i < static_cast<int>(MenuKind::Count); ++i) {
@@ -105,7 +103,6 @@ VF_TEST(theFurnaceInputSlotOnlyTakesItemsWithASmeltingRecipe) {
     CHECK(!menu.canPlace(input, makeStack(ItemId::Stick, 4)));
     CHECK(!menu.canPlace(input, makeStack(ItemId::Glowstone, 4)));
 
-    // Without a registry there is nothing to consult, so nothing is smeltable.
     ContainerMenu blind(MenuKind::Furnace, nullptr);
     CHECK(!blind.canPlace(input, makeStack(ItemId::IronOre, 4)));
 }
@@ -164,7 +161,6 @@ VF_TEST(aResultSlotCanBeEmptiedButNeverFilledByHand) {
     CHECK_EQ(stone.count, 1);
     CHECK(menu.stackAt(result).empty());
 
-    // The furnace, anvil and trade outputs answer the same way.
     ContainerMenu furnace(MenuKind::Furnace, &sharedRegistry());
     int output = furnace.slotsWithRole(MenuSlot::Role::SmeltOutput)[0];
     CHECK(!furnace.canPlace(output, makeStack(ItemId::IronIngot, 1)));
@@ -238,7 +234,6 @@ VF_TEST(aDamageableIngredientStaysInTheGridOnePointWorse) {
     CHECK_EQ(grid.input(0, 0).meta.durability.used, 1);
     CHECK_EQ(grid.input(0, 1).count, 3);
 
-    // A shovel one point from death is spent by the craft instead of surviving.
     grid.input(0, 0).meta.durability.used = grid.input(0, 0).meta.durability.max - 1;
     grid.refresh();
     grid.takeResult();
@@ -439,9 +434,6 @@ VF_TEST(everyRoleAndFilterNameIsSpelledOut) {
     }
 }
 
-// A result slot is guarded twice over: the takeOnly flag and a filter that lets
-// nothing through. Because canPlace checks takeOnly first, the filter would go
-// untested through the menu, so it is pinned here on its own.
 VF_TEST(everySlotFilterAnswersForItselfWithoutHelpFromTheTakeOnlyFlag) {
     const CraftingRegistry& registry = sharedRegistry();
 

@@ -23,7 +23,7 @@ VF_TEST(hotbarScrollWraps) {
 
 VF_TEST(hotbarConsumeEmptiesStack) {
     Hotbar hotbar;
-    hotbar.select(2);   // stone, 64
+    hotbar.select(2);
     int drawn = 0;
     while (hotbar.consumeSelected()) ++drawn;
     CHECK_EQ(drawn, 64);
@@ -37,13 +37,13 @@ VF_TEST(hotbarAddStacksAndFillsEmpty) {
     while (hotbar.consumeSelected()) {}
     CHECK(hotbar.slot(2).empty());
 
-    hotbar.add(Block::Stone, 5);           // matches the drained stone slot
+    hotbar.add(Block::Stone, 5);
     CHECK_EQ(hotbar.slot(2).count, 5);
     CHECK(hotbar.slot(2).block == Block::Stone);
 
     hotbar.select(2);
-    while (hotbar.consumeSelected()) {}    // empty it fully again
-    hotbar.add(Block::CoalOre, 3);         // no matching slot -> first empty one
+    while (hotbar.consumeSelected()) {}
+    hotbar.add(Block::CoalOre, 3);
     bool placed = false;
     for (int i = 0; i < hotbarSize; ++i)
         if (hotbar.slot(i).block == Block::CoalOre && hotbar.slot(i).count == 3) placed = true;

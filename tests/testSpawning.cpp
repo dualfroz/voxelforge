@@ -12,8 +12,6 @@ constexpr int floorY = 64;
 constexpr int spawnY = 65;
 constexpr int fieldSpan = 48;
 
-// One flat plate of `surface` with the sky wide open above it, big enough for
-// the light box below to see nothing but that plate.
 World plateWorld(Block surface) {
     World world;
     for (int x = -fieldSpan; x <= fieldSpan; ++x) {
@@ -54,7 +52,7 @@ SpawnRule sheepRule() {
 
 Vec3i originCell() { return Vec3i{0, spawnY, 0}; }
 
-} // namespace
+}
 
 VF_TEST(theStockRuleTableCoversEverySpeciesWithACoherentCategory) {
     std::vector<SpawnRule> rules = defaultSpawnRules();
@@ -192,7 +190,6 @@ VF_TEST(aTorchLitCellIsRefusedForTooMuchBlockLight) {
     CHECK(checkSpawnRule(zombieRule(), env, originCell(), MobCap{}) ==
           SpawnDenial::BlockLightTooHigh);
 
-    // The same cell far from the emitter is dark enough again.
     Vec3i faraway{30, spawnY, 30};
     CHECK_EQ(env.blockLightAt(faraway), 0);
     CHECK(checkSpawnRule(zombieRule(), env, faraway, MobCap{}) == SpawnDenial::None);
@@ -264,7 +261,6 @@ VF_TEST(aCategoryWithNoRulesReportsThatNoRuleMatched) {
     CHECK(result.denial == SpawnDenial::NoRuleMatched);
     CHECK_EQ(spawner.denialCount(SpawnDenial::NoRuleMatched), 1);
 
-    // Adding one water rule is all it takes for the category to come alive.
     std::vector<SpawnRule> rules = defaultSpawnRules();
     SpawnRule diver = sheepRule();
     diver.category = SpawnCategory::Water;
@@ -288,7 +284,6 @@ VF_TEST(theMobCapGrowsWithTheNumberOfLoadedChunks) {
     CHECK(cap.capFor(SpawnCategory::Hostile, 1156) > cap.capFor(SpawnCategory::Hostile, 289));
     CHECK(cap.capFor(SpawnCategory::Passive, 289) < cap.capFor(SpawnCategory::Hostile, 289));
 
-    // A quarter of the world loaded holds roughly a quarter of the mobs.
     CHECK_EQ(cap.capFor(SpawnCategory::Hostile, 72), 17);
 }
 
@@ -430,7 +425,6 @@ VF_TEST(despawnInTheMiddleBandIsARollThatMatchesItsStatedOdds) {
     CHECK(hits > 40);
     CHECK(hits < 180);
 
-    // Same seed, same sequence of rolls.
     int replay = 0;
     uint32_t again = 0x1337u;
     for (int tick = 0; tick < 5000; ++tick) {

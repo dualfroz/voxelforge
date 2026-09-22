@@ -7,8 +7,6 @@ using namespace vf;
 
 namespace {
 
-// Consecutive small seeds share too much structure for a raw xorshift stream,
-// so the sampling tests walk a scrambled sequence instead.
 uint32_t seedFor(int index) {
     uint32_t mixed = static_cast<uint32_t>(index) + 1u;
     mixed ^= mixed >> 16;
@@ -75,7 +73,7 @@ int maxOverSeeds(Block block, const EnchantSet& enchants, ItemId tool, ItemId wa
     return best;
 }
 
-} // namespace
+}
 
 VF_TEST(theSameSeedAlwaysReproducesTheSameRollAcrossEveryTableFamily) {
     LootContext blockContext = enchanted(ItemId::DiamondPickaxe, EnchantKind::Fortune, 3, 0xabcdef01u);
@@ -162,7 +160,6 @@ VF_TEST(fortuneMultipliesOreDropsAndNeverDropsBelowTheBaseYield) {
                           400),
              4);
 
-    // Silk Touch wins over Fortune: the ore block itself, never a multiplied gem.
     LootContext both = enchanted(ItemId::DiamondPickaxe, EnchantKind::SilkTouch, 1, 99u);
     addEnchant(both.toolEnchants, EnchantKind::Fortune, 3);
     LootRoll roll = rollBlockDrops(Block::DiamondOre, both);
@@ -224,7 +221,6 @@ VF_TEST(toolTierGatesTheOresTheWayTheHarvestLevelsSay) {
     CHECK(toolQualifiesFor(Block::DiamondOre, ItemId::IronPickaxe));
     CHECK(toolQualifiesFor(Block::EmeraldOre, ItemId::DiamondPickaxe));
 
-    // Nothing outside the pickaxe class is gated at all.
     CHECK(toolQualifiesFor(Block::Dirt, ItemId::None));
     CHECK(toolQualifiesFor(Block::Leaves, ItemId::None));
     CHECK(toolQualifiesFor(Block::Grass, ItemId::WoodShovel));
@@ -237,7 +233,6 @@ VF_TEST(aBlockBrokenWithTooWeakAToolProducesNoDropsAtAll) {
     LootContext bare = contextWith(ItemId::None, 11u);
     CHECK(rollBlockDrops(Block::Stone, bare).empty());
 
-    // The gate runs before the table, so even Silk Touch cannot rescue it.
     LootContext silkOnAStonePick = enchanted(ItemId::StonePickaxe, EnchantKind::SilkTouch, 1, 11u);
     CHECK(rollBlockDrops(Block::DiamondOre, silkOnAStonePick).empty());
 }
@@ -502,8 +497,6 @@ VF_TEST(anEmptyOrOutOfRangeTableRollsToNothingInsteadOfReadingPastItsEnd) {
     CHECK(rollMobDrops(LootTable::MobKind::Count, context).empty());
     CHECK(rollChestContents(LootTable::ChestKind::Count, context).empty());
 
-    // Air has no item form, so its self-drop table comes out empty rather than
-    // dropping a phantom stack.
     CHECK(rollBlockDrops(Block::Air, context).empty());
 }
 

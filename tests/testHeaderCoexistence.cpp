@@ -1,15 +1,3 @@
-// Every public header pulled into ONE translation unit.
-//
-// This exists because it already failed for real: two modules independently
-// declared vf::DamageSource (an enum in Survival.h, a struct in Damage.h) and
-// nothing caught it, because no single translation unit ever included both.
-// The combined binary linked and then died with SIGSEGV instead of a compiler
-// error. A duplicate type, a duplicate free function or a conflicting
-// declaration between any two modules now fails this file at compile time.
-//
-// Do not split this file and do not include headers selectively - the whole
-// point is that all of them meet here.
-
 #include "vf/Advancement.h"
 #include "vf/Anvil.h"
 #include "vf/Behavior.h"
@@ -19,6 +7,7 @@
 #include "vf/Boss.h"
 #include "vf/Brewing.h"
 #include "vf/Brush.h"
+#include "vf/Buoyancy.h"
 #include "vf/Chunk.h"
 #include "vf/ChunkCache.h"
 #include "vf/ChunkPipeline.h"
@@ -26,6 +15,7 @@
 #include "vf/Circuit.h"
 #include "vf/Climate.h"
 #include "vf/Codec.h"
+#include "vf/Collide.h"
 #include "vf/Command.h"
 #include "vf/Container.h"
 #include "vf/ContainerMenu.h"
@@ -117,9 +107,6 @@ using namespace vf;
 
 namespace {
 
-// Walk up from the working directory until the source tree is found, so the
-// binary can be launched from the repository root (what `make test` does) or
-// from one level below it.
 std::filesystem::path findRepoRoot() {
     std::filesystem::path here = std::filesystem::current_path();
     for (int step = 0; step < 4; ++step) {
@@ -133,12 +120,8 @@ std::filesystem::path findRepoRoot() {
     return {};
 }
 
-} // namespace
+}
 
-// The guard above is only worth as much as its include list. A module added
-// without a line here would quietly stop being checked, which is exactly how
-// the first collision slipped through. This test reads the directory and this
-// file's own source and fails when the two disagree.
 VF_TEST(everyPublicHeaderIsListedInTheCoexistenceGuard) {
     std::filesystem::path root = findRepoRoot();
     CHECK(!root.empty());
@@ -165,21 +148,17 @@ VF_TEST(everyPublicHeaderIsListedInTheCoexistenceGuard) {
     }
 
     for (const std::string& header : onDisk) {
-        // A header on disk but missing from the include list above.
         CHECK(included.count(header) == 1u);
         if (included.count(header) != 1u) {
             std::printf("  unguarded header: core/include/vf/%s\n", header.c_str());
         }
     }
     for (const std::string& header : included) {
-        // An include line left behind after a header was deleted or renamed.
         CHECK(onDisk.count(header) == 1u);
     }
     CHECK_EQ(included.size(), onDisk.size());
 }
 
-// The two names that actually collided, now proven to coexist: an enum in
-// Survival.h and a struct in Damage.h, both reachable from one scope.
 VF_TEST(survivalAndDamageHeadersDeclareDistinctSourceTypes) {
     DamageSource legacy = DamageSource::Fall;
     CHECK(legacy == DamageSource::Fall);
@@ -194,17 +173,10 @@ VF_TEST(survivalAndDamageHeadersDeclareDistinctSourceTypes) {
     CHECK_EQ(blow.attackerId, 7);
     CHECK_EQ(blow.ownerId, -1);
 
-    // Distinct types: the sizes below are unrelated, and the point is only
-    // that both names resolve in the same translation unit.
     CHECK(sizeof(DamageSource) >= 1u);
     CHECK(sizeof(HurtSource) > sizeof(DamageSource));
 }
 
-// Every block in the palette must map to a tile inside the atlas, on every
-// face. A block added without a faceTile case silently falls through to the
-// stone tile, which is the kind of thing nobody notices until the atlas is
-// resized. Both facts are checked here because faceTile and tileCount live in
-// the one header every module shares.
 VF_TEST(everyPaletteBlockMapsToATileInsideTheAtlas) {
     const Face faces[6] = {Face::PosX, Face::NegX, Face::PosY,
                            Face::NegY, Face::PosZ, Face::NegZ};
@@ -218,12 +190,9 @@ VF_TEST(everyPaletteBlockMapsToATileInsideTheAtlas) {
             if (tile > highestTile) highestTile = tile;
         }
     }
-    // The atlas must not be padded with layers nothing references.
     CHECK_EQ(highestTile, tileCount - 1);
 }
 
-// Opacity and solidity are independent flags, but light emission is only
-// meaningful within the 0..15 range the light engine packs into four bits.
 VF_TEST(blockLightEmissionStaysInsideTheFourBitLightRange) {
     for (int i = 0; i < static_cast<int>(Block::Count); ++i) {
         Block block = static_cast<Block>(i);
@@ -238,8 +207,6 @@ VF_TEST(blockLightEmissionStaysInsideTheFourBitLightRange) {
     CHECK_EQ(blockLightEmission(Block::Stone), 0);
 }
 
-// A transparent block must never be opaque, or the mesher would both skip the
-// neighbouring face and draw the block in the transparent pass.
 VF_TEST(transparentBlocksAreNeverAlsoOpaque) {
     for (int i = 0; i < static_cast<int>(Block::Count); ++i) {
         Block block = static_cast<Block>(i);
@@ -252,9 +219,6 @@ VF_TEST(transparentBlocksAreNeverAlsoOpaque) {
     CHECK(occludesLight(Block::Stone));
 }
 
-// faceVisible is the single rule the mesher trusts. It has to stay coherent
-// with isAir and isOpaque for the whole palette, not just for the handful of
-// blocks that existed when it was written.
 VF_TEST(faceVisibilityAgreesWithAirAndOpacityAcrossThePalette) {
     for (int i = 0; i < static_cast<int>(Block::Count); ++i) {
         Block self = static_cast<Block>(i);

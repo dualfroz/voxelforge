@@ -60,7 +60,7 @@ bool sameBlocks(const Chunk& a, const Chunk& b) {
     return true;
 }
 
-} // namespace
+}
 
 VF_TEST(containerRoundTripsAtEveryFormatVersion) {
     for (uint32_t v = 1; v <= 4; ++v) {

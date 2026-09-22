@@ -10,7 +10,7 @@ namespace {
 float quadAreaSum(const Mesh& mesh) {
     float sum = 0.0f;
     for (std::size_t q = 0; q < mesh.quadCount(); ++q) {
-        const Vertex& corner = mesh.vertices[q * 4 + 2];  // uv here holds (width, height)
+        const Vertex& corner = mesh.vertices[q * 4 + 2];
         sum += corner.u * corner.v;
     }
     return sum;
@@ -30,7 +30,7 @@ bool hasTile(const Mesh& mesh, int tile) {
     return false;
 }
 
-} // namespace
+}
 
 VF_TEST(meshSingleBlockHasSixFaces) {
     World world;
@@ -56,8 +56,8 @@ VF_TEST(meshInteriorFacesAreCulled) {
 
     Mesh mesh = greedyMeshChunk(world, {0, 0, 0});
     int culled = culledFaceCount(world, {0, 0, 0});
-    CHECK_EQ(culled, 6 * chunkSize * chunkSize);       // only the outer shell
-    CHECK_EQ(mesh.quadCount(), static_cast<std::size_t>(6));  // each side merges to one quad
+    CHECK_EQ(culled, 6 * chunkSize * chunkSize);
+    CHECK_EQ(mesh.quadCount(), static_cast<std::size_t>(6));
     CHECK(mesh.quadCount() < static_cast<std::size_t>(culled));
     CHECK_NEAR(quadAreaSum(mesh), static_cast<float>(culled), 1e-3f);
 }
@@ -70,7 +70,7 @@ VF_TEST(meshGreedyPreservesVisibleArea) {
 
     Mesh mesh = greedyMeshChunk(world, {0, 0, 0});
     int culled = culledFaceCount(world, {0, 0, 0});
-    CHECK_EQ(culled, 3 * 6 - 2 * 2);   // two shared faces hidden on both sides
+    CHECK_EQ(culled, 3 * 6 - 2 * 2);
     CHECK_NEAR(quadAreaSum(mesh), static_cast<float>(culled), 1e-3f);
     CHECK(mesh.quadCount() <= static_cast<std::size_t>(culled));
 }
@@ -84,9 +84,9 @@ VF_TEST(meshCullsAcrossChunkBoundary) {
 
     Mesh left = greedyMeshChunk(world, {0, 0, 0});
     int culled = culledFaceCount(world, {0, 0, 0});
-    CHECK_EQ(culled, 5 * chunkSize * chunkSize);   // +x boundary hidden by neighbour chunk
+    CHECK_EQ(culled, 5 * chunkSize * chunkSize);
     CHECK_EQ(left.quadCount(), static_cast<std::size_t>(5));
-    CHECK(!hasNormal(left, 1, 0, 0));              // no +x face at the shared border
+    CHECK(!hasNormal(left, 1, 0, 0));
     CHECK_NEAR(quadAreaSum(left), static_cast<float>(culled), 1e-3f);
 }
 
@@ -94,9 +94,9 @@ VF_TEST(meshGrassIsSided) {
     World world;
     world.setBlock(4, 4, 4, Block::Grass);
     Mesh mesh = greedyMeshChunk(world, {0, 0, 0});
-    CHECK(hasTile(mesh, faceTile(Block::Grass, Face::PosY)));  // top
-    CHECK(hasTile(mesh, faceTile(Block::Grass, Face::NegY)));  // bottom
-    CHECK(hasTile(mesh, faceTile(Block::Grass, Face::PosX)));  // side
+    CHECK(hasTile(mesh, faceTile(Block::Grass, Face::PosY)));
+    CHECK(hasTile(mesh, faceTile(Block::Grass, Face::NegY)));
+    CHECK(hasTile(mesh, faceTile(Block::Grass, Face::PosX)));
     CHECK(faceTile(Block::Grass, Face::PosY) != faceTile(Block::Grass, Face::PosX));
 }
 

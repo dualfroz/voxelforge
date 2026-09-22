@@ -17,7 +17,7 @@ uint8_t maxWater(const FluidSim& sim) {
     return hi;
 }
 
-} // namespace
+}
 
 VF_TEST(fluidSpreadsWithDecreasingLevelsSymmetrically) {
     World world;
@@ -25,29 +25,29 @@ VF_TEST(fluidSpreadsWithDecreasingLevelsSymmetrically) {
     FluidSim sim(world, {0, 0, 0}, {13, 3, 13});
     sim.addSource(6, 1, 6);
     int steps = sim.settle(50);
-    CHECK(steps < 50);   // reaches a stable pool
+    CHECK(steps < 50);
 
     CHECK_EQ(static_cast<int>(sim.level(6, 1, 6)), fluidMax);
     CHECK_EQ(static_cast<int>(sim.level(7, 1, 6)), fluidMax - 1);
-    CHECK_EQ(static_cast<int>(sim.level(5, 1, 6)), fluidMax - 1);   // symmetry -x
-    CHECK_EQ(static_cast<int>(sim.level(6, 1, 7)), fluidMax - 1);   // symmetry +z
+    CHECK_EQ(static_cast<int>(sim.level(5, 1, 6)), fluidMax - 1);
+    CHECK_EQ(static_cast<int>(sim.level(6, 1, 7)), fluidMax - 1);
     CHECK_EQ(static_cast<int>(sim.level(9, 1, 6)), fluidMax - 3);
-    CHECK_EQ(static_cast<int>(sim.level(10, 1, 10)), 0);   // beyond reach
-    CHECK_EQ(static_cast<int>(sim.level(6, 2, 6)), 0);     // pool stays one deep
+    CHECK_EQ(static_cast<int>(sim.level(10, 1, 10)), 0);
+    CHECK_EQ(static_cast<int>(sim.level(6, 2, 6)), 0);
 }
 
 VF_TEST(fluidFallsThroughHoleAndSpreadsBelow) {
     World world;
-    solidLayer(world, 0, {0, 0, 0}, {12, 0, 12});   // lower floor
-    solidLayer(world, 4, {0, 4, 0}, {12, 4, 12});   // upper floor
-    world.setBlock(6, 4, 6, Block::Air);            // hole in the upper floor
+    solidLayer(world, 0, {0, 0, 0}, {12, 0, 12});
+    solidLayer(world, 4, {0, 4, 0}, {12, 4, 12});
+    world.setBlock(6, 4, 6, Block::Air);
     FluidSim sim(world, {0, 0, 0}, {13, 6, 13});
     sim.addSource(3, 5, 6);
     sim.settle(80);
 
-    CHECK_EQ(static_cast<int>(sim.level(6, 2, 6)), fluidMax);   // falling column is full
-    CHECK_EQ(static_cast<int>(sim.level(6, 1, 6)), fluidMax);   // landed on lower floor
-    CHECK(sim.level(7, 1, 6) > 0);   // spreads across the lower floor
+    CHECK_EQ(static_cast<int>(sim.level(6, 2, 6)), fluidMax);
+    CHECK_EQ(static_cast<int>(sim.level(6, 1, 6)), fluidMax);
+    CHECK(sim.level(7, 1, 6) > 0);
     CHECK(sim.level(8, 1, 6) > 0);
 }
 
@@ -62,7 +62,7 @@ VF_TEST(fluidDrainsAfterSourceRemoved) {
     sim.removeSource(6, 1, 6);
     int steps = sim.settle(50);
     CHECK(steps < 50);
-    CHECK_EQ(static_cast<int>(maxWater(sim)), 0);   // pool fully drained
+    CHECK_EQ(static_cast<int>(maxWater(sim)), 0);
 }
 
 VF_TEST(fluidIsDeterministic) {
@@ -83,10 +83,10 @@ VF_TEST(fluidBlockedBySolidWall) {
     solidLayer(world, 0, {0, 0, 0}, {12, 0, 12});
     for (int y = 1; y <= 2; ++y)
         for (int z = 0; z <= 12; ++z)
-            world.setBlock(8, y, z, Block::Stone);   // wall at x=8
+            world.setBlock(8, y, z, Block::Stone);
     FluidSim sim(world, {0, 0, 0}, {13, 3, 13});
     sim.addSource(6, 1, 6);
     sim.settle(50);
-    CHECK(sim.level(7, 1, 6) > 0);              // wet up to the wall
-    CHECK_EQ(static_cast<int>(sim.level(9, 1, 6)), 0);   // nothing past the wall
+    CHECK(sim.level(7, 1, 6) > 0);
+    CHECK_EQ(static_cast<int>(sim.level(9, 1, 6)), 0);
 }

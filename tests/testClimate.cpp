@@ -27,7 +27,7 @@ ClimateConfig neutralConfig() {
     return cfg;
 }
 
-} // namespace
+}
 
 VF_TEST(temperatureFallsWithHeightAndLatitude) {
     BiomeGen biomes;

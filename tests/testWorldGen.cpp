@@ -14,7 +14,7 @@ VF_TEST(worldGenChunkIsDeterministic) {
 
     Chunk elsewhere;
     gen.generateChunk(elsewhere, {2, 1, 4});
-    CHECK(first.raw() != elsewhere.raw());   // different columns differ
+    CHECK(first.raw() != elsewhere.raw());
 }
 
 VF_TEST(worldGenSurfaceHeightStaysInBounds) {
@@ -28,7 +28,7 @@ VF_TEST(worldGenSurfaceHeightStaysInBounds) {
             hi = h > hi ? h : hi;
         }
     }
-    CHECK(hi > lo);   // terrain actually varies
+    CHECK(hi > lo);
 }
 
 VF_TEST(worldGenProducesSeveralBiomes) {
@@ -60,7 +60,7 @@ VF_TEST(worldGenCarvesCavesButNotEverything) {
             for (int gz = 0; gz < 64; gz += 2)
                 (gen.isCave(gx, gy, gz) ? caves : solid) += 1;
     CHECK(caves > 0);
-    CHECK(solid > caves);   // caves are the minority
+    CHECK(solid > caves);
 }
 
 VF_TEST(worldGenPlacesOresUnderground) {
@@ -78,7 +78,7 @@ VF_TEST(worldGenPlacesOresUnderground) {
                 Block b = world.blockAt(gx, gy, gz);
                 if (b == Block::CoalOre || b == Block::IronOre || b == Block::GoldOre) {
                     ++ores;
-                    CHECK(gy < surface);   // ores are always below the surface
+                    CHECK(gy < surface);
                 }
             }
         }

@@ -13,7 +13,7 @@ World floorWorld(int x0 = -4, int z0 = -4, int x1 = 24, int z1 = 24) {
     return world;
 }
 
-} // namespace
+}
 
 VF_TEST(mobFallsAndLandsOnFloor) {
     World world = floorWorld();
@@ -49,11 +49,11 @@ VF_TEST(mobBrainWandersWhenTargetFar) {
     Mob mob;
     mob.position = {5.0f, 1.0f, 5.0f};
     MobConfig config;
-    Vec3 target{80.0f, 1.0f, 80.0f};   // way past chaseRadius
+    Vec3 target{80.0f, 1.0f, 80.0f};
 
     Vec3 wish = updateMobBrain(world, mob, target, config);
     CHECK(mob.state == MobState::Wander);
-    CHECK(length(wish) > 0.5f);   // still produces a heading
+    CHECK(length(wish) > 0.5f);
 }
 
 VF_TEST(mobBrainChasesReachableTarget) {
@@ -61,12 +61,12 @@ VF_TEST(mobBrainChasesReachableTarget) {
     Mob mob;
     mob.position = {5.0f, 1.0f, 5.0f};
     MobConfig config;
-    Vec3 target{9.0f, 1.0f, 5.0f};   // within chaseRadius, open ground
+    Vec3 target{9.0f, 1.0f, 5.0f};
 
     Vec3 wish = updateMobBrain(world, mob, target, config);
     CHECK(mob.state == MobState::Chase);
-    CHECK(wish.x > 0.5f);   // heads toward +x target
-    CHECK(wish.x > std::fabs(wish.z));   // +x is the dominant component
+    CHECK(wish.x > 0.5f);
+    CHECK(wish.x > std::fabs(wish.z));
 }
 
 VF_TEST(mobBrainHysteresisKeepsChaseInBand) {
@@ -74,20 +74,19 @@ VF_TEST(mobBrainHysteresisKeepsChaseInBand) {
     Mob mob;
     mob.position = {5.0f, 1.0f, 5.0f};
     mob.state = MobState::Chase;
-    MobConfig config;   // chase 12, lose 16
-    Vec3 inBand{5.0f + 14.0f, 1.0f, 5.0f};   // between chase and lose
+    MobConfig config;
+    Vec3 inBand{5.0f + 14.0f, 1.0f, 5.0f};
 
     updateMobBrain(world, mob, inBand, config);
-    CHECK(mob.state == MobState::Chase);   // stays chasing in the band
+    CHECK(mob.state == MobState::Chase);
 
     Vec3 farOut{5.0f + 20.0f, 1.0f, 5.0f};
     updateMobBrain(world, mob, farOut, config);
-    CHECK(mob.state == MobState::Wander);   // drops chase past loseRadius
+    CHECK(mob.state == MobState::Wander);
 }
 
 VF_TEST(mobBrainWandersWhenTargetUnreachable) {
     World world = floorWorld();
-    // seal a target cell at {9,1,5}
     for (int y = 1; y <= 2; ++y) {
         world.setBlock(8, y, 5, Block::Stone);
         world.setBlock(10, y, 5, Block::Stone);
@@ -97,7 +96,7 @@ VF_TEST(mobBrainWandersWhenTargetUnreachable) {
     Mob mob;
     mob.position = {5.0f, 1.0f, 5.0f};
     MobConfig config;
-    Vec3 target{9.0f, 1.0f, 5.0f};   // in range but sealed off
+    Vec3 target{9.0f, 1.0f, 5.0f};
 
     updateMobBrain(world, mob, target, config);
     CHECK(mob.state == MobState::Wander);
@@ -118,6 +117,6 @@ VF_TEST(mobChaseClosesDistanceOverTime) {
         stepMob(world, mob, wish, config, 1.0f / 60.0f);
     }
     CHECK(mob.state == MobState::Chase);
-    CHECK(mob.position.x > startDist + 10.0f);        // advanced toward the target
-    CHECK(std::fabs(mob.position.x - target.x) < 1.5f);   // arrived near it
+    CHECK(mob.position.x > startDist + 10.0f);
+    CHECK(std::fabs(mob.position.x - target.x) < 1.5f);
 }

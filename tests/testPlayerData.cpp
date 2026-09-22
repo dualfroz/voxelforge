@@ -38,7 +38,7 @@ PlayerData samplePlayer() {
     return player;
 }
 
-}  // namespace
+}
 
 VF_TEST(playerDataRoundTripsAllFields) {
     PlayerData original = samplePlayer();
@@ -74,7 +74,6 @@ VF_TEST(playerDataInventoryRoundTrips) {
         if (!slotsEqual(restored.inventory[i], original.inventory[i])) identical = false;
     CHECK(identical);
 
-    // Tool durability specifically must survive the trip.
     CHECK(restored.inventory[3].item == ItemId::DiamondPickaxe);
     CHECK_EQ(restored.inventory[3].durability, 1200);
     CHECK(restored.inventory[5].item == ItemId::IronSword);
@@ -117,7 +116,6 @@ VF_TEST(playerDataRejectsMissingField) {
         if (entry.first != "Health") broken.put(entry.first, entry.second);
     PlayerData out;
     CHECK(!playerFromNbt(broken, out));
-    // The same tree with Health present must still parse, proving the guard is real.
     PlayerData ok;
     CHECK(playerFromNbt(root, ok));
 }

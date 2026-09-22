@@ -36,13 +36,12 @@ WorldSimConfig daylightCropConfig() {
     WorldSimConfig config;
     config.worldSeed = 7u;
     config.randomTicksPerChunk = 64;
-    // Freeze the clock at noon so crop sky light stays at the daytime maximum.
     config.time.ticksPerDay = 100000000;
     config.startTick = 50000000;
     return config;
 }
 
-} // namespace
+}
 
 VF_TEST(clockAdvancesOneTickPerSimTick) {
     World world;

@@ -14,7 +14,7 @@ int ticksUntilDead(EffectSet& set, float& health, float maxHealth, int limit) {
     return -1;
 }
 
-} // namespace
+}
 
 VF_TEST(strongerEffectReplacesWeakerAndLongerOneOfEqualLevelWins) {
     EffectSet set;
@@ -200,8 +200,6 @@ VF_TEST(regenerationAndPoisonTogetherLeaveHealthDrifting) {
         EffectSet::Pending pending = tickEffects(set);
         applyEffectTick(pending, health, 20.0f);
     }
-    // Poison fires twice as often as regeneration, so the net drift is down,
-    // and it still stops at the last half heart.
     CHECK_NEAR(health, 1.0f, 0.001f);
     CHECK_EQ(static_cast<int>(set.active.size()), 0);
 }

@@ -25,8 +25,6 @@ bool leansToAccent(TilePixel texel, const TileSpec& spec) {
     return colourDistance(texel, spec.accent) < colourDistance(texel, spec.base);
 }
 
-// The palette owns how many tiles exist. A table short of a row must surface as
-// a reported failure, not as a read past the end of the table proving it.
 int renderedTiles(const TileSampler& sampler) {
     int held = sampler.palette().size();
     return held < tileCount ? held : tileCount;
@@ -56,9 +54,6 @@ std::vector<uint8_t> renderAtlas(const TileSampler& sampler, bool backwards) {
     return bytes;
 }
 
-// The first row and column carry a deliberate edge darkening, which would hand
-// every tile a luminance spread for free. Contrast is therefore only ever
-// measured inside that border.
 struct LuminanceRange {
     int lowest = 255;
     int highest = 0;
@@ -83,8 +78,6 @@ TileSpec withoutGrain(TileSpec spec) {
     return spec;
 }
 
-// Columns in one row that the pattern painted with the accent colour. For a
-// brick tile those are the vertical mortar joints.
 std::vector<int> accentColumns(const TileSampler& sampler, const TileSpec& spec, int tileSalt,
                                int y) {
     std::vector<int> columns;
@@ -94,9 +87,6 @@ std::vector<int> accentColumns(const TileSampler& sampler, const TileSpec& spec,
     return columns;
 }
 
-// A brick course is offset from the one above it, so the set of mortar columns
-// has to differ between courses. Rows that are entirely mortar are the
-// horizontal joints and say nothing about the offset.
 int distinctJointLayouts(const TileSampler& sampler, const TileSpec& spec, int tileSalt) {
     int size = sampler.params().tileSize;
     std::set<std::vector<int>> layouts;
@@ -122,10 +112,8 @@ TileSpec syntheticBrick() {
     return spec;
 }
 
-} // namespace
+}
 
-// Same params in, same bytes out. Anything that reached for a clock, a global
-// counter or an uninitialised buffer would show up here first.
 VF_TEST(renderingATileTwiceProducesIdenticalBytes) {
     TileSampler first;
     TileSampler second;
@@ -139,8 +127,6 @@ VF_TEST(renderingATileTwiceProducesIdenticalBytes) {
     }
 }
 
-// A tile must not care which tiles were generated before it. The atlas built
-// back to front has to match the atlas built front to back byte for byte.
 VF_TEST(theAtlasDoesNotDependOnTheOrderTilesAreGenerated) {
     TileSampler sampler;
     std::vector<uint8_t> forwards = renderAtlas(sampler, false);
@@ -149,8 +135,6 @@ VF_TEST(theAtlasDoesNotDependOnTheOrderTilesAreGenerated) {
     CHECK(forwards == backwards);
 }
 
-// The opaque pass draws without blending, so an opaque tile with a hole in it
-// would put a stale colour on screen rather than a hole.
 VF_TEST(opaqueTilesAreFullyOpaqueInEveryPixel) {
     TileSampler sampler;
     int size = sampler.params().tileSize;
@@ -170,8 +154,6 @@ VF_TEST(opaqueTilesAreFullyOpaqueInEveryPixel) {
     }
 }
 
-// A cutout tile that is solid everywhere is not a shape, and one that is hollow
-// everywhere is not a tile. Both ends have to be present in the alpha channel.
 VF_TEST(cutoutTilesCarryBothHolesAndSolidPixels) {
     TileSampler sampler;
     int size = sampler.params().tileSize;
@@ -199,9 +181,6 @@ VF_TEST(cutoutTilesCarryBothHolesAndSolidPixels) {
     CHECK(cutouts >= 20);
 }
 
-// The failure this whole wave exists to stop: a tile that renders as one flat
-// plate of colour. Measured on the interior so the edge darkening cannot pass a
-// flat tile off as textured.
 VF_TEST(everyTileVariesAcrossItsInterior) {
     TileSampler sampler;
     const int minimumSpread = 12;
@@ -215,9 +194,6 @@ VF_TEST(everyTileVariesAcrossItsInterior) {
     }
 }
 
-// Brick courses are offset by half a brick. Without the offset every joint
-// lines up and a brick wall reads as a grid, so the mortar columns of one
-// course must not repeat in the next.
 VF_TEST(brickCoursesShiftTheirJointsBetweenRows) {
     TileSampler sampler;
     TileSpec synthetic = syntheticBrick();
@@ -225,7 +201,6 @@ VF_TEST(brickCoursesShiftTheirJointsBetweenRows) {
     CHECK(layouts >= 2);
     if (layouts < 2) std::printf("  synthetic brick has %d joint layouts\n", layouts);
 
-    // The two courses that actually sit next to each other, spelled out.
     std::vector<int> firstCourse = accentColumns(sampler, synthetic, 500, 2);
     std::vector<int> secondCourse = accentColumns(sampler, synthetic, 500, 6);
     CHECK(!firstCourse.empty());
@@ -241,8 +216,6 @@ VF_TEST(brickCoursesShiftTheirJointsBetweenRows) {
     }
 }
 
-// Contrast is a real knob, not a field nobody reads: raising it has to widen
-// what the tile actually puts on screen.
 VF_TEST(raisingContrastWidensTheLuminanceRange) {
     TileTextureParams plain;
     TileTextureParams punchy;
@@ -260,8 +233,6 @@ VF_TEST(raisingContrastWidensTheLuminanceRange) {
     CHECK(widened > tileCount / 2);
 }
 
-// The seed reaches the grain, and only the grain: the palette a sampler reports
-// is the same table whatever the seed is.
 VF_TEST(changingTheNoiseSeedRedrawsTheGrainButNotThePalette) {
     TileTextureParams first;
     TileTextureParams second;
@@ -281,8 +252,6 @@ VF_TEST(changingTheNoiseSeedRedrawsTheGrainButNotThePalette) {
     CHECK(renderAtlas(original, false) == renderAtlas(sameSeedAgain, false));
 }
 
-// writeTile is the path render/Atlas.cpp takes and pixelAt is the path the
-// tests take. They have to be the same generator.
 VF_TEST(writeTileAgreesWithPixelAtEverywhere) {
     TileSampler sampler;
     int size = sampler.params().tileSize;
@@ -301,9 +270,6 @@ VF_TEST(writeTileAgreesWithPixelAtEverywhere) {
     }
 }
 
-// The atlas is built at sixteen pixels today, but nothing in the palette is
-// allowed to depend on that. Alpha rules and contrast have to survive a
-// different tile size.
 VF_TEST(tilesKeepTheirAlphaAndContrastAtOtherTileSizes) {
     const int sizes[] = {8, 16, 32};
     for (int size : sizes) {
@@ -342,9 +308,6 @@ VF_TEST(tilesKeepTheirAlphaAndContrastAtOtherTileSizes) {
     }
 }
 
-// Boards run one way and their grain runs with them. Flipping the spec's axis
-// has to flip which direction the tile varies in, otherwise the plank pattern
-// is drawing wallpaper.
 VF_TEST(plankGrainFollowsTheBoardDirection) {
     TileSampler sampler;
     int size = sampler.params().tileSize;
@@ -388,8 +351,6 @@ VF_TEST(plankGrainFollowsTheBoardDirection) {
     CHECK(flatAcrossRows > flatAcrossColumns);
 }
 
-// A ladder without gaps is a plank. Every cutout lattice has to leave real
-// openings and still keep enough bar to stand on.
 VF_TEST(latticeTilesLeaveOpeningsBetweenTheirBars) {
     TileSampler sampler;
     int size = sampler.params().tileSize;
@@ -415,8 +376,6 @@ VF_TEST(latticeTilesLeaveOpeningsBetweenTheirBars) {
     CHECK(checked >= 8);
 }
 
-// Veins have to be visible without swallowing the host rock, or every ore looks
-// like a solid block of its own metal.
 VF_TEST(oreVeinsCoverPartOfTheHostRockWithoutSwallowingIt) {
     TileSampler sampler;
     int size = sampler.params().tileSize;

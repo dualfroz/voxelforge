@@ -11,9 +11,6 @@ using namespace vf;
 
 namespace {
 
-// Byte offsets into an encoded schematic. The frame is magic, version, body
-// length, body, checksum - all big-endian, all fixed width, which is what lets
-// these tests damage one field at a time.
 constexpr std::size_t bodyOffset = 12;
 constexpr std::size_t paletteOffsetInBody = 26;
 
@@ -34,8 +31,6 @@ void refreshChecksum(ByteBuffer& bytes) {
     writeU32(bytes, bodyOffset + bodyLength, fnv1a32(bytes.data() + bodyOffset, bodyLength));
 }
 
-// Rewrites one body byte and repairs the checksum, so the decoder has to reject
-// the buffer on its own merits rather than on a broken hash.
 void patchBody(ByteBuffer& bytes, std::size_t offsetInBody, uint8_t value) {
     bytes[bodyOffset + offsetInBody] = value;
     refreshChecksum(bytes);
@@ -70,7 +65,7 @@ Schematic decodedCopy(const ByteBuffer& bytes, SchematicError& error) {
     return loaded;
 }
 
-} // namespace
+}
 
 VF_TEST(aSchematicRoundTripRebuildsTheExactSameBlocks) {
     World source = terrainWorld(9, 9);
@@ -174,7 +169,6 @@ VF_TEST(aQuarterTurnSwapsTheHorizontalDimensionsAndMovesTheMarker) {
     ClipboardBuffer turned = buffer.rotatedY(Rotation::Cw90);
     CHECK(turned.dims() == Vec3i(2, 1, 4));
     CHECK_EQ(turned.filledCount(), 8u);
-    // (0,0,0) maps to (dimZ - 1, 0, 0) under a clockwise quarter turn.
     CHECK(turned.at(1, 0, 0) == Block::Glowstone);
     CHECK(turned.at(0, 0, 0) == Block::Stone);
 }
@@ -238,7 +232,6 @@ VF_TEST(versionOneDataIsMigratedToVersionTwoWhenLoaded) {
     CHECK_EQ(loaded.header().tick, 0u);
     CHECK(loaded.buffer().sameContent(saved.buffer()));
 
-    // Re-saving the migrated schematic yields a v2 buffer that carries metadata.
     loaded.setName("legacy");
     loaded.setAuthor("foksiu");
     loaded.setTick(777u);
@@ -323,7 +316,6 @@ VF_TEST(aTruncatedBufferIsRejectedAtEveryCutPoint) {
         CHECK(error == SchematicError::Truncated);
     }
 
-    // A body length claiming more bytes than the buffer holds is truncation too.
     ByteBuffer lying = bytes;
     writeU32(lying, 8, readU32(lying, 8) + 64u);
     CHECK(Schematic::decode(lying.data(), lying.size(), loaded) == SchematicError::Truncated);

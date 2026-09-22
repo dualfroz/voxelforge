@@ -33,7 +33,7 @@ float horizontalDistance(const Vec3& a, const Vec3& b) {
     return std::sqrt(dx * dx + dz * dz);
 }
 
-} // namespace
+}
 
 VF_TEST(isHostileClassifiesEachSpecies) {
     CHECK(!isHostile(Species::Sheep));
@@ -68,7 +68,7 @@ VF_TEST(passiveFleesAndGainsDistanceFromNearbyThreat) {
     World world = openField();
     Creature creature = spawnCreature(Species::Sheep, {5.0f, 1.0f, 5.0f}, 11);
     CreatureConfig config;
-    Vec3 threat{7.0f, 1.0f, 5.0f};   // 2 blocks away, inside the 8-block alert radius
+    Vec3 threat{7.0f, 1.0f, 5.0f};
 
     float startDist = horizontalDistance(creature.body.position, threat);
     for (int i = 0; i < 120; ++i) updateCreature(world, creature, threat, true, config, 1.0f / 20.0f);
@@ -92,7 +92,7 @@ VF_TEST(hostileChasesAndClosesDistanceOnReachableThreat) {
     World world = openField();
     Creature creature = spawnCreature(Species::Zombie, {5.0f, 1.0f, 5.0f}, 5);
     CreatureConfig config;
-    Vec3 threat{11.0f, 1.0f, 5.0f};   // within the 16-block alert radius, open ground
+    Vec3 threat{11.0f, 1.0f, 5.0f};
 
     float startDist = horizontalDistance(creature.body.position, threat);
     bool sawChase = false;
@@ -110,7 +110,7 @@ VF_TEST(hostileEntersAttackStateWithinRange) {
     World world = openField();
     Creature creature = spawnCreature(Species::Zombie, {5.0f, 1.0f, 5.0f}, 9);
     CreatureConfig config;
-    Vec3 threat{5.5f, 1.0f, 5.0f};   // 0.5 blocks away, inside the 1.4 attack range
+    Vec3 threat{5.5f, 1.0f, 5.0f};
 
     updateCreature(world, creature, threat, true, config, 1.0f / 20.0f);
     CHECK(creature.state == CreatureState::Attack);
@@ -122,12 +122,12 @@ VF_TEST(hysteresisKeepsChasingInsideDisengageBandThenGivesUp) {
     creature.state = CreatureState::Chase;
     CreatureConfig config;
 
-    Vec3 inBand{5.0f + 18.0f, 1.0f, 5.0f};   // between alert (16) and disengage (20)
+    Vec3 inBand{5.0f + 18.0f, 1.0f, 5.0f};
     updateCreature(world, creature, inBand, true, config, 1.0f / 20.0f);
     CHECK(creature.state == CreatureState::Chase);
 
     creature.state = CreatureState::Chase;
-    Vec3 farOut{5.0f + 30.0f, 1.0f, 5.0f};   // beyond disengage radius
+    Vec3 farOut{5.0f + 30.0f, 1.0f, 5.0f};
     updateCreature(world, creature, farOut, true, config, 1.0f / 20.0f);
     CHECK(creature.state == CreatureState::Wander);
 }
@@ -184,7 +184,7 @@ VF_TEST(rollDropsIsDeterministicForTheSameSeed) {
         CHECK(a[i].item == b[i].item);
         CHECK_EQ(a[i].count, b[i].count);
     }
-    CHECK_EQ(seedA, seedB);   // rng advanced identically
+    CHECK_EQ(seedA, seedB);
 }
 
 VF_TEST(mobSpawnLightLevelIsHighOutsideAndDarkInsideASealedRoom) {
@@ -200,7 +200,7 @@ VF_TEST(mobSpawnLightLevelIsHighOutsideAndDarkInsideASealedRoom) {
 VF_TEST(canSpawnAtRespectsPopulationCap) {
     World world = openField();
     Vec3i cell{5, 1, 5};
-    Vec3 player{5.0f, 1.0f, 25.0f};   // 20 blocks away, inside default range
+    Vec3 player{5.0f, 1.0f, 25.0f};
     SpawnConfig config;
     config.maxPerArea = 3;
 
@@ -226,7 +226,7 @@ VF_TEST(canSpawnAtRespectsBiomeRestrictions) {
 VF_TEST(canSpawnAtRespectsLightThresholds) {
     World room = sealedRoom();
     Vec3i darkCell{2, 1, 2};
-    Vec3 farPlayer{2.0f, 1.0f, 22.0f};   // horizontal distance ~20, inside range
+    Vec3 farPlayer{2.0f, 1.0f, 22.0f};
 
     CHECK(canSpawnAt(room, darkCell, Species::Zombie, Biome::Forest, farPlayer, 0));
 
@@ -253,7 +253,7 @@ VF_TEST(canSpawnAtRespectsPlayerDistanceWindow) {
 VF_TEST(trySpawnPicksOnlyAmongValidCandidatesDeterministically) {
     World world = openField();
     Vec3i cell{5, 1, 5};
-    Vec3 player{5.0f, 1.0f, 25.0f};   // daylight rules out hostiles (light 15 > their max of 7)
+    Vec3 player{5.0f, 1.0f, 25.0f};
 
     uint32_t rngA = 2026u;
     uint32_t rngB = 2026u;
@@ -284,15 +284,15 @@ VF_TEST(advanceSpawnCycleFiresOncePerIntervalAndCatchesUpOnce) {
     int fires = 0;
     for (int i = 0; i < 25; ++i)
         if (advanceSpawnCycle(cycle, 0.1f)) ++fires;
-    CHECK_EQ(fires, 2);   // fires at t=1.0 and t=2.0 across 2.5s of ticking
+    CHECK_EQ(fires, 2);
 
     SpawnCycle burst;
     burst.interval = 1.0f;
-    CHECK(advanceSpawnCycle(burst, 10.0f));   // huge dt: only one attempt fires this call
-    CHECK_NEAR(burst.timer, 9.0f, 1e-4f);      // the rest of the backlog is kept, not dropped
+    CHECK(advanceSpawnCycle(burst, 10.0f));
+    CHECK_NEAR(burst.timer, 9.0f, 1e-4f);
 
     int extraFires = 0;
     for (int i = 0; i < 15; ++i)
         if (advanceSpawnCycle(burst, 0.0f)) ++extraFires;
-    CHECK_EQ(extraFires, 9);   // backlog drains at one interval per subsequent call
+    CHECK_EQ(extraFires, 9);
 }

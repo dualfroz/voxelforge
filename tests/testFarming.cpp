@@ -14,7 +14,7 @@ int countLeaves(World& world, const Vec3i& centre, int radius, int yLow, int yHi
     return count;
 }
 
-} // namespace
+}
 
 VF_TEST(groundCropRipensThroughStagesInLight) {
     World world;

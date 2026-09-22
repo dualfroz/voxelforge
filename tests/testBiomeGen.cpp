@@ -20,7 +20,7 @@ ClimateSample makeClimate(float temperature, float humidity, float continentalne
     return climate;
 }
 
-} // namespace
+}
 
 VF_TEST(biomeGenClimateMapsColdDryToTundra) {
     BiomeGen gen;

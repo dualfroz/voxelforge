@@ -13,8 +13,6 @@ using namespace vf;
 
 namespace {
 
-// One-shot latch. Every wait in this file goes through it, so no test ever
-// depends on a sleep or on how fast a worker happens to start.
 class Latch {
 public:
     void open() {
@@ -55,7 +53,7 @@ std::vector<int> runPayloads(unsigned threadCount, int jobCount) {
     return output;
 }
 
-} // namespace
+}
 
 VF_TEST(serialPoolRunsEveryJobOnTheCallingThread) {
     JobSystem jobs(0);
@@ -69,7 +67,7 @@ VF_TEST(serialPoolRunsEveryJobOnTheCallingThread) {
         observed = std::this_thread::get_id();
         ++ran;
     });
-    CHECK_EQ(ran, 1);                 // already executed at submit time
+    CHECK_EQ(ran, 1);
     CHECK(handle.done());
     CHECK(observed == caller);
     CHECK(!handle.failed());
@@ -81,7 +79,7 @@ VF_TEST(serialAndParallelPoolsProduceTheSameResults) {
     std::vector<int> parallel = runPayloads(4, jobCount);
     CHECK_EQ(serial.size(), parallel.size());
     CHECK_EQ(std::memcmp(serial.data(), parallel.data(), serial.size() * sizeof(int)), 0);
-    CHECK(serial[0] != serial[1]);    // the payload really varies per index
+    CHECK(serial[0] != serial[1]);
 }
 
 VF_TEST(handleReportsCompletionOnlyAfterTheJobBody) {
@@ -92,7 +90,7 @@ VF_TEST(handleReportsCompletionOnlyAfterTheJobBody) {
         release.await();
         finished.store(true);
     });
-    CHECK(!handle.done());            // cannot finish before the latch opens
+    CHECK(!handle.done());
     release.open();
     handle.wait();
     CHECK(handle.done());
@@ -118,9 +116,6 @@ VF_TEST(batchWaitsForEveryHandle) {
     CHECK_EQ(batch.failedCount(), static_cast<std::size_t>(0));
 }
 
-// The nodes are registered in the exact reverse of their dependency order, so a
-// scheduler that ignored the edges and drained the queue front to back would be
-// caught even on a single worker.
 VF_TEST(graphNeverStartsNodeBeforeItsDependencies) {
     for (unsigned threads : {0u, 1u, 4u}) {
         JobSystem jobs(threads);
@@ -148,14 +143,12 @@ VF_TEST(graphNeverStartsNodeBeforeItsDependencies) {
         for (std::size_t i = 0; i < nodeCount; ++i) CHECK(entered[i] >= 0);
         for (const auto& edge : edges)
             CHECK(exited[edge[1]] < entered[edge[0]]);
-        CHECK_EQ(entered[7], 0);      // the only root goes first
-        CHECK_EQ(entered[0], 14);     // and the deepest node goes last
+        CHECK_EQ(entered[7], 0);
+        CHECK_EQ(entered[0], 14);
         CHECK_EQ(batch.failedCount(), static_cast<std::size_t>(0));
     }
 }
 
-// A wide graph: one root, a fan-out layer, and a join node that must observe
-// every fan-out node as finished before it starts.
 VF_TEST(graphJoinNodeWaitsForTheWholeFanOut) {
     for (unsigned threads : {0u, 2u, 6u}) {
         JobSystem jobs(threads);
@@ -193,8 +186,8 @@ VF_TEST(graphJoinNodeWaitsForTheWholeFanOut) {
         JobBatch batch = jobs.runGraph(graph);
         batch.wait();
         CHECK_EQ(joinSawLive.load(), 0);
-        CHECK_EQ(joinSawDone.load(), 12);      // the join really ran last
-        CHECK_EQ(fanOutSawRoot.load(), 12);    // and every fan-out node ran after the root
+        CHECK_EQ(joinSawDone.load(), 12);
+        CHECK_EQ(fanOutSawRoot.load(), 12);
         CHECK(peakLiveFanOut.load() >= 1);
         if (threads == 0u) CHECK_EQ(peakLiveFanOut.load(), 1);
         CHECK_EQ(batch.failedCount(), static_cast<std::size_t>(0));
@@ -217,7 +210,7 @@ VF_TEST(graphWithCycleIsRejectedInsteadOfHanging) {
         JobBatch batch = jobs.runGraph(graph);
         CHECK(!batch.valid());
         CHECK(batch.empty());
-        batch.wait();                 // returns at once, nothing was scheduled
+        batch.wait();
         CHECK_EQ(ran.load(), 0);
     }
 }
@@ -277,7 +270,7 @@ VF_TEST(graphNodeWithFailedDependencyIsSkippedNotHung) {
 
         JobBatch batch = jobs.runGraph(graph);
         CHECK(batch.valid());
-        batch.wait();                 // must not deadlock on the skipped nodes
+        batch.wait();
 
         CHECK(batch.at(broken).failed());
         CHECK(batch.at(child).failed());
@@ -301,7 +294,7 @@ VF_TEST(highPriorityJobsAreServedBeforeLowOnesOnOneWorker) {
         started.open();
         release.await();
     });
-    started.await();                  // the single worker is now occupied
+    started.await();
 
     auto record = [&](int tag) {
         return [&, tag] {

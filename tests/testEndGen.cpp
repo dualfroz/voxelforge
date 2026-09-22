@@ -36,7 +36,7 @@ int tallyBlocks(const World& world, Block block, int minX, int minZ, int span, i
     return total;
 }
 
-} // namespace
+}
 
 VF_TEST(endChunkGenerationRepeatsExactlyOnTheSameSeed) {
     EndGenerator generator;
@@ -331,7 +331,6 @@ VF_TEST(outerIslandsCarryChorusAndPurpur) {
     CHECK(chorusStems > 0);
     CHECK(chorusFlowers > 0);
 
-    // Nothing from the central island's furniture leaks out here.
     CHECK_EQ(tallyBlocks(world, Block::EndPortal, minX, minZ, chunkSize * 3, 128), 0);
     CHECK_EQ(tallyBlocks(world, Block::Obsidian, minX, minZ, chunkSize * 3, 128), 0);
 }

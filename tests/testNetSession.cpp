@@ -19,8 +19,6 @@ struct Lcg {
     int range(int n) { return static_cast<int>(next() % static_cast<uint32_t>(n)); }
 };
 
-// Deterministic terrain in the chunk plane y = 0, so both ends have something
-// substantial to disagree about if replication is wrong.
 void buildTerrain(World& world, int columnsRadius) {
     Lcg rng(0x51ed270b);
     const Block palette[5] = {Block::Stone, Block::Dirt, Block::Grass, Block::Sand, Block::Gravel};
@@ -38,8 +36,6 @@ void buildTerrain(World& world, int columnsRadius) {
     }
 }
 
-// Canonical over the whole world: chunk coordinates are sorted before hashing,
-// so the digest does not inherit the hash map's iteration order.
 uint64_t worldDigest(const World& world, const std::vector<Vec3i>& coords) {
     ByteWriter stream;
     for (const Vec3i& coord : coords) {
@@ -70,7 +66,6 @@ std::vector<Vec3i> sortedCoords(const std::unordered_set<Vec3i, Vec3iHash>& set)
     return coords;
 }
 
-// Both ends of one connection, wired through a single loopback link.
 struct Pair {
     LoopbackLink link;
     Transport serverTransport;
@@ -101,8 +96,6 @@ struct Pair {
         client.send(tick);
     }
 
-    // Server edit: authoritative world, dirty feed, and this session's own
-    // per-chunk work list all move together.
     void edit(int gx, int gy, int gz, Block block) {
         serverWorld.setBlock(gx, gy, gz, block);
         Vec3i coord{floorDiv(gx, chunkSize), floorDiv(gy, chunkSize), floorDiv(gz, chunkSize)};
@@ -123,7 +116,7 @@ SessionConfig quietConfig() {
     return config;
 }
 
-}  // namespace
+}
 
 VF_TEST(handshakeAndLoginCarryBothEndsOfTheSessionIntoThePlayPhase) {
     LinkQuality quality;
@@ -153,7 +146,6 @@ VF_TEST(aPlayPacketArrivingBeforeLoginEndsTheSessionWithAReasonInsteadOfCrashing
     TransportConfig transportConfig;
     Pair pair(quality, transportConfig, quietConfig());
 
-    // A well-formed PlayerState sent straight at a server still in handshake.
     PlayerState early;
     early.x = 12.0f;
     early.y = 40.0f;
@@ -213,7 +205,6 @@ VF_TEST(theServerDisconnectsAClientThatStopsAnsweringKeepAlive) {
     CHECK(pair.server.stats().keepAlivesSent > 5u);
     CHECK(!pair.server.timedOut());
 
-    // The client goes silent: the server keeps ticking on its own.
     for (uint64_t tick = 60; tick < 130; ++tick) {
         pair.server.receive(tick);
         pair.server.send(tick);
@@ -241,14 +232,11 @@ VF_TEST(chunksAreStreamedNearestFirstAndNeverMoreThanTheTickBudget) {
     CHECK(afterFirstTicks > 0u);
     CHECK(afterFirstTicks <= 2u * 6u);
 
-    // The chunk the player stands in must be among the first handful sent.
     CHECK(pair.server.view().hasChunk(Vec3i{0, 0, 0}));
     CHECK(!pair.server.view().hasChunk(Vec3i{2, 0, 2}));
 
     for (uint64_t tick = 6; tick < 60; ++tick) pair.step(tick);
     CHECK_EQ(pair.server.view().pendingCount(), static_cast<std::size_t>(0));
-    // The sphere of radius 2 holds 33 chunk slots, only 13 of which exist in
-    // the y = 0 plane, so exactly those get snapshots.
     CHECK_EQ(pair.server.stats().chunksSent, static_cast<uint64_t>(13));
     CHECK_EQ(pair.client.stats().chunksApplied, static_cast<uint64_t>(13));
     CHECK_EQ(pair.clientWorld.chunkCount(), static_cast<std::size_t>(13));
@@ -325,7 +313,6 @@ VF_TEST(theClientWorldMirrorsTheServerByteForByteAcrossAnUnreliableLink) {
         pair.step(tick);
         pair.clearDirty();
     }
-    // Editing stops; the link is given time to finish retransmitting the tail.
     for (; tick < 600; ++tick) {
         pair.step(tick);
         pair.clearDirty();
@@ -340,8 +327,6 @@ VF_TEST(theClientWorldMirrorsTheServerByteForByteAcrossAnUnreliableLink) {
     CHECK_EQ(coords.size(), static_cast<std::size_t>(13));
     CHECK_EQ(worldDigest(pair.serverWorld, coords), worldDigest(pair.clientWorld, coords));
 
-    // A digest that ignores content would pass anything: break one block and it
-    // must disagree.
     pair.clientWorld.setBlock(0, 0, 0, Block::Bedrock);
     CHECK(worldDigest(pair.serverWorld, coords) != worldDigest(pair.clientWorld, coords));
 }
@@ -391,7 +376,6 @@ VF_TEST(aPlayerStateReportMovesTheServerSideViewAndStreamsTheNewChunks) {
     pair.client.beginHandshake("vulp", 1, 2);
     for (uint64_t tick = 0; tick < 30; ++tick) pair.step(tick);
     CHECK(pair.server.view().centreChunk == Vec3i(0, 0, 0));
-    // Radius 1 is a 7-slot sphere; five of those slots sit in the y = 0 plane.
     std::size_t nearOrigin = pair.server.view().sent.size();
     CHECK_EQ(nearOrigin, static_cast<std::size_t>(5));
 

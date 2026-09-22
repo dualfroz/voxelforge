@@ -30,7 +30,7 @@ ScoreTeam makeTeam(const std::string& name, ScoreTeam::Color color) {
     return team;
 }
 
-} // namespace
+}
 
 VF_TEST(statSheetsTallyEveryKindWithAndWithoutASubject) {
     StatSheet sheet;
@@ -118,7 +118,6 @@ VF_TEST(anAutomaticObjectiveFollowsTheStatSheetWithNoUpdateStep) {
     CHECK_EQ(board.score("deaths", "foksiu"), 1);
     CHECK_EQ(board.score("mined", "foksiu"), 17);
 
-    // An automatic objective refuses to be written by hand.
     CHECK(!board.setScore("mined", "foksiu", 999));
     CHECK(!board.addScore("mined", "foksiu", 1));
     CHECK_EQ(board.score("mined", "foksiu"), 17);
@@ -269,7 +268,6 @@ VF_TEST(teamsDecideFriendlyFireNameVisibilityAndDisplayName) {
     CHECK_EQ(board.displayNameOf("abel"), std::string("[R] abel *"));
     CHECK_EQ(board.displayNameOf("cara"), std::string("cara"));
 
-    // Moving a player leaves the old roster behind.
     CHECK(board.joinTeam("blue", "bea"));
     CHECK_EQ(board.team("red")->members.size(), static_cast<std::size_t>(1));
     CHECK_EQ(board.teamOf("bea")->name, std::string("blue"));
@@ -336,7 +334,6 @@ VF_TEST(everyPlayerTouchedByTheBoardIsListedOnceInOrder) {
     CHECK_EQ(everyone[1], std::string("bea"));
     CHECK_EQ(everyone[2], std::string("cara"));
 
-    // The automatic column only lists players who actually have a sheet.
     std::vector<ScoreEntry> mined = board.entries("mined");
     CHECK_EQ(mined.size(), static_cast<std::size_t>(2));
     CHECK_EQ(mined[0].player, std::string("cara"));
@@ -366,7 +363,6 @@ VF_TEST(aStatisticObjectiveOnOneSubjectIgnoresTheOthers) {
     CHECK_EQ(board.score("zombieHunter", "foksiu"), 4);
     CHECK_EQ(board.score("anyKill", "foksiu"), 13);
 
-    // A stat far past the score range is clamped, not wrapped.
     sheet.add(StatKind::PlayTicks, 4000000000ll);
     board.addObjective(statObjective("played", StatKind::PlayTicks));
     CHECK_EQ(board.score("played", "foksiu"), 2147483647);

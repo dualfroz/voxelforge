@@ -9,7 +9,7 @@ void placeRail(World& world, int x, int y, int z, Block kind = Block::Rail) {
     world.setBlock(x, y, z, kind);
 }
 
-} // namespace
+}
 
 VF_TEST(straightRailInferredFromOppositeNeighbours) {
     World world;
@@ -34,16 +34,16 @@ VF_TEST(loneRailDefaultsToNorthSouth) {
 VF_TEST(plainRailCurvesBetweenPerpendicularNeighbours) {
     World world;
     placeRail(world, 0, 0, 0);
-    placeRail(world, 0, 0, 1);   // south
-    placeRail(world, 1, 0, 0);   // east
+    placeRail(world, 0, 0, 1);
+    placeRail(world, 1, 0, 0);
     CHECK(inferRailShape(world, {0, 0, 0}) == RailShape::CurveSouthEast);
 }
 
 VF_TEST(poweredRailNeverCurves) {
     World world;
     placeRail(world, 0, 0, 0, Block::PoweredRail);
-    placeRail(world, 0, 0, 1);   // south
-    placeRail(world, 1, 0, 0);   // east
+    placeRail(world, 0, 0, 1);
+    placeRail(world, 1, 0, 0);
     RailShape shape = inferRailShape(world, {0, 0, 0});
     CHECK(shape == RailShape::NorthSouth || shape == RailShape::EastWest);
 }
@@ -51,8 +51,8 @@ VF_TEST(poweredRailNeverCurves) {
 VF_TEST(ascendingShapeInferredFromRaisedNeighbour) {
     World world;
     placeRail(world, 0, 0, 0);
-    placeRail(world, -1, 0, 0);   // west, flat
-    placeRail(world, 1, 1, 0);    // east, raised
+    placeRail(world, -1, 0, 0);
+    placeRail(world, 1, 1, 0);
     CHECK(inferRailShape(world, {0, 0, 0}) == RailShape::AscendEast);
 }
 
@@ -67,9 +67,9 @@ VF_TEST(advanceFollowsStraightTrack) {
 
 VF_TEST(advanceTurnsThroughCurve) {
     World world;
-    placeRail(world, 0, 0, 0);   // curve SE
-    placeRail(world, 0, 0, 1);   // south neighbour
-    placeRail(world, 1, 0, 0);   // east neighbour
+    placeRail(world, 0, 0, 0);
+    placeRail(world, 0, 0, 1);
+    placeRail(world, 1, 0, 0);
     RailStep step = advanceOnRail(world, {0, 0, 0}, RailDir::North);
     CHECK(step.valid);
     CHECK(step.exitDir == RailDir::East);
@@ -102,9 +102,9 @@ VF_TEST(advanceDerailsAtTrackEnd) {
 VF_TEST(switchedJunctionTakesTheTurn) {
     World world;
     placeRail(world, 0, 0, 0);
-    placeRail(world, 0, 0, -1);   // north
-    placeRail(world, 0, 0, 1);    // south
-    placeRail(world, 1, 0, 0);    // east branch
+    placeRail(world, 0, 0, -1);
+    placeRail(world, 0, 0, 1);
+    placeRail(world, 1, 0, 0);
     CHECK(inferRailShape(world, {0, 0, 0}, false) == RailShape::NorthSouth);
     CHECK(inferRailShape(world, {0, 0, 0}, true) == RailShape::CurveSouthEast);
 }

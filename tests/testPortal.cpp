@@ -7,8 +7,6 @@ using namespace vf;
 
 namespace {
 
-// Lays an obsidian ring by hand, corners included, so the scanner has to work
-// the geometry out rather than being handed a PortalFrame back.
 PortalFrame layFrame(World& world, const Vec3i& origin, int width, int height, bool alongX) {
     PortalFrame frame;
     frame.origin = origin;
@@ -41,7 +39,7 @@ int countInterior(const World& world, const PortalFrame& frame, Block block) {
     return total;
 }
 
-} // namespace
+}
 
 VF_TEST(portalScanFindsTheSmallestLegalObsidianFrame) {
     World world;
@@ -145,7 +143,6 @@ VF_TEST(breakingTheFrameUnmakesTheLitPortal) {
     CHECK_EQ(countInterior(world, frame, Block::NetherPortal), 6);
     CHECK_EQ(network.activeCountIn(DimensionId::Overworld), 1);
 
-    // A missing corner is cosmetic; the portal survives a validation sweep.
     Vec3i corner = frame.interiorBlock(-1, 3);
     world.setBlock(corner.x, corner.y, corner.z, Block::Air);
     CHECK_EQ(network.validate(DimensionId::Overworld), 0);
@@ -200,7 +197,6 @@ VF_TEST(travellersChargeInThePortalAndThenSitOutACooldown) {
     PortalSearch immediate = network.travel(1, source, DimensionId::Nether);
     CHECK(immediate.blocked);
 
-    // Stepping out of the portal resets the charge; the cooldown drains anyway.
     for (int tick = 0; tick < network.cooldownLength(); ++tick) network.tickEntity(1, false);
     CHECK_EQ(network.cooldownTicks(1), 0);
     CHECK_EQ(network.standingTicks(1), 0);
@@ -230,7 +226,6 @@ VF_TEST(crossingToAnEmptyNetherRaisesANewPortalThere) {
     CHECK(PortalScan::intact(dimensions.nether().world(), raised->frame));
     CHECK_EQ(countInterior(dimensions.nether().world(), raised->frame, Block::NetherPortal), 6);
 
-    // The arrival must sit close to the scaled coordinates, not anywhere.
     CHECK(std::abs(crossing.position.x - 100) <= DimensionTravel::buildRadiusFor(DimensionId::Nether));
     CHECK(std::abs(crossing.position.z - 50) <= DimensionTravel::buildRadiusFor(DimensionId::Nether));
 
@@ -360,7 +355,7 @@ VF_TEST(endPortalIgnitesOnlyOnceEveryEyeIsSeated) {
     const World& world = dimensions.end().world();
     CHECK_EQ(world.blockAt(38, 60, 40), Block::EndPortalFrame);
     CHECK_EQ(world.blockAt(40, 60, 42), Block::EndPortalFrame);
-    CHECK_EQ(world.blockAt(38, 60, 38), Block::Air);   // corners stay empty
+    CHECK_EQ(world.blockAt(38, 60, 38), Block::Air);
     CHECK_EQ(world.blockAt(42, 60, 42), Block::Air);
     CHECK_EQ(world.blockAt(40, 60, 40), Block::Air);
 
@@ -401,7 +396,6 @@ VF_TEST(endPortalEyesOnlyGoIntoRealFrameBlocks) {
     CHECK(!network.insertEndEye(DimensionId::End, {9, 9, 9}));
     CHECK_EQ(network.endEyeCount(DimensionId::End, center), 1);
 
-    // The same socket in another dimension is a different socket entirely.
     CHECK(!network.hasEndEye(DimensionId::Overworld, socket));
     CHECK(!network.activateEndPortal(DimensionId::End, center));
 }

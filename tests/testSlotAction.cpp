@@ -29,8 +29,6 @@ struct Session {
     }
 };
 
-// The seven items the random walk shuffles around. Tools are in the mix so the
-// walk also has stacks that refuse to merge.
 const std::array<ItemId, 7> walkItems = {ItemId::Stone,     ItemId::Planks, ItemId::Sand,
                                          ItemId::CoalLump,  ItemId::Apple,  ItemId::IronPickaxe,
                                          ItemId::RawBeef};
@@ -60,8 +58,6 @@ SlotAction randomAction(const ContainerMenu& menu, uint32_t& rng) {
     ClickKind kind = static_cast<ClickKind>(stackRandom(rng) %
                                             static_cast<uint32_t>(ClickKind::Count));
     int slotIndex = static_cast<int>(stackRandom(rng) % static_cast<uint32_t>(menu.slotCount()));
-    // Every eighth action aims outside the window, which is the only way to
-    // reach the throw-away path with a full cursor.
     if (stackRandom(rng) % 8u == 0u) slotIndex = -1;
     if (kind == ClickKind::HotbarSwap) {
         return hotbarSwapAt(slotIndex, static_cast<int>(stackRandom(rng) % 9u));
@@ -119,7 +115,7 @@ WalkCoverage runConservationWalk(MenuKind kind, uint32_t seed, int steps) {
     return coverage;
 }
 
-} // namespace
+}
 
 VF_TEST(everyClickKindHasAName) {
     for (int i = 0; i < static_cast<int>(ClickKind::Count); ++i) {
@@ -169,7 +165,6 @@ VF_TEST(aLeftClickMergesIntoAMatchingStackAndSwapsWithAForeignOne) {
     CHECK(session.menu.stackAt(2).item == ItemId::Sand);
     CHECK_EQ(session.menu.stackAt(2).count, 46);
 
-    // A full matching stack accepts nothing and is not swapped either.
     session.menu.slot(3).cell.stack = makeStack(ItemId::Planks, 64);
     CHECK(!session.click(ClickKind::Left, 3).applied);
     CHECK_EQ(session.cursor.held.count, 8);
@@ -195,7 +190,6 @@ VF_TEST(aRightClickTakesTheLargerHalfAndThenPlacesOneAtATime) {
     CHECK_EQ(session.menu.stackAt(6).count, 2);
     CHECK_EQ(session.cursor.held.count, 3);
 
-    // A right click over an incompatible stack does nothing at all.
     session.menu.slot(7).cell.stack = makeStack(ItemId::Stone, 1);
     CHECK(!session.click(ClickKind::Right, 7).applied);
     CHECK_EQ(session.cursor.held.count, 3);
@@ -249,7 +243,6 @@ VF_TEST(shiftClickInAPlayerInventoryMovesBetweenTheRowsAndTheHotbar) {
     CHECK_EQ(session.menu.stackAt(firstRow).count, 10);
     CHECK(session.menu.stackAt(firstHotbar).empty());
 
-    // The crafting grid is not a shift-click destination.
     CHECK_EQ(session.menu.totalOf(ItemId::Bread), 10);
     for (int cell = 0; cell < layout.craftCells(); ++cell) {
         CHECK(session.menu.stackAt(layout.craftFirst + cell).empty());
@@ -334,7 +327,6 @@ VF_TEST(aNumberKeyOnTheResultSlotCraftsIntoAnEmptyHotbarSlot) {
     CHECK(session.menu.stackAt(hotbar).item == ItemId::Planks);
     CHECK_EQ(grid.input(0, 0).count, 2);
 
-    // The second attempt finds the hotbar slot occupied and refuses.
     CHECK(!session.hotbar(session.menu.layout().resultSlot, 0).applied);
     CHECK_EQ(grid.input(0, 0).count, 2);
 }
@@ -356,7 +348,6 @@ VF_TEST(theMiddleClickOnlyClonesInCreativeMode) {
     CHECK_EQ(creative.cursor.held.count, 64);
     CHECK_EQ(creative.menu.stackAt(0).count, 3);
 
-    // A full cursor blocks the clone.
     CHECK(!creative.click(ClickKind::Middle, 0).applied);
 }
 
@@ -373,7 +364,6 @@ VF_TEST(aDoubleClickGathersEveryMatchingStackOntoTheCursor) {
     SlotActionResult gathered = session.click(ClickKind::Double, 0);
     CHECK(gathered.applied);
     CHECK_EQ(session.cursor.held.count, 64);
-    // The partial stack goes first, the full one only tops up the rest.
     CHECK(session.menu.stackAt(2).empty());
     CHECK_EQ(session.menu.stackAt(1).count, 15);
     CHECK_EQ(session.menu.stackAt(3).count, 20);
@@ -476,7 +466,6 @@ VF_TEST(anAbandonedDragGivesEverythingBackToTheCursor) {
     CHECK_EQ(session.cursor.held.count, 12);
     CHECK(!session.drag.active);
 
-    // A drag end for the other button is not this drag's business.
     session.click(ClickKind::DragLeftStart, 1);
     CHECK(!session.click(ClickKind::DragRightEnd, -1).applied);
     CHECK(session.drag.active);
@@ -561,7 +550,6 @@ VF_TEST(takingAResultOntoAMatchingCursorKeepsCrafting) {
     CHECK_EQ(session.cursor.held.count, 8);
     CHECK_EQ(grid.input(0, 0).count, 2);
 
-    // A cursor holding something else cannot take the result.
     session.cursor.held = makeStack(ItemId::Stone, 1);
     CHECK(!session.click(ClickKind::Left, session.menu.layout().resultSlot).applied);
     CHECK_EQ(grid.input(0, 0).count, 2);
@@ -569,9 +557,6 @@ VF_TEST(takingAResultOntoAMatchingCursorKeepsCrafting) {
 
 VF_TEST(noSequenceOfChestClicksEverCreatesOrDestroysAnItem) {
     WalkCoverage walk = runConservationWalk(MenuKind::Chest, 20260904u, 500);
-    // A walk that never actually did anything would pass the invariant for the
-    // wrong reason, so the coverage itself is asserted: most click kinds have
-    // to have landed, and items have to have really left through the drop path.
     CHECK(walk.applied > 100);
     CHECK(walk.dropped > 0);
     CHECK(walk.distinctKindsApplied >= 12);

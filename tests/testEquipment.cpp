@@ -42,7 +42,7 @@ CombatStats readyToSwing() {
     return stats;
 }
 
-} // namespace
+}
 
 VF_TEST(everyEquipSlotAndAttributeHasAName) {
     for (int i = 0; i < static_cast<int>(EquipSlot::Count); ++i) {
@@ -171,7 +171,6 @@ VF_TEST(sharpnessReachesCombatThroughTheEnchantSetAndNotThroughAttackDamage) {
     sharp.equip(EquipSlot::MainHand,
                 makeEnchantedTool(ItemId::DiamondSword, withEnchant(EnchantKind::Sharpness, 5)));
 
-    // The item value is identical; only the enchantment set differs.
     CHECK_NEAR(plain.stats().attackDamage, sharp.stats().attackDamage, 0.0001f);
     CHECK(plain.stats().weaponEnchants.empty());
     CHECK_EQ(sharp.stats().weaponEnchants.levelOf(EnchantKind::Sharpness), 5);
@@ -339,8 +338,6 @@ VF_TEST(theHandsRoundTripThroughAnOpenMenu) {
     CHECK_EQ(menu.stackAt(layout.hotbarFirst + 4).meta.durability.used, 3);
     CHECK(menu.stackAt(layout.hotbarFirst + 4).meta.customName == std::string("Emberfang"));
 
-    // A chest screen has no off-hand slot, and loading from it leaves that hand
-    // exactly as it was.
     ContainerMenu chest(MenuKind::Chest, &sharedRegistry());
     chest.slot(chest.layout().hotbarFirst).cell.stack = makeStack(ItemId::Stone, 2);
     loadHandsFromMenu(gear, chest, 0);

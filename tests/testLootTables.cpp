@@ -87,7 +87,7 @@ ItemId firstEntryOfPool(const LootTable& table, std::size_t poolIndex) {
     return table.pools[poolIndex].entries[0].item;
 }
 
-} // namespace
+}
 
 VF_TEST(theRegistrysPublishedConstantsAreTheOnesTheBoundsWereDerivedFrom) {
     CHECK_EQ(fishingBaseWaitTicks, 600);
@@ -213,8 +213,6 @@ VF_TEST(stoneBecomesCobblestoneUnlessItIsTakenWholeOrBrokenInsideFire) {
     CHECK_EQ(melted.countOf(ItemId::Stone), 1);
     CHECK_EQ(melted.countOf(ItemId::Cobblestone), 0);
 
-    // Cobblestone bakes back into stone the same way, and iron and gold ore
-    // come out as ingots.
     LootRoll cobble = registry.rollBlock(Block::Cobblestone, burning);
     CHECK_EQ(cobble.countOf(ItemId::Stone), 1);
     CHECK_EQ(registry.rollBlock(Block::IronOre, burning).countOf(ItemId::IronIngot), 1);
@@ -266,7 +264,6 @@ VF_TEST(shearClassToolsTakeTheBlockItselfWithoutNeedingSilkTouch) {
         CHECK_EQ(sheared.totalCount(), 1);
     }
 
-    // A pickaxe falls through to the chance table instead.
     int leafBlocks = 0;
     int cuttings = 0;
     for (int i = 0; i < 800; ++i) {
@@ -278,7 +275,6 @@ VF_TEST(shearClassToolsTakeTheBlockItselfWithoutNeedingSilkTouch) {
     CHECK_EQ(leafBlocks, 0);
     CHECK(cuttings > 0);
 
-    // Shearing a block the palette has no item for still yields nothing.
     for (Block block : {Block::Wool, Block::Cobweb, Block::Vine, Block::Kelp, Block::Moss}) {
         CHECK(registry.blockRule(block).shearHarvest);
         CHECK(registry.rollBlock(block, contextWith(ItemId::DiamondHoe, 8u)).empty());
@@ -458,7 +454,6 @@ VF_TEST(dropsThatNeedAPlayerKillNeverShowUpFromAnEnvironmentalDeath) {
     CHECK(fromPlayers > 0);
     CHECK_EQ(fromTheWorld, 0);
 
-    // A witch is the counter example: her glowstone is not player gated.
     CHECK(!registry.mobRule(Species::Witch).rareNeedsPlayerKill);
     CHECK(witchGlowstoneFromTheWorld > 0);
 }
@@ -628,9 +623,6 @@ VF_TEST(fishingSplitsIntoThreePoolsAndLuckShiftsTheWeightsAwayFromJunk) {
     CHECK(luckyTreasure > plainTreasure);
     CHECK(luckyJunk < plainJunk);
 
-    // An over-cap Fortune cannot come from addEnchant, but it can be placed on
-    // a set by hand, and it must clamp the junk weight at nothing rather than
-    // going negative and eating the treasure band.
     int junkAtHighLuck = 0;
     for (int i = 0; i < 500; ++i) {
         LootContext overCharged = contextWith(ItemId::WoodHoe, seedFor(i));

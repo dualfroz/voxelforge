@@ -8,7 +8,7 @@ VF_TEST(dispenserFiresOnlyOnRisingEdge) {
     Vec3i pos{5, 5, 5};
     ContainerStore store;
     store.ensure(pos, dispenserSlots).insert(ItemId::Stone, 5);
-    store.ensure(pos + Vec3i{1, 0, 0}, dispenserSlots);   // container in front
+    store.ensure(pos + Vec3i{1, 0, 0}, dispenserSlots);
 
     DispenserState state;
     CHECK(tickDropper(world, pos, state, store, 0).action == DispenseAction::None);
@@ -65,14 +65,14 @@ VF_TEST(dispenserEjectsToWorldWhenItCannotPlaceOrDeposit) {
 VF_TEST(dispenserThatCannotPlaceIntoOccupiedCellEjectsInstead) {
     World world;
     Vec3i pos{5, 5, 5};
-    world.setBlock(6, 5, 5, Block::Stone);   // front already occupied
+    world.setBlock(6, 5, 5, Block::Stone);
     ContainerStore store;
     store.ensure(pos, dispenserSlots).insert(ItemId::Dirt, 1);
 
     DispenserState state;
     DispenseResult res = tickDispenser(world, pos, state, store, 15);
     CHECK(res.action == DispenseAction::EjectedToWorld);
-    CHECK(world.blockAt(6, 5, 5) == Block::Stone);   // unchanged
+    CHECK(world.blockAt(6, 5, 5) == Block::Stone);
 }
 
 VF_TEST(dropperNeverPlacesBlocksEvenForBlockItems) {

@@ -25,7 +25,7 @@ void reportCheck(bool ok, const char* expr, const char* file, int line) {
     }
 }
 
-} // namespace vftest
+}
 
 int main() {
     int failedTests = 0;

@@ -94,7 +94,7 @@ DataPack overlayPack() {
     return pack;
 }
 
-} // namespace
+}
 
 VF_TEST(resourceIdsAcceptNamespacedLowercasePathsAndRefuseTheRest) {
     ResourceId parsed;
@@ -178,7 +178,6 @@ VF_TEST(loadedRecipesAreMatchedByTheExistingCraftingRegistry) {
     CHECK(torch->kind == RecipeData::Kind::Shaped);
     CHECK_EQ(torch->width, 1);
     CHECK_EQ(torch->height, 2);
-    // Packed by the recipe width, which is how Crafting.cpp reads a pattern.
     CHECK(torch->pattern[0] == ItemId::RedstoneDust);
     CHECK(torch->pattern[1] == ItemId::Stick);
     CHECK(!torch->allowMirror);
@@ -202,8 +201,6 @@ VF_TEST(loadedRecipesAreMatchedByTheExistingCraftingRegistry) {
     CHECK(crafted.item == ItemId::RedstoneTorch);
     CHECK_EQ(crafted.count, 4);
 
-    // The built in coal torch is untouched: loading data adds, it does not
-    // shadow what the registry already knew.
     CraftGrid coalTorch;
     coalTorch.fill(ItemId::None);
     coalTorch[static_cast<std::size_t>(1 * craftGridWidth + 2)] = ItemId::CoalLump;
@@ -243,7 +240,6 @@ VF_TEST(loadedLootTablesRollThroughTheExistingLootRoller) {
     context.seed = 1234u;
     LootRoll plain = loader.roll(id("voxelforge:chests/starter"), context);
     CHECK_EQ(plain.countOf(ItemId::Bread), 2);
-    // The second pool is gated behind a player kill, so it stays shut here.
     CHECK_EQ(plain.countOf(ItemId::DiamondGem), 0);
 
     context.playerKill = true;
@@ -251,7 +247,6 @@ VF_TEST(loadedLootTablesRollThroughTheExistingLootRoller) {
     CHECK_EQ(earned.countOf(ItemId::Bread), 2);
     CHECK_EQ(earned.countOf(ItemId::DiamondGem), 1);
 
-    // Same seed, same roll: nothing here reaches for a clock.
     LootRoll again = loader.roll(id("voxelforge:chests/starter"), context);
     CHECK_EQ(again.totalCount(), earned.totalCount());
     CHECK(loader.roll(id("voxelforge:chests/nothing"), context).empty());
@@ -267,7 +262,6 @@ VF_TEST(aLaterPackOverwritesAResourceAndAppendsToATag) {
     CHECK_EQ(loader.applyOrder()[0], std::string("base"));
     CHECK_EQ(loader.applyOrder()[1], std::string("overlay"));
 
-    // One recipe id, the higher pack's version of it.
     CHECK_EQ(loader.recipes().size(), static_cast<std::size_t>(3));
     CHECK_EQ(loader.recipe(id("voxelforge:redstone_torch"))->resultCount, 8);
 
@@ -354,7 +348,6 @@ VF_TEST(tagReferencesFlattenIntoTheirMembersWithoutDuplicates) {
         CHECK(fuel[1] == ItemId::Planks);
     }
 
-    // A tag that names a tag nobody defined resolves to nothing, loudly.
     std::vector<ResourceId> unresolved;
     std::string problem;
     TagRegistry registry;
@@ -398,7 +391,6 @@ VF_TEST(aTagThatReferencesItselfIsReportedAsACycleInsteadOfLoopingForever) {
     CHECK(!loader.blocksInTag(id("voxelforge:first"), blocks));
     CHECK(blocks.empty());
 
-    // A diamond is not a cycle: two paths onto the same tag still resolve.
     DataPackMeta diamondMeta;
     diamondMeta.name = "diamond";
     DataPack diamond(diamondMeta);
@@ -449,7 +441,6 @@ VF_TEST(oneRottenFileCostsItselfAndNothingElseInThePack) {
         CHECK(failure.text().find("mixed/data/") != std::string::npos);
     }
 
-    // The healthy files in the very same pack still landed.
     CHECK_EQ(loader.recipes().size(), static_cast<std::size_t>(1));
     CHECK(loader.recipe(id("voxelforge:good")) != nullptr);
     CHECK_EQ(loader.blockTags().size(), static_cast<std::size_t>(1));
@@ -532,7 +523,6 @@ VF_TEST(recipeAndLootDocumentsAreCheckedFieldByField) {
     CHECK(parseLootTableJson(ranged.root, "voxelforge", table, problem));
     CHECK_EQ(table.pools[0].minRolls, 1);
     CHECK_EQ(table.pools[0].maxRolls, 3);
-    // A range is only rolled when the roller is told to roll it.
     CHECK_EQ(table.pools[0].entries[0].functions, LootEntry::CountRange);
 
     JsonParseResult noValues = parseJson(R"json({"replace": true})json");

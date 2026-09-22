@@ -65,7 +65,7 @@ struct BadDocument {
     const char* fragment;
 };
 
-} // namespace
+}
 
 VF_TEST(everyUglyDocumentSurvivesParseWriteParseUnchanged) {
     for (const std::string& text : uglyDocuments()) {
@@ -85,7 +85,6 @@ VF_TEST(everyUglyDocumentSurvivesParseWriteParseUnchanged) {
         CHECK(third.ok);
         CHECK(third.root == first.root);
 
-        // The compact form is a fixed point: writing it again changes nothing.
         CHECK_EQ(JsonWriter::compact(second.root), compact);
         CHECK_EQ(JsonWriter::compact(third.root), compact);
     }
@@ -127,13 +126,13 @@ VF_TEST(surrogatePairsBecomeOneCodePointAndComeBackOutAsAPair) {
 
 VF_TEST(brokenSurrogatesAndUnknownEscapesAreRefused) {
     const char* broken[] = {
-        "\"\\ud83e\"",          // high surrogate with nothing after it
-        "\"\\ud83eX\"",         // high surrogate followed by a plain character
-        "\"\\ud83e\\u0041\"",   // high surrogate followed by a non low surrogate
-        "\"\\udd8a\"",          // low surrogate on its own
-        "\"\\q\"",              // unknown escape
-        "\"\\u00g1\"",          // not a hexadecimal digit
-        "\"\\u00\"",            // truncated escape
+        "\"\\ud83e\"",
+        "\"\\ud83eX\"",
+        "\"\\ud83e\\u0041\"",
+        "\"\\udd8a\"",
+        "\"\\q\"",
+        "\"\\u00g1\"",
+        "\"\\u00\"",
     };
     for (const char* text : broken) {
         JsonParseResult parsed = parseJson(text);
@@ -185,7 +184,6 @@ VF_TEST(deepNestingIsReportedAsAnErrorInsteadOfOverflowingTheStack) {
     CHECK_EQ(parsed.error.line, 1);
     CHECK_EQ(parsed.error.column, jsonDefaultMaxDepth + 1);
 
-    // An unterminated avalanche must stop at the same limit, not at the end.
     JsonParseResult runaway = parseJson(repeated("[", 20000));
     CHECK(!runaway.ok);
     CHECK_EQ(runaway.error.column, jsonDefaultMaxDepth + 1);
@@ -194,7 +192,6 @@ VF_TEST(deepNestingIsReportedAsAnErrorInsteadOfOverflowingTheStack) {
     CHECK(!objects.ok);
     CHECK(objects.error.message.find("nesting deeper") != std::string::npos);
 
-    // Exactly at the limit is still a document.
     std::string atLimit = repeated("[", jsonDefaultMaxDepth) + repeated("]", jsonDefaultMaxDepth);
     CHECK(parseJson(atLimit).ok);
     CHECK(!parseJson("[" + atLimit + "]").ok);
@@ -213,7 +210,6 @@ VF_TEST(numbersKeepIntegerExactnessAndFractionsSurviveTheRoundTrip) {
     CHECK(negative.isInteger());
     CHECK_EQ(negative.intValue(), -9223372036854775807ll - 1ll);
 
-    // Past the 64 bit range the value degrades to a double rather than wrapping.
     JsonValue huge = mustParse("99999999999999999999");
     CHECK(!huge.isInteger());
     CHECK(huge.numberValue() > 9.9e19);
@@ -225,8 +221,6 @@ VF_TEST(numbersKeepIntegerExactnessAndFractionsSurviveTheRoundTrip) {
     CHECK(!parseJson("1e999").ok);
     CHECK(parseJson("1e999").error.message.find("representable") != std::string::npos);
 
-    // An exponent form is a double, and stays one: writing it as a bare 100
-    // would read back as an integer and print differently on the next pass.
     JsonValue exponent = mustParse("1e2");
     CHECK_EQ(exponent.numberValue(), 100.0);
     CHECK_EQ(exponent.intValue(), 100);

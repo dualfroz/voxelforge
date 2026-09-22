@@ -57,7 +57,7 @@ std::size_t viewVolumeChunkCount(const PipelineConfig& config) {
     return count;
 }
 
-} // namespace
+}
 
 VF_TEST(pipelineTakesEveryQueuedChunkThroughAllFourStages) {
     ChunkPipeline pipeline(baseConfig(4));

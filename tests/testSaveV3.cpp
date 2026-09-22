@@ -16,7 +16,7 @@ GridSnapshot snapshotLight(const LightEngine& engine) {
     return {engine.regionOrigin(), engine.regionDims(), engine.sunField(), engine.blockField()};
 }
 
-} // namespace
+}
 
 VF_TEST(saveV3RoundTripsWorldMobsFluidLight) {
     SaveV3 save;
@@ -67,7 +67,6 @@ VF_TEST(saveV3RoundTripsWorldMobsFluidLight) {
     CHECK(loaded.hasLight);
     CHECK(loaded.light.channelA == save.light.channelA);
 
-    // The restored snapshots feed live systems again.
     FluidSim restoredFluid(loaded.world, loaded.fluid.origin, loaded.fluid.dims);
     restoredFluid.loadRaw(loaded.fluid.channelA, loaded.fluid.channelB);
     CHECK_EQ(static_cast<int>(restoredFluid.level(4, 1, 4)), static_cast<int>(sim.level(4, 1, 4)));
@@ -82,7 +81,7 @@ VF_TEST(saveV3LoadsLegacyV1File) {
     World world;
     world.setBlock(0, 0, 0, Block::Stone);
     world.setBlock(-5, 40, 17, Block::Water);
-    std::vector<uint8_t> legacy = serializeWorld(world);   // v1 format
+    std::vector<uint8_t> legacy = serializeWorld(world);
 
     SaveV3 loaded;
     CHECK(deserializeSaveV3(legacy.data(), legacy.size(), loaded));
@@ -105,7 +104,7 @@ VF_TEST(saveV3RejectsTruncatedStream) {
     Mob m;
     save.mobs = {m};
     std::vector<uint8_t> bytes = serializeSaveV3(save);
-    bytes.resize(bytes.size() - 6);   // cut into the mob section
+    bytes.resize(bytes.size() - 6);
     SaveV3 out;
     CHECK(!deserializeSaveV3(bytes.data(), bytes.size(), out));
 }

@@ -12,7 +12,7 @@ void railLine(World& world, int x0, int x1, int y, int z, Block kind) {
     for (int x = x0; x <= x1; ++x) world.setBlock(x, y, z, kind);
 }
 
-} // namespace
+}
 
 VF_TEST(cartRollsAlongFlatTrackAndFrictionBringsItToRest) {
     World world;

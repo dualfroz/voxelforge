@@ -33,8 +33,6 @@ void buildTerrain(World& world, int chunkMin, int chunkMax) {
     }
 }
 
-// The far end of one slot: an independent transport and session on endpoint 1
-// of that slot's link, which is exactly what a real remote player would be.
 struct RemoteClient {
     World world;
     std::unique_ptr<Transport> transport;
@@ -74,13 +72,11 @@ ServerConfig quietServerConfig() {
     return config;
 }
 
-// Seeds a slot's view before login; the first snapshot burst then goes out
-// around this spot instead of around the origin.
 void placeAt(NetServer& server, int slot, float x, float y, float z) {
     server.sessionFor(slot)->view().position = Vec3{x, y, z};
 }
 
-}  // namespace
+}
 
 VF_TEST(twoClientsStandingApartReceiveDisjointSetsOfChunks) {
     ServerConfig config = quietServerConfig();
@@ -140,7 +136,6 @@ VF_TEST(aBlockChangeInsideBothViewsReachesEachClientExactlyOnce) {
 
     int slotLeft = server.acceptClient();
     int slotRight = server.acceptClient();
-    // Both stand two chunks apart, so chunk (1,0,0) is inside both spheres.
     placeAt(server, slotLeft, 8.0f, 8.0f, 8.0f);
     placeAt(server, slotRight, 40.0f, 8.0f, 8.0f);
 
@@ -266,8 +261,6 @@ VF_TEST(theBandwidthBudgetDelaysPacketsAcrossTicksWithoutLosingAnyOfThem) {
         if (server.stats().queuedPackets > 0) everQueued = true;
         if (server.stats().queuedBytes > peakQueuedBytes)
             peakQueuedBytes = server.stats().queuedBytes;
-        // A single oversized packet is allowed through on its own, but the
-        // budget must never be exceeded by a whole extra packet.
         CHECK(server.stats().bytesSentThisTick <= 220u + 4096u);
     }
     CHECK(everQueued);
@@ -281,7 +274,6 @@ VF_TEST(theBandwidthBudgetDelaysPacketsAcrossTicksWithoutLosingAnyOfThem) {
     CHECK_EQ(only.world.chunkCount(), static_cast<std::size_t>(5));
     CHECK_EQ(only.session->stats().chunksApplied, static_cast<uint64_t>(5));
 
-    // Nothing was dropped on the way: the client sees the same blocks.
     for (int x = 0; x < chunkSize; ++x)
         for (int z = 0; z < chunkSize; ++z)
             CHECK(only.world.blockAt(x, 3, z) == world.blockAt(x, 3, z));
@@ -503,7 +495,6 @@ VF_TEST(fourClientsSpreadAcrossTheWorldStayConsistentOverAnUnreliableLink) {
             if (mirror == nullptr) continue;
             CHECK(authoritative->raw() == mirror->raw());
         }
-        // Each client only ever holds the chunks it was told about.
         CHECK_EQ(clients[static_cast<std::size_t>(i)]->world.chunkCount(),
                  static_cast<std::size_t>(5));
     }
