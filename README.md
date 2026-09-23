@@ -1,134 +1,255 @@
 # voxelforge
 
-A voxel engine in C++17 with a playable browser demo. The renderer targets
-OpenGL ES 3.0 / WebGL2 through Emscripten (WASM); the simulation core is
-GL-free and builds natively with plain g++ for unit testing.
+voxelforge is a Minecraft-like voxel engine written in C++17. The simulation
+core (`core/`) has no graphics dependencies: it builds with a plain C++
+compiler and is covered by a native test suite of 1207 test cases. On top of it,
+`render/` is a WebGL2 front end compiled to WebAssembly with Emscripten, a
+playable browser demo with streamed terrain, lighting, a day/night cycle,
+weather, flowing water, mobs and a working village.
 
-## Features (v1)
+## Features
 
-- Chunked world (16x16x16), cross-chunk block access.
-- Greedy meshing (Lysenko sweep): coplanar same-type faces merge into
-  rectangles, faces are culled against neighbours across chunk borders.
-- FPP controller with AABB voxel collisions (walk + fly), gravity, jump,
-  move-and-slide resolution.
-- Terrain generation from seeded Perlin noise (heightmap, water, sand, snow,
-  trees).
-- Procedural texture-array atlas (one RGBA layer per tile, generated in code).
-- Frustum culling per chunk (Gribb-Hartmann plane extraction).
-- Block placing / breaking via voxel raycast (Amanatides and Woo DDA).
-- Binary world save/load (RLE), wired to browser localStorage in the demo.
+### World and terrain
 
-## Features (v2 - depth)
+- Chunked world (16x16x16 chunks) with cross-chunk block access and 130 block
+  types carrying solidity, opacity, transparency, light emission and per-face
+  atlas tiles (`Block`, `Chunk`, `World`).
+- Seeded Perlin noise, plus Worley noise and fractal Brownian motion
+  (`Noise`, `NoiseAdv`).
+- Infinite deterministic terrain: climate biomes (ocean, beach, plains, forest,
+  desert, mountains, snow), per-biome heightmaps, 3D spaghetti caves,
+  depth-banded ore veins and trees (`WorldGen`), plus a fixed-size heightmap
+  generator (`Terrain`).
+- Five-axis climate biome model (temperature, humidity, continentalness,
+  erosion, weirdness) with eleven biomes, rivers, surface layers, decorator
+  densities and biome blending (`BiomeGen`).
+- Structures: trees and huts (`Structures`), and per-chunk villages, dungeons,
+  mineshafts, ravines and desert temples (`StructureGen`).
+- Nether and End generators: Nether biomes and columns, End islands and
+  obsidian pillars (`NetherGen`, `EndGen`).
+- Dimensions and portals: Overworld/Nether/End travel with coordinate scaling,
+  portal frame detection and portal linking (`Dimension`, `Portal`).
+- Regional climate: snow accumulation, ice formation and melting driven by
+  temperature (`Climate`).
 
-All added GL-free in `core/` and unit tested natively:
+### Rendering support (GL-free)
 
-- Infinite streamed world: `ChunkStreamer` keeps a disc of chunk columns
-  resident around the player with separate load/unload rings (hysteresis so
-  pacing a boundary does not thrash), feeding a nearest-first generation queue
-  and a mesh queue that the render loop time-slices.
-- Procedural depth: `WorldGen` produces deterministic per-chunk terrain with
-  climate biomes (ocean, beach, plains, forest, desert, mountains, snow),
-  3D-noise spaghetti caves, and depth-banded ore veins (coal, iron, gold) plus
-  gravel; trees planted per column.
-- Lighting: `computeLight` flood-fills skylight (straight down at full strength,
-  attenuating one level per step sideways) and block light from Glowstone, both
-  as BFS. `meshChunkLit` bakes per-vertex ambient occlusion (classic 0-3 rule)
-  and smoothed light into the mesh.
-- Water / transparency: the lit mesher splits each chunk into opaque and
-  transparent sub-meshes; the renderer draws water last with blending, depth
-  writes off, chunks sorted back-to-front.
-- Inventory: a 9-slot `Hotbar` with selection, wheel/number scrolling, stacking
-  on break and consumption on place; drawn as an HTML HUD.
-- Region save/load: `Region` groups chunks into 16x16-column region files with a
-  per-chunk RLE index; `serializeRegions` writes every resident region to
-  browser localStorage.
+- Greedy meshing (Lysenko sweep) with face culling across chunk borders
+  (`Mesh`).
+- Lit meshing with per-vertex ambient occlusion and smoothed light, split into
+  opaque and transparent sub-meshes (`LitMesh`).
+- Skylight and block light as BFS flood fills over a region (`Lighting`) and an
+  incremental light engine that updates on block edits (`LightEngine`).
+- Frustum culling with Gribb-Hartmann plane extraction (`Frustum`) and voxel
+  raycasting with the Amanatides-Woo DDA (`Raycast`).
+- Procedural texture atlas: tile palette, materials, patterns and a tile
+  sampler that draws every block face in code (`TilePalette`, `TileTexture`).
+- Chunk streaming with load/unload hysteresis (`Streaming`), a staged
+  generate/light/mesh pipeline (`ChunkPipeline`), an LRU or distance-weighted
+  chunk cache (`ChunkCache`) and a thread-pool job system with priorities and
+  dependency graphs (`JobSystem`).
 
-## Layout
+### Physics and survival
+
+- Player controller with AABB collisions, walking, flying, gravity and jumping
+  (`Physics`), and a swept AABB resolver with per-block collision shapes for
+  slabs, stairs, fences, carpets, ladders and vines (`Collide`).
+- Cellular water automaton with sources, flow levels and settling (`Fluid`).
+- Volume-based fluid physics: submerged fraction, surface and eye depth sampled
+  from world blocks and partial automaton levels, buoyancy by fluid density,
+  linear and quadratic drag, currents along falling water levels, breath,
+  drowning and lava burns with water breathing and fire resistance
+  (`Buoyancy`).
+- Health, hunger, saturation, exhaustion, regeneration, starvation, fall
+  damage, breath and drowning, block hardness and mining time (`Survival`).
+- Damage types, armor, combat stats (`Damage`), status effects (`Effect`) and
+  explosions with blast resistance, drops and knockback (`Explosion`).
+
+### Creatures and AI
+
+- Mobs with physics bodies and A* pathfinding (`Entity`, `Pathfind`).
+- Sheep, cows, pigs, zombies, skeletons and creepers with species stats, an
+  AI state machine (wander, flee, chase, attack) and drop tables (`Mob`).
+- Behavior trees with selectors, sequences, parallels, decorators and a
+  blackboard (`Behavior`).
+- Natural spawning: spawn rules per species, light/biome/time checks with a
+  named reason for every refusal, mob caps, packs, despawn bands and spawner
+  blocks (`Spawning`).
+- Villagers: professions, workstations, beds and the bell as claimable points
+  of interest, a daily schedule, pathing, levels, gossip, census and breeding
+  (`Villager`, `Gossip`), and villager trading (`Trade`).
+- Raids with waves, bad omen, raider kinds and iron golems (`Raid`).
+- Boss fights: the Ender Dragon with end crystals and the Wither, with boss
+  bars and phases (`Boss`).
+
+### Items and inventories
+
+- Item registry with tools, tiers, food values and stack sizes (`Item`),
+  stack metadata and durability (`ItemStack`), the hotbar (`Inventory`).
+- Containers, menus and slot interactions including shift-click and drag
+  (`Container`, `ContainerMenu`, `SlotAction`).
+- Shaped, shapeless and smelting recipes and a furnace (`Crafting`).
+- Equipment slots with attribute modifiers (`Equipment`), enchanting
+  (`Enchant`), brewing and a potion catalog with brewing paths (`Brewing`,
+  `PotionCatalog`).
+- Loot tables with pools, block and mob drops, chest fills and fishing loot
+  (`Loot`, `LootTables`).
+
+### Simulation
+
+- World clock with day phases, sky light curve, moon phases and sunrise/sunset
+  detection (`TimeOfDay`), and a weather state machine with rain, thunder and
+  lightning strikes (`Weather`).
+- Random ticks and a scheduled block tick queue (`RandomTick`, `BlockTick`).
+- Farming: wheat, carrots, potatoes, pumpkin and melon stems (`Farming`).
+- Redstone circuits with wires, torches, repeaters, comparators and lamps
+  (`Circuit`), pistons (`Piston`), hoppers and dispensers (`Hopper`,
+  `Dispenser`), rails and minecarts (`Rail`, `Minecart`).
+- A deterministic orchestrator that runs clock, weather, climate, farming,
+  block ticks, redstone, logistics, minecarts and creatures in one step and
+  reports changed blocks (`WorldSim`).
+
+### Persistence
+
+- Binary world save with RLE (`Serialize`), region files (`Region`),
+  Anvil-style regions with bit-packed palette sections (`Anvil`) and NBT tags
+  (`Nbt`).
+- Store/RLE/LZ77 compression (`Codec`), a v3 save format with fluid and light
+  snapshots (`SaveV3`), save version migration (`SaveMigration`), integrity
+  scanning and repair (`SaveIntegrity`), region compaction (`RegionCompact`),
+  incremental backups with retention (`WorldBackup`) and player data
+  (`PlayerData`).
+
+### Networking
+
+- Packet protocol (handshake, login, join, chunk data, block changes, entity
+  movement, keep-alive) (`Protocol`).
+- Reliable and unreliable channels over a loopback link with configurable
+  latency and loss (`Transport`).
+- Client sessions with view tracking and bandwidth limits (`NetSession`), a
+  multi-client server (`NetServer`) and server/client chunk replication
+  (`ChunkSync`).
+
+### Tooling and data
+
+- Command dispatcher with game rules (`Command`), scoreboard with statistics,
+  objectives and teams (`Scoreboard`) and advancements (`Advancement`).
+- JSON parser, writer and JSON pointer (`Json`), data packs with recipes and
+  block tags (`DataPack`).
+- World editing: selections, brushes (sphere, cylinder, replace, smooth,
+  erode, overlay, naturalize, gradient), undo/redo history and schematics with
+  rotation and mirroring (`Selection`, `Brush`, `EditHistory`, `Schematic`).
+
+## Architecture
 
 ```
-core/              GL-free simulation, native gcc build, unit tested
-  include/vf/      Math, Block, Chunk, World, Mesh, Noise, Terrain,
-                   Raycast, Physics, Frustum, Serialize, Lighting, LitMesh,
-                   Streaming, WorldGen, Region, Inventory
-  src/             implementations
-render/            WebGL2 layer, Emscripten build
-  main.cpp         context, input, streaming, GPU chunk buffers, render loop
-  Shaders.h        GLSL ES 3.0 vertex + fragment (light + AO)
-  Atlas.*          procedural texture array
-  Base64.*         localStorage payload encoding
-  shell.html       page shell with crosshair, hotbar HUD, controls
-tests/             native test harness + suites (74 tests)
+core/                 GL-free engine, builds natively, unit tested
+  include/vf/         public headers, one per module (namespace vf)
+  src/                implementations
+render/               WebGL2 front end, built with Emscripten
+  main.cpp            setup, input, game tick, frame loop, HUD wiring
+  Terrain.*           streaming, lighting per column, GPU chunk meshes
+  Sky.*               sky colour, sun direction and fog from clock and weather
+  Hands.*             targeting, mining, hitting mobs, placing blocks
+  Explorer.*          player body, swimming, survival stats
+  Wildlife.*          natural spawning, mob AI ticks, combat
+  Village.*           village placement, points of interest, villager ticks
+  WaterFlow.*         water automaton sites for poured water
+  EntityRenderer.*    box models for mobs and villagers
+  Gpu.*, Shaders.h    GL helpers and GLSL ES 3.0 shaders
+  Atlas.*             texture array built from the core tile sampler
+  Storage.*, Base64.* terrain save and load through localStorage
+  Hud.*, shell.html   HTML HUD and page shell
+tests/                native test harness and one suite per module
 ```
 
-The split is deliberate: `core/` has zero GL includes so it compiles and runs
-tests without any GPU or graphics libraries, which is the automated proof that
-the engine logic is correct. `render/` is the only part that needs Emscripten.
+`core/` never includes a GL header, so all engine logic compiles and runs in
+the test binary without a GPU. `render/` only connects core modules to WebGL,
+input and the page; it contains no engine rules of its own.
 
-## Build and test the core (native)
+## Building
+
+Requirements: a C++17 compiler (GCC or Clang) and `make`. The web demo also
+needs [Emscripten](https://emscripten.org/).
+
+### Native tests
 
 ```
 make test
 ```
 
-Compiles `core/src` + `tests` with g++ (`-std=c++17`) and runs the suite.
-Expected tail:
+Compiles `core/src` and `tests` into `build/voxelforgeTests` and runs it from
+the repository root. The last line reports the totals:
 
 ```
-74 tests, 59296 checks, 0 failed checks, 0 failed tests
+1207 tests, 378986 checks, 0 failed checks, 0 failed tests
 ```
 
-## Build the web demo (Emscripten -> WASM)
-
-Emscripten must be on PATH:
+### Web demo
 
 ```
-source ~/emsdk/emsdk_env.sh
+source /path/to/emsdk/emsdk_env.sh
 make web
 ```
 
-Produces `web/index.html`, `web/index.js`, `web/index.wasm`.
-
-## Run the demo
-
-WebGL needs to be served over http (not opened as a file://). Any static
-server works:
+Produces `web/index.html`, `web/index.js` and `web/index.wasm`. WebGL needs the
+page to be served over HTTP:
 
 ```
-make run-web           # emrun on http://localhost:8080
-# or
-python3 -m http.server 8080 --directory web
+make run-web
 ```
 
-Then open the served `index.html`.
+or any static server, for example `python3 -m http.server 8080 --directory web`,
+then open `http://localhost:8080/`.
 
-## Controls
+## The demo
 
-- Click the canvas to lock the mouse.
-- `WASD` move, mouse look, `Space` jump.
-- `F` toggle fly; in fly mode `Space` / `Shift` go up / down.
-- Left click break block, right click place block.
-- `1`-`9` or the mouse wheel pick the hotbar block to place.
-- `K` save world (region files) to localStorage, `L` load it back.
+The demo starts next to a village placed on the first suitable plains, forest
+or desert site near the origin. What runs in the browser:
 
-## Verification status
+- Streamed terrain with biomes, caves, ores and trees around the player.
+- Baked light with ambient occlusion; the sky light follows the clock, so the
+  terrain darkens at night while glowstone keeps its light.
+- Day/night cycle with sun direction, dawn and dusk colours, moon phases, and
+  weather with rain darkening the sky and lightning flashes.
+- Mining with block hardness, placing blocks from the hotbar.
+- Water poured from the hotbar runs through the fluid automaton; inside water
+  the player swims, and underwater the breath bar drains and drowning damage
+  starts.
+- Animals and, at night, monsters spawn by the spawn rules; monsters chase and
+  hit the player, creepers explode and break terrain, animals flee when hit and
+  drop food.
+- Villagers claim beds and workstations, go to work during the day, meet at the
+  bell and go to bed at night, and panic when monsters come close.
+- Health, hunger and breath with regeneration, starvation and fall damage;
+  death respawns the player at the village.
 
-- Core tests (native gcc) pass, 74 in total. On top of v1 (greedy mesher,
-  Perlin/terrain, raycast, AABB collisions, frustum, serialize) the depth work
-  is covered: skylight/block-light flood-fill (attenuation, sealed-pocket
-  darkness, radial emitter falloff), per-vertex AO and opaque/transparent split,
-  streaming ring load/unload with hysteresis, biome/cave/ore world generation
-  and determinism, region file round-trips, and the hotbar model. Each new
-  mechanism was checked counterfactually (break the code, watch the test fail).
-- The Emscripten build produces a valid WASM artifact. The in-browser render
-  was NOT verified here: this environment has no GPU / headless WebGL. Open the
-  served page to see it run.
+### Controls
 
-## v3 (later)
+| Input | Action |
+|---|---|
+| Click | lock the mouse |
+| `W` `A` `S` `D`, mouse | move, look |
+| `Space` | jump; swim up in water |
+| `Shift` | dive in water; descend while flying |
+| `F` | toggle flying (no damage, instant mining) |
+| Hold left button | mine the targeted block or hit a mob |
+| Right button | place the selected block (water flows) |
+| `1`-`9`, wheel | select a hotbar slot |
+| `Q` | eat the best food carried |
+| `T` | cycle time speed (1x, 30x, 240x) |
+| `K` / `L` | save / load the terrain to localStorage |
 
-- Native desktop build (GLFW + glad) once `libglfw3-dev` / `libgl1-mesa-dev`
-  are installed; `core/` already builds natively, only a native `render/`
-  backend is missing.
-- Worker-threaded generation and meshing (currently time-sliced on the main
-  loop), greedy merging of the lit mesh, and per-face water sorting.
-- Shadow maps, mobs + physics, sound, LOD, texture packs.
-```
+## Limitations
+
+- The only renderer is the WebGL2 demo; there is no native desktop front end.
+- Networking runs over an in-memory loopback link with simulated latency and
+  loss; there is no socket transport.
+- The player and mobs use the axis-by-axis resolver in `Physics` and the demo
+  swims with its own parameters; the swept resolver in `Collide` and the fluid
+  model in `Buoyancy` are not wired into them yet.
+- Most systems listed under items, simulation, persistence, networking and
+  tooling are exercised by the tests but not exposed in the demo.
+- The demo save stores terrain only, not mobs, villagers, time or the player.
+- Generation, lighting and meshing in the demo run time-sliced on the main
+  thread; a change of sky level re-bakes the loaded columns over a few seconds.
